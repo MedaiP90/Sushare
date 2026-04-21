@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
+import '../../../services/permission_service.dart';
 import '../../viewmodels/profile_viewmodel.dart';
 
 class ProfileSetupPage extends ConsumerStatefulWidget {
@@ -33,6 +34,9 @@ class _ProfileSetupPageState extends ConsumerState<ProfileSetupPage> {
     final picker = ImagePicker();
     final image = await picker.pickImage(source: ImageSource.gallery);
     if (image != null) {
+      final hasPermission = await PermissionService.checkAndRequestPhotos(context);
+      if (!hasPermission) return;
+      
       final appDir = await getApplicationDocumentsDirectory();
       final fileName = 'profile_${DateTime.now().millisecondsSinceEpoch}.jpg';
       final savedImage = await File(image.path).copy('${appDir.path}/$fileName');

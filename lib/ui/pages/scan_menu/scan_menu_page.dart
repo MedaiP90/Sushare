@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../domain/models/restaurant.dart';
 import '../../../services/camera_service.dart';
 import '../../../services/menu_ai_service.dart';
+import '../../../services/permission_service.dart';
 import '../../viewmodels/restaurant_viewmodel.dart';
 
 final cameraServiceProvider = Provider<CameraService>((ref) => CameraService());
@@ -30,6 +31,9 @@ class _ScanMenuPageState extends ConsumerState<ScanMenuPage> {
   }
 
   Future<void> _captureMenu() async {
+    final hasPermission = await PermissionService.checkAndRequestCamera(context);
+    if (!hasPermission) return;
+    
     setState(() {
       _isProcessing = true;
       _parsedItems = null;
@@ -54,6 +58,9 @@ class _ScanMenuPageState extends ConsumerState<ScanMenuPage> {
   }
 
   Future<void> _pickImage() async {
+    final hasPermission = await PermissionService.checkAndRequestPhotos(context);
+    if (!hasPermission) return;
+    
     setState(() {
       _isProcessing = true;
       _parsedItems = null;
