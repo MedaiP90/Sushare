@@ -1,4 +1,4 @@
-# sushare
+# Sushare
 
 A new Flutter project.
 
