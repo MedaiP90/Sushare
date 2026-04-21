@@ -8,7 +8,7 @@ import '../../ui/pages/home/restaurants_page.dart';
 import '../../ui/pages/home/settings_page.dart';
 import '../../ui/pages/sessions/new_session_page.dart';
 import '../../ui/pages/sessions/join_session_page.dart';
-import '../../ui/pages/session/session_page.dart';
+import '../../ui/pages/session/session_shell_page.dart';
 import '../../ui/pages/session/personal_order_page.dart';
 import '../../ui/pages/session/merged_order_page.dart';
 import '../../ui/pages/session/checklist_page.dart';
@@ -23,7 +23,6 @@ final routerProvider = Provider<GoRouter>((ref) {
     initialLocation: '/',
     redirect: (context, state) {
       final isOnProfileSetup = state.matchedLocation == '/profile/setup';
-      final isOnHome = state.matchedLocation.startsWith('/home');
 
       return userAsync.when(
         data: (user) {
@@ -85,34 +84,28 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/sessions/join',
         builder: (context, state) => const JoinSessionPage(),
       ),
-      ShellRoute(
-        builder: (context, state, child) => SessionPage(
-          sessionId: state.pathParameters['id']!,
-          child: child,
+      GoRoute(
+        path: '/sessions/:sessionId',
+        builder: (context, state) => SessionShellPage(
+          sessionId: state.pathParameters['sessionId']!,
         ),
         routes: [
           GoRoute(
-            path: 'sessions/:id/order',
-            pageBuilder: (context, state) => NoTransitionPage(
-              child: PersonalOrderPage(
-                sessionId: state.pathParameters['id']!,
-              ),
+            path: 'order',
+            builder: (context, state) => PersonalOrderPage(
+              sessionId: state.pathParameters['sessionId']!,
             ),
           ),
           GoRoute(
-            path: 'sessions/:id/merged',
-            pageBuilder: (context, state) => NoTransitionPage(
-              child: MergedOrderPage(
-                sessionId: state.pathParameters['id']!,
-              ),
+            path: 'merged',
+            builder: (context, state) => MergedOrderPage(
+              sessionId: state.pathParameters['sessionId']!,
             ),
           ),
           GoRoute(
-            path: 'sessions/:id/checklist',
-            pageBuilder: (context, state) => NoTransitionPage(
-              child: ChecklistPage(
-                sessionId: state.pathParameters['id']!,
-              ),
+            path: 'checklist',
+            builder: (context, state) => ChecklistPage(
+              sessionId: state.pathParameters['sessionId']!,
             ),
           ),
         ],
