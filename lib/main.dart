@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/theme/app_theme.dart';
 import 'core/router/app_router.dart';
+import 'ui/viewmodels/profile_viewmodel.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -17,6 +18,7 @@ class SushareApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final userAsync = ref.watch(profileViewModelProvider);
     final router = ref.watch(routerProvider);
 
     return MaterialApp.router(
@@ -26,6 +28,28 @@ class SushareApp extends ConsumerWidget {
       darkTheme: AppTheme.dark(context),
       themeMode: ThemeMode.system,
       routerConfig: router,
+      builder: (context, child) {
+        return userAsync.when(
+          data: (_) => child ?? const SizedBox.shrink(),
+          loading: () => MaterialApp(
+            theme: AppTheme.light(context),
+            darkTheme: AppTheme.dark(context),
+            home: const Scaffold(
+              body: Center(
+                child: CircularProgressIndicator(),
+              ),
+            ),
+          ),
+          error: (e, _) => MaterialApp(
+            theme: AppTheme.light(context),
+            home: Scaffold(
+              body: Center(
+                child: Text('Error: $e'),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }

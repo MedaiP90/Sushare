@@ -14,10 +14,31 @@ import '../../ui/pages/session/merged_order_page.dart';
 import '../../ui/pages/session/checklist_page.dart';
 import '../../ui/pages/restaurant/restaurant_detail_page.dart';
 import '../../ui/pages/scan_menu/scan_menu_page.dart';
+import '../../ui/viewmodels/profile_viewmodel.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
+  final userAsync = ref.watch(profileViewModelProvider);
+
   return GoRouter(
-    initialLocation: '/home',
+    initialLocation: '/',
+    redirect: (context, state) {
+      final isOnProfileSetup = state.matchedLocation == '/profile/setup';
+      final isOnHome = state.matchedLocation.startsWith('/home');
+
+      return userAsync.when(
+        data: (user) {
+          if (user == null && !isOnProfileSetup) {
+            return '/profile/setup';
+          }
+          if (user != null && isOnProfileSetup) {
+            return '/home';
+          }
+          return null;
+        },
+        loading: () => null,
+        error: (_, __) => '/profile/setup',
+      );
+    },
     routes: [
       GoRoute(
         path: '/profile/setup',
@@ -70,10 +91,6 @@ final routerProvider = Provider<GoRouter>((ref) {
           child: child,
         ),
         routes: [
-          GoRoute(
-            path: 'sessions/:id',
-            redirect: (context, state) => '${state.path}/order',
-          ),
           GoRoute(
             path: 'sessions/:id/order',
             pageBuilder: (context, state) => NoTransitionPage(
