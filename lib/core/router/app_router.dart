@@ -52,20 +52,32 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: '/home/sessions',
-            pageBuilder: (context, state) => const NoTransitionPage(
-              child: SessionsPage(),
+            pageBuilder: (context, state) => CustomTransitionPage(
+              key: state.pageKey,
+              child: const SessionsPage(),
+              transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                return FadeTransition(opacity: animation, child: child);
+              },
             ),
           ),
           GoRoute(
             path: '/home/restaurants',
-            pageBuilder: (context, state) => const NoTransitionPage(
-              child: RestaurantsPage(),
+            pageBuilder: (context, state) => CustomTransitionPage(
+              key: state.pageKey,
+              child: const RestaurantsPage(),
+              transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                return FadeTransition(opacity: animation, child: child);
+              },
             ),
           ),
           GoRoute(
             path: '/home/settings',
-            pageBuilder: (context, state) => const NoTransitionPage(
-              child: SettingsPage(),
+            pageBuilder: (context, state) => CustomTransitionPage(
+              key: state.pageKey,
+              child: const SettingsPage(),
+              transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                return FadeTransition(opacity: animation, child: child);
+              },
             ),
           ),
         ],
