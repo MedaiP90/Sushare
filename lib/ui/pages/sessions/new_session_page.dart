@@ -26,19 +26,18 @@ class _NewSessionPageState extends ConsumerState<NewSessionPage> {
 
   Future<void> _createSession() async {
     if (!_formKey.currentState!.validate()) return;
-    if (_selectedRestaurantId == null) return;
 
     setState(() => _isLoading = true);
 
     try {
       final user = ref.read(profileViewModelProvider).value;
-      if (user == null) {
-        throw Exception('No user logged in');
-      }
+      if (user == null) throw Exception('No user logged in');
+
+      String restaurantId = _selectedRestaurantId ?? await _autoCreateRestaurant();
 
       final sessionId = await ref.read(sessionsProvider.notifier).createSession(
             name: _nameController.text.trim(),
-            restaurantId: _selectedRestaurantId!,
+            restaurantId: restaurantId,
             hostUserId: user.id,
           );
 
@@ -56,6 +55,17 @@ class _NewSessionPageState extends ConsumerState<NewSessionPage> {
         setState(() => _isLoading = false);
       }
     }
+  }
+
+  Future<String> _autoCreateRestaurant() {
+    final now = DateTime.now();
+    final name =
+        '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')} '
+        '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
+    return ref.read(restaurantsProvider.notifier).addRestaurant(
+          name: name,
+          menu: [],
+        );
   }
 
   @override
@@ -104,7 +114,7 @@ class _NewSessionPageState extends ConsumerState<NewSessionPage> {
               ),
               const SizedBox(height: 24),
               Text(
-                'Select Restaurant',
+                'Select Restaurant (optional)',
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               const SizedBox(height: 12),
@@ -118,12 +128,19 @@ class _NewSessionPageState extends ConsumerState<NewSessionPage> {
                           children: [
                             const Icon(Icons.restaurant_outlined, size: 48),
                             const SizedBox(height: 8),
-                            const Text('No restaurants available'),
+                            const Text('No restaurants saved yet'),
+                            const SizedBox(height: 4),
+                            Text(
+                              'A restaurant will be created automatically when you start the session.',
+                              textAlign: TextAlign.center,
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: colorScheme.onSurfaceVariant,
+                                  ),
+                            ),
                             const SizedBox(height: 8),
                             TextButton(
-                              onPressed: () =>
-                                  context.go('/home/restaurants'),
-                              child: const Text('Add a restaurant first'),
+                              onPressed: () => context.go('/home/restaurants'),
+                              child: const Text('Add a restaurant'),
                             ),
                           ],
                         ),
@@ -174,10 +191,7 @@ class _NewSessionPageState extends ConsumerState<NewSessionPage> {
               ),
               const SizedBox(height: 32),
               FilledButton(
-                onPressed: _isLoading ||
-                        _selectedRestaurantId == null
-                    ? null
-                    : _createSession,
+                onPressed: _isLoading ? null : _createSession,
                 child: Padding(
                   padding: const EdgeInsets.all(16),
                   child: _isLoading
