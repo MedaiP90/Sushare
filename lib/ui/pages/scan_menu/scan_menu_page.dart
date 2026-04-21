@@ -97,7 +97,7 @@ class _ScanMenuPageState extends ConsumerState<ScanMenuPage> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Please add your Anthropic API key in Settings first'),
+              content: Text('Please add your Google Gemini API key in Settings first'),
             ),
           );
         }
@@ -275,8 +275,8 @@ class _ScanMenuPageState extends ConsumerState<ScanMenuPage> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'Requires Anthropic API key for AI analysis. '
-                        'Add in Settings > API Keys.',
+                        'Requires a Google Gemini API key for AI analysis. '
+                        'Add it in Settings > AI Service.',
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                               color: colorScheme.onSurfaceVariant,
                             ),

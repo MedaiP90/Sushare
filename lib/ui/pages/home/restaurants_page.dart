@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
-import '../../../domain/models/restaurant.dart';
 import '../../viewmodels/restaurant_viewmodel.dart';
 
 class RestaurantsPage extends ConsumerWidget {
@@ -45,7 +44,7 @@ class RestaurantsPage extends ConsumerWidget {
                   ),
                   const SizedBox(height: 24),
                   FilledButton.icon(
-                    onPressed: () => _showAddRestaurantDialog(context, ref),
+                    onPressed: () => _showAddRestaurantSheet(context, ref),
                     icon: const Icon(Icons.add),
                     label: const Text('Add Restaurant'),
                   ),
@@ -153,113 +152,156 @@ class RestaurantsPage extends ConsumerWidget {
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showAddRestaurantDialog(context, ref),
+        onPressed: () => _showAddRestaurantSheet(context, ref),
         icon: const Icon(Icons.add),
         label: const Text('Add Restaurant'),
       ),
     );
   }
 
-  void _showAddRestaurantDialog(BuildContext context, WidgetRef ref) {
+  void _showAddRestaurantSheet(BuildContext context, WidgetRef ref) {
     final nameController = TextEditingController();
     final addressController = TextEditingController();
-    String? coverImagePath;
 
-    showDialog(
+    showModalBottomSheet(
       context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setState) => AlertDialog(
-          title: const Text('Add Restaurant'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (context) => _AddRestaurantSheet(
+        nameController: nameController,
+        addressController: addressController,
+        onAdd: (coverImagePath) async {
+          if (nameController.text.trim().isEmpty) return;
+          await ref.read(restaurantsProvider.notifier).addRestaurant(
+                name: nameController.text.trim(),
+                address: addressController.text.trim().isEmpty
+                    ? null
+                    : addressController.text.trim(),
+                coverImagePath: coverImagePath,
+                menu: [],
+              );
+          if (context.mounted) Navigator.pop(context);
+        },
+      ),
+    );
+  }
+}
+
+class _AddRestaurantSheet extends StatefulWidget {
+  final TextEditingController nameController;
+  final TextEditingController addressController;
+  final Future<void> Function(String? coverImagePath) onAdd;
+
+  const _AddRestaurantSheet({
+    required this.nameController,
+    required this.addressController,
+    required this.onAdd,
+  });
+
+  @override
+  State<_AddRestaurantSheet> createState() => _AddRestaurantSheetState();
+}
+
+class _AddRestaurantSheetState extends State<_AddRestaurantSheet> {
+  String? _coverImagePath;
+
+  Future<void> _pickImage() async {
+    final picker = ImagePicker();
+    final image = await picker.pickImage(source: ImageSource.gallery);
+    if (image != null) {
+      final appDir = await getApplicationDocumentsDirectory();
+      final fileName = 'restaurant_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      final savedImage = await File(image.path).copy('${appDir.path}/$fileName');
+      setState(() => _coverImagePath = savedImage.path);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final viewInsets = MediaQuery.viewInsetsOf(context);
+
+    return Padding(
+      padding: EdgeInsets.only(bottom: viewInsets.bottom),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Center(
+              child: Container(
+                width: 32,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 20),
+                decoration: BoxDecoration(
+                  color: scheme.outlineVariant,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            Text(
+              'Add Restaurant',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+            const SizedBox(height: 20),
+            GestureDetector(
+              onTap: _pickImage,
+              child: Container(
+                height: 140,
+                decoration: BoxDecoration(
+                  color: scheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: _coverImagePath != null
+                    ? Image.file(File(_coverImagePath!), fit: BoxFit.cover)
+                    : Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.add_photo_alternate_outlined,
+                              size: 40, color: scheme.outline),
+                          const SizedBox(height: 8),
+                          Text('Add Cover Photo',
+                              style: TextStyle(color: scheme.outline)),
+                        ],
+                      ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: widget.nameController,
+              textCapitalization: TextCapitalization.words,
+              decoration: const InputDecoration(
+                labelText: 'Restaurant Name',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: widget.addressController,
+              decoration: const InputDecoration(
+                labelText: 'Address (optional)',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 24),
+            Row(
               children: [
-                GestureDetector(
-                  onTap: () async {
-                    final picker = ImagePicker();
-                    final image = await picker.pickImage(source: ImageSource.gallery);
-                    if (image != null) {
-                      final appDir = await getApplicationDocumentsDirectory();
-                      final fileName = 'restaurant_${DateTime.now().millisecondsSinceEpoch}.jpg';
-                      final savedImage = await File(image.path).copy('${appDir.path}/$fileName');
-                      setState(() {
-                        coverImagePath = savedImage.path;
-                      });
-                    }
-                  },
-                  child: Container(
-                    height: 120,
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: coverImagePath != null
-                        ? ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
-                            child: Image.file(
-                              File(coverImagePath!),
-                              fit: BoxFit.cover,
-                            ),
-                          )
-                        : Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.add_photo_alternate_outlined,
-                                size: 40,
-                                color: Theme.of(context).colorScheme.outline,
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                'Add Photo',
-                                style: TextStyle(
-                                  color: Theme.of(context).colorScheme.outline,
-                                ),
-                              ),
-                            ],
-                          ),
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('Cancel'),
                   ),
                 ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: nameController,
-                  decoration: const InputDecoration(
-                    labelText: 'Restaurant Name',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: addressController,
-                  decoration: const InputDecoration(
-                    labelText: 'Address (optional)',
-                    border: OutlineInputBorder(),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: FilledButton(
+                    onPressed: () => widget.onAdd(_coverImagePath),
+                    child: const Text('Add'),
                   ),
                 ),
               ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () async {
-                if (nameController.text.trim().isEmpty) return;
-
-                await ref.read(restaurantsProvider.notifier).addRestaurant(
-                      name: nameController.text.trim(),
-                      address: addressController.text.trim().isEmpty
-                          ? null
-                          : addressController.text.trim(),
-                      coverImagePath: coverImagePath,
-                      menu: [],
-                    );
-                if (context.mounted) Navigator.pop(context);
-              },
-              child: const Text('Add'),
             ),
           ],
         ),

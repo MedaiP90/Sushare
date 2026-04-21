@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flex_color_scheme/flex_color_scheme.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-const Color _fallbackSeed = Color(0xFFC0392B);
+const Color fallbackSeed = Color(0xFFC0392B);
 
 TextTheme buildTextTheme() => GoogleFonts.nunitoTextTheme().copyWith(
   displayLarge: GoogleFonts.nunito(fontWeight: FontWeight.w800),
@@ -22,12 +22,24 @@ TextTheme buildTextTheme() => GoogleFonts.nunitoTextTheme().copyWith(
   labelSmall: GoogleFonts.nunito(fontWeight: FontWeight.w500),
 );
 
+const _subThemes = FlexSubThemesData(
+  cardRadius: 24,
+  filledButtonRadius: 16,
+  outlinedButtonRadius: 16,
+  fabRadius: 16,
+  chipRadius: 12,
+  inputDecoratorRadius: 12,
+  dialogRadius: 24,
+  bottomSheetRadius: 28,
+);
+
 class AppTheme {
-  static ThemeData light(BuildContext context) {
-    final colorScheme = ColorScheme.fromSeed(
-      seedColor: _fallbackSeed,
-      brightness: Brightness.light,
-    );
+  static ThemeData light({ColorScheme? dynamicScheme}) {
+    final colorScheme = dynamicScheme ??
+        ColorScheme.fromSeed(
+          seedColor: fallbackSeed,
+          brightness: Brightness.light,
+        );
 
     return FlexThemeData.light(
       colorScheme: colorScheme,
@@ -35,24 +47,16 @@ class AppTheme {
       useMaterial3: true,
       surfaceMode: FlexSurfaceMode.levelSurfacesLowScaffold,
       blendLevel: 7,
-      subThemesData: const FlexSubThemesData(
-        cardRadius: 24,
-        filledButtonRadius: 16,
-        outlinedButtonRadius: 16,
-        fabRadius: 16,
-        chipRadius: 12,
-        inputDecoratorRadius: 12,
-        dialogRadius: 24,
-        bottomSheetRadius: 24,
-      ),
+      subThemesData: _subThemes,
     );
   }
 
-  static ThemeData dark(BuildContext context) {
-    final colorScheme = ColorScheme.fromSeed(
-      seedColor: _fallbackSeed,
-      brightness: Brightness.dark,
-    );
+  static ThemeData dark({ColorScheme? dynamicScheme}) {
+    final colorScheme = dynamicScheme ??
+        ColorScheme.fromSeed(
+          seedColor: fallbackSeed,
+          brightness: Brightness.dark,
+        );
 
     return FlexThemeData.dark(
       colorScheme: colorScheme,
@@ -60,16 +64,7 @@ class AppTheme {
       useMaterial3: true,
       surfaceMode: FlexSurfaceMode.levelSurfacesLowScaffold,
       blendLevel: 13,
-      subThemesData: const FlexSubThemesData(
-        cardRadius: 24,
-        filledButtonRadius: 16,
-        outlinedButtonRadius: 16,
-        fabRadius: 16,
-        chipRadius: 12,
-        inputDecoratorRadius: 12,
-        dialogRadius: 24,
-        bottomSheetRadius: 24,
-      ),
+      subThemesData: _subThemes,
     );
   }
 }
