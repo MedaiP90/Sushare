@@ -177,13 +177,13 @@ class RestaurantsPage extends ConsumerWidget {
                 alignment: Alignment.centerLeft,
                 child: Text(
                   restaurant.name,
-                  style: Theme.of(sheetContext).textTheme.titleMedium,
+                  style: Theme.of(context).textTheme.titleLarge,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
             ),
-            const Divider(),
+            const SizedBox(height: 20),
             ListTile(
               leading: const Icon(Icons.edit_outlined),
               title: const Text('Edit'),

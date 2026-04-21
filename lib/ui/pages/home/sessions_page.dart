@@ -104,13 +104,13 @@ class SessionsPage extends ConsumerWidget {
                 alignment: Alignment.centerLeft,
                 child: Text(
                   session.name,
-                  style: Theme.of(sheetContext).textTheme.titleMedium,
+                  style: Theme.of(context).textTheme.titleLarge,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
             ),
-            const Divider(),
+            const SizedBox(height: 20),
             ListTile(
               leading: const Icon(Icons.open_in_new_outlined),
               title: const Text('Open'),
