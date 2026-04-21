@@ -39,7 +39,7 @@ class SessionsPage extends ConsumerWidget {
             itemBuilder: (context, index) => _SessionCard(
               session: sessions[index],
               onTap: () =>
-                  context.push('/sessions/${sessions[index].id}/order'),
+                  context.push('/sessions/${sessions[index].id}'),
               onLongPress: () =>
                   _showSessionActions(context, ref, sessions[index]),
             ),
@@ -116,7 +116,7 @@ class SessionsPage extends ConsumerWidget {
               title: const Text('Open'),
               onTap: () {
                 Navigator.pop(sheetContext);
-                context.push('/sessions/${session.id}/order');
+                context.push('/sessions/${session.id}');
               },
             ),
             if (session.status == SessionStatus.open)

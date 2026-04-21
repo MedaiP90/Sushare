@@ -55,7 +55,7 @@ class _JoinSessionPageState extends ConsumerState<JoinSessionPage> {
       await sessionRepo.addParticipant(cleanCode, user.id);
 
       if (mounted) {
-        context.go('/sessions/$cleanCode/order');
+        context.go('/sessions/$cleanCode');
       }
     } catch (e) {
       setState(() {

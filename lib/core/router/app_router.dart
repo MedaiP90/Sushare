@@ -9,9 +9,6 @@ import '../../ui/pages/home/settings_page.dart';
 import '../../ui/pages/sessions/new_session_page.dart';
 import '../../ui/pages/sessions/join_session_page.dart';
 import '../../ui/pages/session/session_shell_page.dart';
-import '../../ui/pages/session/personal_order_page.dart';
-import '../../ui/pages/session/merged_order_page.dart';
-import '../../ui/pages/session/checklist_page.dart';
 import '../../ui/pages/restaurant/restaurant_detail_page.dart';
 import '../../ui/pages/scan_menu/scan_menu_page.dart';
 import '../../ui/viewmodels/profile_viewmodel.dart';
@@ -102,26 +99,6 @@ final routerProvider = Provider<GoRouter>((ref) {
           final sessionId = state.pathParameters['sessionId']!;
           return SessionShellPage(sessionId: sessionId);
         },
-        routes: [
-          GoRoute(
-            path: 'order',
-            builder: (context, state) => PersonalOrderPage(
-              sessionId: state.pathParameters['sessionId']!,
-            ),
-          ),
-          GoRoute(
-            path: 'merged',
-            builder: (context, state) => MergedOrderPage(
-              sessionId: state.pathParameters['sessionId']!,
-            ),
-          ),
-          GoRoute(
-            path: 'checklist',
-            builder: (context, state) => ChecklistPage(
-              sessionId: state.pathParameters['sessionId']!,
-            ),
-          ),
-        ],
       ),
       GoRoute(
         path: '/scan-menu/:restaurantId',

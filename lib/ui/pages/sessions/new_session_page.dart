@@ -42,7 +42,7 @@ class _NewSessionPageState extends ConsumerState<NewSessionPage> {
           );
 
       if (mounted) {
-        context.go('/sessions/$sessionId/order');
+        context.go('/sessions/$sessionId');
       }
     } catch (e) {
       if (mounted) {
