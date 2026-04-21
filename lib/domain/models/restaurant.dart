@@ -38,6 +38,24 @@ class Restaurant {
       'createdAt': createdAt.toIso8601String(),
     };
   }
+
+  Restaurant copyWith({
+    String? id,
+    String? name,
+    String? address,
+    String? coverImagePath,
+    List<MenuItem>? menu,
+    DateTime? createdAt,
+  }) {
+    return Restaurant(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      address: address ?? this.address,
+      coverImagePath: coverImagePath ?? this.coverImagePath,
+      menu: menu ?? this.menu,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
 }
 
 class MenuItem {
@@ -73,5 +91,21 @@ class MenuItem {
       'description': description,
       'imageUrl': imageUrl,
     };
+  }
+
+  MenuItem copyWith({
+    String? id,
+    String? name,
+    String? category,
+    String? description,
+    String? imageUrl,
+  }) {
+    return MenuItem(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      category: category ?? this.category,
+      description: description ?? this.description,
+      imageUrl: imageUrl ?? this.imageUrl,
+    );
   }
 }
