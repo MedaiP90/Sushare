@@ -55,7 +55,7 @@ class _ProfileSetupPageState extends ConsumerState<ProfileSetupPage> {
             profilePicturePath: _profilePicturePath,
           );
       if (mounted) {
-        context.go('/home');
+        context.go('/home/sessions');
       }
     } catch (e) {
       if (mounted) {

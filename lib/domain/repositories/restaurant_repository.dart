@@ -7,12 +7,7 @@ class RestaurantRepository {
   Future<List<Restaurant>> getAllRestaurants() async {
     final db = await AppDatabase.database;
     final results = await db.query('restaurants', orderBy: 'created_at DESC');
-    return results.map((row) {
-      final map = Map<String, dynamic>.from(row);
-      map['menu'] = jsonDecode(row['menu_json'] as String);
-      map.remove('menu_json');
-      return Restaurant.fromJson(map);
-    }).toList();
+    return results.map((row) => _restaurantFromRow(row)).toList();
   }
 
   Future<Restaurant?> getRestaurantById(String id) async {
@@ -23,11 +18,22 @@ class RestaurantRepository {
       whereArgs: [id],
     );
     if (results.isEmpty) return null;
-    final row = results.first;
-    final map = Map<String, dynamic>.from(row);
-    map['menu'] = jsonDecode(row['menu_json'] as String);
-    map.remove('menu_json');
-    return Restaurant.fromJson(map);
+    return _restaurantFromRow(results.first);
+  }
+
+  Restaurant _restaurantFromRow(Map<String, dynamic> row) {
+    final menuJson = row['menu_json'] as String;
+    final menuList = jsonDecode(menuJson) as List<dynamic>;
+    final menu = menuList.map((e) => MenuItem.fromJson(e as Map<String, dynamic>)).toList();
+    
+    return Restaurant(
+      id: row['id'] as String,
+      name: row['name'] as String,
+      address: row['address'] as String?,
+      coverImagePath: row['cover_image_path'] as String?,
+      menu: menu,
+      createdAt: DateTime.parse(row['created_at'] as String),
+    );
   }
 
   Future<void> saveRestaurant(Restaurant restaurant) async {

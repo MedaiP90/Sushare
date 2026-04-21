@@ -20,7 +20,7 @@ final routerProvider = Provider<GoRouter>((ref) {
   final userAsync = ref.watch(profileViewModelProvider);
 
   return GoRouter(
-    initialLocation: '/',
+    initialLocation: '/home/sessions',
     redirect: (context, state) {
       final isOnProfileSetup = state.matchedLocation == '/profile/setup';
 
@@ -30,7 +30,7 @@ final routerProvider = Provider<GoRouter>((ref) {
             return '/profile/setup';
           }
           if (user != null && isOnProfileSetup) {
-            return '/home';
+            return '/home/sessions';
           }
           return null;
         },
@@ -86,9 +86,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/sessions/:sessionId',
-        builder: (context, state) => SessionShellPage(
-          sessionId: state.pathParameters['sessionId']!,
-        ),
+        builder: (context, state) {
+          final sessionId = state.pathParameters['sessionId']!;
+          return SessionShellPage(sessionId: sessionId);
+        },
         routes: [
           GoRoute(
             path: 'order',

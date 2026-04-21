@@ -7,7 +7,19 @@ class UserRepository {
     final db = await AppDatabase.database;
     final results = await db.query('local_users', limit: 1);
     if (results.isEmpty) return null;
-    return LocalUser.fromJson(results.first);
+    
+    final row = results.first;
+    return LocalUser(
+      id: row['id'] as String,
+      username: row['username'] as String,
+      firstName: row['first_name'] as String,
+      lastName: row['last_name'] as String,
+      profilePicturePath: row['profile_picture_path'] as String?,
+      avatarColorValue: row['avatar_color_value'] as int,
+      createdAt: row['created_at'] != null 
+          ? DateTime.parse(row['created_at'] as String)
+          : null,
+    );
   }
 
   Future<void> saveLocalUser(LocalUser user) async {

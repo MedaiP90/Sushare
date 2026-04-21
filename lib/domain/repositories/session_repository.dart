@@ -33,6 +33,45 @@ class SessionRepository {
     return _sessionFromRow(results.first);
   }
 
+  Session _sessionFromRow(Map<String, dynamic> row) {
+    final participantIdsJson = row['participant_ids_json'] as String;
+    final participantIdsList = jsonDecode(participantIdsJson) as List<dynamic>;
+    final participantIds = participantIdsList.map((e) => e as String).toList();
+
+    Order? mainOrder;
+    final mainOrderJson = row['main_order_json'];
+    if (mainOrderJson != null) {
+      mainOrder = Order.fromJson(jsonDecode(mainOrderJson as String));
+    }
+
+    final additionalOrdersJson = row['additional_orders_json'] as String;
+    final additionalOrdersList = jsonDecode(additionalOrdersJson) as List<dynamic>;
+    final additionalOrders = additionalOrdersList
+        .map((e) => Order.fromJson(e as Map<String, dynamic>))
+        .toList();
+
+    final statusStr = row['status'] as String;
+    final status = SessionStatus.values.firstWhere(
+      (s) => s.name == statusStr,
+      orElse: () => SessionStatus.open,
+    );
+
+    return Session(
+      id: row['id'] as String,
+      name: row['name'] as String,
+      restaurantId: row['restaurant_id'] as String,
+      hostUserId: row['host_user_id'] as String,
+      participantIds: participantIds,
+      status: status,
+      mainOrder: mainOrder,
+      additionalOrders: additionalOrders,
+      createdAt: DateTime.parse(row['created_at'] as String),
+      sentAt: row['sent_at'] != null 
+          ? DateTime.parse(row['sent_at'] as String)
+          : null,
+    );
+  }
+
   Future<void> saveSession(Session session) async {
     final db = await AppDatabase.database;
     await db.insert(
@@ -50,6 +89,21 @@ class SessionRepository {
       where: 'id = ?',
       whereArgs: [session.id],
     );
+  }
+
+  Map<String, dynamic> _sessionToRow(Session session) {
+    return {
+      'id': session.id,
+      'name': session.name,
+      'restaurant_id': session.restaurantId,
+      'host_user_id': session.hostUserId,
+      'participant_ids_json': jsonEncode(session.participantIds),
+      'status': session.status.name,
+      'main_order_json': session.mainOrder != null ? jsonEncode(session.mainOrder!.toJson()) : null,
+      'additional_orders_json': jsonEncode(session.additionalOrders.map((o) => o.toJson()).toList()),
+      'created_at': session.createdAt.toIso8601String(),
+      'sent_at': session.sentAt?.toIso8601String(),
+    };
   }
 
   Future<void> deleteSession(String id) async {
@@ -77,44 +131,5 @@ class SessionRepository {
       participantIds: session.participantIds.where((id) => id != userId).toList(),
     );
     await updateSession(updated);
-  }
-
-  Map<String, dynamic> _sessionToRow(Session session) {
-    return {
-      'id': session.id,
-      'name': session.name,
-      'restaurant_id': session.restaurantId,
-      'host_user_id': session.hostUserId,
-      'participant_ids_json': jsonEncode(session.participantIds),
-      'status': session.status.name,
-      'main_order_json': session.mainOrder != null ? jsonEncode(session.mainOrder!.toJson()) : null,
-      'additional_orders_json': jsonEncode(session.additionalOrders.map((o) => o.toJson()).toList()),
-      'created_at': session.createdAt.toIso8601String(),
-      'sent_at': session.sentAt?.toIso8601String(),
-    };
-  }
-
-  Session _sessionFromRow(Map<String, dynamic> row) {
-    return Session(
-      id: row['id'] as String,
-      name: row['name'] as String,
-      restaurantId: row['restaurant_id'] as String,
-      hostUserId: row['host_user_id'] as String,
-      participantIds: (jsonDecode(row['participant_ids_json'] as String) as List).cast<String>(),
-      status: SessionStatus.values.firstWhere(
-        (s) => s.name == row['status'],
-        orElse: () => SessionStatus.open,
-      ),
-      mainOrder: row['main_order_json'] != null
-          ? Order.fromJson(jsonDecode(row['main_order_json'] as String))
-          : null,
-      additionalOrders: (jsonDecode(row['additional_orders_json'] as String) as List)
-          .map((o) => Order.fromJson(o))
-          .toList(),
-      createdAt: DateTime.parse(row['created_at'] as String),
-      sentAt: row['sent_at'] != null
-          ? DateTime.parse(row['sent_at'] as String)
-          : null,
-    );
   }
 }
