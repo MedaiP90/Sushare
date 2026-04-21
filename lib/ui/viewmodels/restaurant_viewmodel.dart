@@ -16,7 +16,7 @@ class RestaurantsNotifier extends AsyncNotifier<List<Restaurant>> {
     return repo.getAllRestaurants();
   }
 
-  Future<void> addRestaurant({
+  Future<String> addRestaurant({
     required String name,
     String? address,
     String? coverImagePath,
@@ -33,6 +33,7 @@ class RestaurantsNotifier extends AsyncNotifier<List<Restaurant>> {
     );
     await repo.saveRestaurant(restaurant);
     state = AsyncValue.data([restaurant, ...state.value ?? []]);
+    return restaurant.id;
   }
 
   Future<void> updateRestaurant(Restaurant restaurant) async {

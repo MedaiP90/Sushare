@@ -31,73 +31,49 @@ class _ScanMenuPageState extends ConsumerState<ScanMenuPage> {
   }
 
   Future<void> _captureMenu() async {
-    final hasPermission = await PermissionService.checkAndRequestCamera(context);
+    final hasPermission =
+        await PermissionService.checkAndRequestCamera(context);
     if (!hasPermission) return;
-    
-    setState(() {
-      _isProcessing = true;
-      _parsedItems = null;
-    });
 
-    try {
-      final camera = ref.read(cameraServiceProvider);
-      final image = await camera.captureMenuImage();
-      
-      if (image != null) {
-        setState(() {
-          _capturedImage = image;
-        });
-        
-        await _analyzeImage(image);
-      }
-    } finally {
-      setState(() {
-        _isProcessing = false;
-      });
+    final camera = ref.read(cameraServiceProvider);
+    final image = await camera.captureMenuImage();
+
+    if (image != null && mounted) {
+      setState(() => _capturedImage = image);
+      await _analyzeImage(image);
     }
   }
 
   Future<void> _pickImage() async {
-    final hasPermission = await PermissionService.checkAndRequestPhotos(context);
+    final hasPermission =
+        await PermissionService.checkAndRequestPhotos(context);
     if (!hasPermission) return;
-    
-    setState(() {
-      _isProcessing = true;
-      _parsedItems = null;
-    });
 
-    try {
-      final camera = ref.read(cameraServiceProvider);
-      final image = await camera.pickImageFromGallery();
-      
-      if (image != null) {
-        setState(() {
-          _capturedImage = image;
-        });
-        
-        await _analyzeImage(image);
-      }
-    } finally {
-      setState(() {
-        _isProcessing = false;
-      });
+    final camera = ref.read(cameraServiceProvider);
+    final image = await camera.pickImageFromGallery();
+
+    if (image != null && mounted) {
+      setState(() => _capturedImage = image);
+      await _analyzeImage(image);
     }
   }
 
   Future<void> _analyzeImage(File image) async {
     setState(() {
       _isProcessing = true;
+      _parsedItems = null;
     });
 
     try {
       final aiService = ref.read(menuAiServiceProvider);
       final hasKey = await aiService.hasApiKey();
-      
+
       if (!hasKey) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Please add your Anthropic API key in Settings first'),
+              content: Text(
+                  'Please add your Google Gemini API key in Settings first'),
             ),
           );
         }
@@ -105,20 +81,27 @@ class _ScanMenuPageState extends ConsumerState<ScanMenuPage> {
       }
 
       final items = await aiService.parseMenuImage(image);
-      
-      setState(() {
-        _parsedItems = items;
-      });
+      if (mounted) {
+        setState(() {
+          _parsedItems = items;
+        });
+      }
     } catch (e) {
       if (mounted) {
+        final msg = e.toString().replaceFirst('Exception: ', '');
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
+          SnackBar(
+            content: Text(msg),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
         );
       }
     } finally {
-      setState(() {
-        _isProcessing = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isProcessing = false;
+        });
+      }
     }
   }
 
@@ -275,8 +258,8 @@ class _ScanMenuPageState extends ConsumerState<ScanMenuPage> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'Requires Anthropic API key for AI analysis. '
-                        'Add in Settings > API Keys.',
+                        'Requires a Google Gemini API key for AI analysis. '
+                        'Add it in Settings > AI Service.',
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                               color: colorScheme.onSurfaceVariant,
                             ),

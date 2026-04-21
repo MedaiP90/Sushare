@@ -1,3 +1,4 @@
+import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/theme/app_theme.dart';
@@ -25,36 +26,29 @@ class SushareApp extends ConsumerWidget {
     final themeMode = ref.watch(themeModeProvider);
     final locale = ref.watch(localeProvider);
 
-    return MaterialApp.router(
-      title: 'Sushare',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.light(context),
-      darkTheme: AppTheme.dark(context),
-      themeMode: themeMode,
-      locale: locale,
-      supportedLocales: AppLocalizations.supportedLocales,
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      routerConfig: router,
-      builder: (context, child) {
-        return userAsync.when(
-          data: (_) => child ?? const SizedBox.shrink(),
-          loading: () => MaterialApp(
-            theme: AppTheme.light(context),
-            darkTheme: AppTheme.dark(context),
-            home: const Scaffold(
-              body: Center(
-                child: CircularProgressIndicator(),
+    return DynamicColorBuilder(
+      builder: (ColorScheme? lightDynamic, ColorScheme? darkDynamic) {
+        return MaterialApp.router(
+          title: 'Sushare',
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.light(dynamicScheme: lightDynamic),
+          darkTheme: AppTheme.dark(dynamicScheme: darkDynamic),
+          themeMode: themeMode,
+          locale: locale,
+          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          routerConfig: router,
+          builder: (context, child) {
+            return userAsync.when(
+              data: (_) => child ?? const SizedBox.shrink(),
+              loading: () => const Scaffold(
+                body: Center(child: CircularProgressIndicator()),
               ),
-            ),
-          ),
-          error: (e, _) => MaterialApp(
-            theme: AppTheme.light(context),
-            home: Scaffold(
-              body: Center(
-                child: Text('Error: $e'),
+              error: (e, _) => Scaffold(
+                body: Center(child: Text('Error: $e')),
               ),
-            ),
-          ),
+            );
+          },
         );
       },
     );
