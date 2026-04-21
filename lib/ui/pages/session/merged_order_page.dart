@@ -210,15 +210,32 @@ class MergedOrderPage extends ConsumerWidget {
                   ],
                 ],
               ),
-              floatingActionButton: isHost && session.status.name == 'open' && activeOrders.isNotEmpty
-                  ? FloatingActionButton.extended(
-                      onPressed: activeOrders.every((o) => o.locked)
-                          ? () => _sendOrder(context, ref, session, activeOrders)
-                          : null,
-                      icon: const Icon(Icons.send),
-                      label: const Text('Send Order'),
-                    )
-                  : null,
+              floatingActionButton: Builder(
+                builder: (context) {
+                  if (!isHost) return const SizedBox.shrink();
+                  
+                  return Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (session.status.name == 'sent')
+                        FloatingActionButton.extended(
+                          onPressed: () => _showAddRoundDialog(context, ref, session, activeOrders),
+                          icon: const Icon(Icons.add),
+                          label: const Text('Add Round'),
+                        ),
+                      const SizedBox(height: 8),
+                      if (session.status.name == 'open' && activeOrders.isNotEmpty)
+                        FloatingActionButton.extended(
+                          onPressed: activeOrders.every((o) => o.locked)
+                              ? () => _sendOrder(context, ref, session, activeOrders)
+                              : null,
+                          icon: const Icon(Icons.send),
+                          label: const Text('Send Order'),
+                        ),
+                    ],
+                  );
+                },
+              ),
             );
           },
           loading: () => const Scaffold(
@@ -306,6 +323,58 @@ class MergedOrderPage extends ConsumerWidget {
 if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Order sent!')),
+      );
+    }
+  }
+
+  void _showAddRoundDialog(
+    BuildContext context,
+    WidgetRef ref,
+    Session session,
+    List<PersonalSubOrder> subOrders,
+  ) {
+    int roundNumber = session.additionalOrders.length + 2;
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Add Round $roundNumber'),
+        content: Text(
+          'This will allow participants to add more items to a new round. '
+          'Only participants who have locked their orders can participate in the new round.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              await _createRound(context, ref, session, roundNumber);
+            },
+            child: const Text('Create Round'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _createRound(
+    BuildContext context,
+    WidgetRef ref,
+    Session session,
+    int roundNumber,
+  ) async {
+    final updated = session.copyWith(
+      status: SessionStatus.open,
+    );
+    
+    await ref.read(sessionsProvider.notifier).updateSession(updated);
+    
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Round $roundNumber created! Participants can now add items.')),
       );
     }
   }
