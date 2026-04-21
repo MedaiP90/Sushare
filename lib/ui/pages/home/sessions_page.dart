@@ -40,6 +40,8 @@ class SessionsPage extends ConsumerWidget {
               session: sessions[index],
               onTap: () =>
                   context.push('/sessions/${sessions[index].id}/order'),
+              onLongPress: () =>
+                  _showSessionActions(context, ref, sessions[index]),
             ),
           );
         },
@@ -87,13 +89,121 @@ class SessionsPage extends ConsumerWidget {
       ),
     );
   }
+
+  void _showSessionActions(
+      BuildContext context, WidgetRef ref, Session session) {
+    showModalBottomSheet(
+      context: context,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 16, 24, 4),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  session.name,
+                  style: Theme.of(sheetContext).textTheme.titleMedium,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ),
+            const Divider(),
+            ListTile(
+              leading: const Icon(Icons.open_in_new_outlined),
+              title: const Text('Open'),
+              onTap: () {
+                Navigator.pop(sheetContext);
+                context.push('/sessions/${session.id}/order');
+              },
+            ),
+            if (session.status == SessionStatus.open)
+              ListTile(
+                leading: const Icon(Icons.lock_outline),
+                title: const Text('Close for new participants'),
+                onTap: () async {
+                  Navigator.pop(sheetContext);
+                  final confirm = await showDialog<bool>(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      title: const Text('Close Session'),
+                      content: const Text(
+                          'Participants won\'t be able to join or order.'),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context, false),
+                          child: const Text('Cancel'),
+                        ),
+                        FilledButton(
+                          onPressed: () => Navigator.pop(context, true),
+                          child: const Text('Close'),
+                        ),
+                      ],
+                    ),
+                  );
+                  if (confirm == true && context.mounted) {
+                    await ref
+                        .read(sessionsProvider.notifier)
+                        .closeSession(session.id);
+                  }
+                },
+              ),
+            ListTile(
+              leading: Icon(Icons.delete_outline,
+                  color: Theme.of(context).colorScheme.error),
+              title: Text('Delete',
+                  style: TextStyle(
+                      color: Theme.of(context).colorScheme.error)),
+              onTap: () async {
+                Navigator.pop(sheetContext);
+                final confirm = await showDialog<bool>(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: const Text('Delete Session'),
+                    content: Text(
+                        'Are you sure you want to delete "${session.name}"?'),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, false),
+                        child: const Text('Cancel'),
+                      ),
+                      FilledButton(
+                        onPressed: () => Navigator.pop(context, true),
+                        style: FilledButton.styleFrom(
+                          backgroundColor:
+                              Theme.of(context).colorScheme.error,
+                        ),
+                        child: const Text('Delete'),
+                      ),
+                    ],
+                  ),
+                );
+                if (confirm == true && context.mounted) {
+                  await ref
+                      .read(sessionsProvider.notifier)
+                      .deleteSession(session.id);
+                }
+              },
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _SessionCard extends ConsumerWidget {
   final Session session;
   final VoidCallback onTap;
+  final VoidCallback onLongPress;
 
-  const _SessionCard({required this.session, required this.onTap});
+  const _SessionCard(
+      {required this.session,
+      required this.onTap,
+      required this.onLongPress});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -124,6 +234,7 @@ class _SessionCard extends ConsumerWidget {
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
+        onLongPress: onLongPress,
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(

@@ -226,7 +226,7 @@ class RestaurantDetailPage extends ConsumerWidget {
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
-      builder: (context) => _EditRestaurantSheet(
+      builder: (context) => EditRestaurantSheet(
         restaurant: restaurant,
         onSave: (name, address, coverImagePath) async {
           final updated = restaurant.copyWith(
@@ -309,19 +309,19 @@ class RestaurantDetailPage extends ConsumerWidget {
 
 // ── Edit Restaurant Sheet ────────────────────────────────────────────────────
 
-class _EditRestaurantSheet extends StatefulWidget {
+class EditRestaurantSheet extends StatefulWidget {
   final Restaurant restaurant;
   final Future<void> Function(
       String name, String? address, String? coverImagePath) onSave;
 
-  const _EditRestaurantSheet(
-      {required this.restaurant, required this.onSave});
+  const EditRestaurantSheet(
+      {super.key, required this.restaurant, required this.onSave});
 
   @override
-  State<_EditRestaurantSheet> createState() => _EditRestaurantSheetState();
+  State<EditRestaurantSheet> createState() => _EditRestaurantSheetState();
 }
 
-class _EditRestaurantSheetState extends State<_EditRestaurantSheet> {
+class _EditRestaurantSheetState extends State<EditRestaurantSheet> {
   late final TextEditingController _nameController;
   late final TextEditingController _addressController;
   String? _coverImagePath;

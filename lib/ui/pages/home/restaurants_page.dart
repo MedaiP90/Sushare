@@ -4,7 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
+import '../../../domain/models/restaurant.dart';
 import '../../viewmodels/restaurant_viewmodel.dart';
+import '../restaurant/restaurant_detail_page.dart';
 
 class RestaurantsPage extends ConsumerWidget {
   const RestaurantsPage({super.key});
@@ -63,6 +65,8 @@ class RestaurantsPage extends ConsumerWidget {
                 clipBehavior: Clip.antiAlias,
                 child: InkWell(
                   onTap: () => context.push('/restaurants/${restaurant.id}'),
+                  onLongPress: () =>
+                      _showRestaurantActions(context, ref, restaurant),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -155,6 +159,97 @@ class RestaurantsPage extends ConsumerWidget {
         onPressed: () => _showAddRestaurantSheet(context, ref),
         icon: const Icon(Icons.add),
         label: const Text('Add Restaurant'),
+      ),
+    );
+  }
+
+  void _showRestaurantActions(
+      BuildContext context, WidgetRef ref, Restaurant restaurant) {
+    showModalBottomSheet(
+      context: context,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 16, 24, 4),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  restaurant.name,
+                  style: Theme.of(sheetContext).textTheme.titleMedium,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ),
+            const Divider(),
+            ListTile(
+              leading: const Icon(Icons.edit_outlined),
+              title: const Text('Edit'),
+              onTap: () {
+                Navigator.pop(sheetContext);
+                showModalBottomSheet(
+                  context: context,
+                  isScrollControlled: true,
+                  useSafeArea: true,
+                  builder: (editContext) => EditRestaurantSheet(
+                    restaurant: restaurant,
+                    onSave: (name, address, coverImagePath) async {
+                      final updated = restaurant.copyWith(
+                        name: name,
+                        address: address,
+                        coverImagePath: coverImagePath,
+                      );
+                      await ref
+                          .read(restaurantsProvider.notifier)
+                          .updateRestaurant(updated);
+                      if (editContext.mounted) Navigator.pop(editContext);
+                    },
+                  ),
+                );
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.delete_outline,
+                  color: Theme.of(sheetContext).colorScheme.error),
+              title: Text('Delete',
+                  style: TextStyle(
+                      color: Theme.of(sheetContext).colorScheme.error)),
+              onTap: () async {
+                Navigator.pop(sheetContext);
+                final confirm = await showDialog<bool>(
+                  context: context,
+                  builder: (dialogContext) => AlertDialog(
+                    title: const Text('Delete Restaurant'),
+                    content: Text(
+                        'Are you sure you want to delete "${restaurant.name}"?'),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(dialogContext, false),
+                        child: const Text('Cancel'),
+                      ),
+                      FilledButton(
+                        onPressed: () => Navigator.pop(dialogContext, true),
+                        style: FilledButton.styleFrom(
+                          backgroundColor:
+                              Theme.of(dialogContext).colorScheme.error,
+                        ),
+                        child: const Text('Delete'),
+                      ),
+                    ],
+                  ),
+                );
+                if (confirm == true && context.mounted) {
+                  await ref
+                      .read(restaurantsProvider.notifier)
+                      .deleteRestaurant(restaurant.id);
+                }
+              },
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
       ),
     );
   }
