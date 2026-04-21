@@ -1,4 +1,4 @@
-package com.sushare.sushare
+package com.medai.sushare
 
 import io.flutter.embedding.android.FlutterActivity
 
