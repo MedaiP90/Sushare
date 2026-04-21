@@ -33,20 +33,33 @@ class RestaurantDetailPage extends ConsumerWidget {
               SliverAppBar(
                 expandedHeight: 200,
                 pinned: true,
+                centerTitle: true,
                 flexibleSpace: FlexibleSpaceBar(
+                  centerTitle: true,
                   title: Text(
                     restaurant.name,
-                    style: const TextStyle(
-                      shadows: [Shadow(blurRadius: 4)],
-                    ),
                   ),
+                  collapseMode: CollapseMode.parallax,
                   background: restaurant.coverImagePath != null
-                      ? Image.file(
-                          File(restaurant.coverImagePath!),
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => Container(
-                            color: Theme.of(context).colorScheme.primaryContainer,
-                            child: const Icon(Icons.restaurant, size: 64),
+                      ? ShaderMask(
+                          shaderCallback: (rect) => LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              Colors.black,
+                              Colors.black.withValues(alpha: 0.9),
+                              Colors.black.withValues(alpha: 0.7),
+                              Colors.transparent,
+                            ],
+                          ).createShader(Rect.fromLTRB(0, 0, rect.width, rect.height)),
+                          blendMode: BlendMode.dstIn,
+                          child: Image.file(
+                              File(restaurant.coverImagePath!),
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => Container(
+                                color: Theme.of(context).colorScheme.primaryContainer,
+                                child: const Icon(Icons.restaurant, size: 64),
+                              ),
                           ),
                         )
                       : Container(
