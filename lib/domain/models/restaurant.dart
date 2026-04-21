@@ -61,25 +61,25 @@ class Restaurant {
 class MenuItem {
   final String id;
   final String name;
-  final String category;
   final String? description;
   final String? imageUrl;
+  final int? itemNumber;
 
   MenuItem({
     required this.id,
     required this.name,
-    required this.category,
     this.description,
     this.imageUrl,
+    this.itemNumber,
   });
 
   factory MenuItem.fromJson(Map<String, dynamic> json) {
     return MenuItem(
       id: json['id'] as String,
       name: json['name'] as String,
-      category: json['category'] as String,
       description: json['description'] as String?,
       imageUrl: json['imageUrl'] as String?,
+      itemNumber: json['itemNumber'] as int?,
     );
   }
 
@@ -87,25 +87,25 @@ class MenuItem {
     return {
       'id': id,
       'name': name,
-      'category': category,
       'description': description,
       'imageUrl': imageUrl,
+      'itemNumber': itemNumber,
     };
   }
 
   MenuItem copyWith({
     String? id,
     String? name,
-    String? category,
     String? description,
     String? imageUrl,
+    int? itemNumber,
   }) {
     return MenuItem(
       id: id ?? this.id,
       name: name ?? this.name,
-      category: category ?? this.category,
       description: description ?? this.description,
       imageUrl: imageUrl ?? this.imageUrl,
+      itemNumber: itemNumber ?? this.itemNumber,
     );
   }
 }

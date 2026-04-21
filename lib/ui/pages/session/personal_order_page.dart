@@ -66,10 +66,8 @@ class _PersonalOrderPageState extends ConsumerState<PersonalOrderPage> {
               });
             }
 
-            final groupedMenu = <String, List<MenuItem>>{};
-            for (final item in restaurant.menu) {
-              groupedMenu.putIfAbsent(item.category, () => []).add(item);
-            }
+            final sortedMenu = List<MenuItem>.from(restaurant.menu)
+              ..sort((a, b) => (a.itemNumber ?? 0).compareTo(b.itemNumber ?? 0));
 
             final isLocked = personalOrderAsync.value?.locked ?? false;
             final itemCount = _quantities.values.where((q) => q > 0).length;
@@ -103,24 +101,18 @@ class _PersonalOrderPageState extends ConsumerState<PersonalOrderPage> {
                         ),
                   ),
                   const SizedBox(height: 16),
-                  ...groupedMenu.entries.map((entry) {
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 8),
-                          child: Text(
-                            entry.key,
-                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                  color: Theme.of(context).colorScheme.primary,
-                                ),
-                          ),
-                        ),
-                        ...entry.value.map((item) {
+                  ...sortedMenu.map((item) {
                           final quantity = _quantities[item.id] ?? 0;
                           return Card(
                             margin: const EdgeInsets.only(bottom: 8),
                             child: ListTile(
+                              leading: item.itemNumber != null
+                                  ? CircleAvatar(
+                                      radius: 14,
+                                      backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                                      child: Text('${item.itemNumber}'),
+                                    )
+                                  : null,
                               title: Text(item.name),
                               subtitle: item.description != null
                                   ? Text(item.description!)
@@ -168,9 +160,6 @@ class _PersonalOrderPageState extends ConsumerState<PersonalOrderPage> {
                             ),
                           );
                         }),
-                      ],
-                    );
-                  }),
                 ],
               ),
               bottomNavigationBar: SafeArea(

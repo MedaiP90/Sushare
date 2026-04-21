@@ -2,7 +2,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:uuid/uuid.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:path_provider/path_provider.dart';
 import '../../../domain/models/restaurant.dart';
 import '../../viewmodels/restaurant_viewmodel.dart';
 
@@ -162,7 +163,7 @@ class RestaurantsPage extends ConsumerWidget {
   void _showAddRestaurantDialog(BuildContext context, WidgetRef ref) {
     final nameController = TextEditingController();
     final addressController = TextEditingController();
-    final menuItems = <Map<String, String>>[];
+    String? coverImagePath;
 
     showDialog(
       context: context,
@@ -173,6 +174,54 @@ class RestaurantsPage extends ConsumerWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
+                GestureDetector(
+                  onTap: () async {
+                    final picker = ImagePicker();
+                    final image = await picker.pickImage(source: ImageSource.gallery);
+                    if (image != null) {
+                      final appDir = await getApplicationDocumentsDirectory();
+                      final fileName = 'restaurant_${DateTime.now().millisecondsSinceEpoch}.jpg';
+                      final savedImage = await File(image.path).copy('${appDir.path}/$fileName');
+                      setState(() {
+                        coverImagePath = savedImage.path;
+                      });
+                    }
+                  },
+                  child: Container(
+                    height: 120,
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: coverImagePath != null
+                        ? ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: Image.file(
+                              File(coverImagePath!),
+                              fit: BoxFit.cover,
+                            ),
+                          )
+                        : Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.add_photo_alternate_outlined,
+                                size: 40,
+                                color: Theme.of(context).colorScheme.outline,
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'Add Photo',
+                                style: TextStyle(
+                                  color: Theme.of(context).colorScheme.outline,
+                                ),
+                              ),
+                            ],
+                          ),
+                  ),
+                ),
+                const SizedBox(height: 16),
                 TextField(
                   controller: nameController,
                   decoration: const InputDecoration(
@@ -188,62 +237,6 @@ class RestaurantsPage extends ConsumerWidget {
                     border: OutlineInputBorder(),
                   ),
                 ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Text('Menu Items (${menuItems.length})'),
-                    const Spacer(),
-                    IconButton(
-                      onPressed: () {
-                        setState(() {
-                          menuItems.add({'name': '', 'category': 'Main'});
-                        });
-                      },
-                      icon: const Icon(Icons.add),
-                    ),
-                  ],
-                ),
-                ...menuItems.asMap().entries.map((entry) {
-                  final index = entry.key;
-                  final item = entry.value;
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            decoration: InputDecoration(
-                              labelText: 'Item ${index + 1}',
-                              border: const OutlineInputBorder(),
-                              isDense: true,
-                            ),
-                            onChanged: (v) => item['name'] = v,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: DropdownButtonFormField<String>(
-                            value: item['category'],
-                            decoration: const InputDecoration(
-                              border: OutlineInputBorder(),
-                              isDense: true,
-                            ),
-                            items: const [
-                              DropdownMenuItem(value: 'Main', child: Text('Main')),
-                              DropdownMenuItem(value: 'Side', child: Text('Side')),
-                              DropdownMenuItem(value: 'Drink', child: Text('Drink')),
-                            ],
-                            onChanged: (v) => setState(() => item['category'] = v!),
-                          ),
-                        ),
-                        IconButton(
-                          onPressed: () => setState(() => menuItems.removeAt(index)),
-                          icon: const Icon(Icons.delete_outline),
-                        ),
-                      ],
-                    ),
-                  );
-                }),
               ],
             ),
           ),
@@ -256,21 +249,13 @@ class RestaurantsPage extends ConsumerWidget {
               onPressed: () async {
                 if (nameController.text.trim().isEmpty) return;
 
-                final List<MenuItem> menu = menuItems
-                    .where((item) => item['name']!.isNotEmpty)
-                    .map<MenuItem>((item) => MenuItem(
-                          id: const Uuid().v4(),
-                          name: item['name']!,
-                          category: item['category'] ?? 'Main',
-                        ))
-                    .toList();
-
                 await ref.read(restaurantsProvider.notifier).addRestaurant(
                       name: nameController.text.trim(),
                       address: addressController.text.trim().isEmpty
                           ? null
                           : addressController.text.trim(),
-                      menu: menu,
+                      coverImagePath: coverImagePath,
+                      menu: [],
                     );
                 if (context.mounted) Navigator.pop(context);
               },

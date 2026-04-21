@@ -225,10 +225,12 @@ class _ScanMenuPageState extends ConsumerState<ScanMenuPage> {
               const SizedBox(height: 8),
               ..._parsedItems!.map((item) => Card(
                     child: ListTile(
-                      leading: Chip(
-                        label: Text(item.category),
-                        visualDensity: VisualDensity.compact,
-                      ),
+                      leading: item.itemNumber != null
+                          ? CircleAvatar(
+                              backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                              child: Text('${item.itemNumber}'),
+                            )
+                          : null,
                       title: Text(item.name),
                       subtitle: item.description != null
                           ? Text(item.description!)

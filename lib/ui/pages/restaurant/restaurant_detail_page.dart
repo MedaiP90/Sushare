@@ -24,10 +24,8 @@ class RestaurantDetailPage extends ConsumerWidget {
           );
         }
 
-        final groupedMenu = <String, List<MenuItem>>{};
-        for (final item in restaurant.menu) {
-          groupedMenu.putIfAbsent(item.category, () => []).add(item);
-        }
+        final sortedMenu = List<MenuItem>.from(restaurant.menu)
+          ..sort((a, b) => (a.itemNumber ?? 0).compareTo(b.itemNumber ?? 0));
 
         return Scaffold(
           body: CustomScrollView(
@@ -133,50 +131,50 @@ class RestaurantDetailPage extends ConsumerWidget {
                       FilledButton.tonalIcon(
                         onPressed: () => context.push('/scan-menu/$restaurantId'),
                         icon: const Icon(Icons.document_scanner),
-                        label: const Text('Scan Menu'),
+                        label: const Text('Scan'),
                       ),
                     ],
                   ),
                 ),
               ),
               const SliverToBoxAdapter(child: SizedBox(height: 8)),
-              ...groupedMenu.entries.map((entry) {
-                return SliverToBoxAdapter(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                        child: Text(
-                          entry.key,
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                color: Theme.of(context).colorScheme.primary,
-                              ),
-                        ),
+              SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (context, index) {
+                    final item = sortedMenu[index];
+                    return ListTile(
+                      leading: item.itemNumber != null
+                          ? CircleAvatar(
+                              backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                              child: Text('${item.itemNumber}'),
+                            )
+                          : null,
+                      title: Text(item.name),
+                      subtitle: item.description != null ? Text(item.description!) : null,
+                      trailing: PopupMenuButton<String>(
+                        onSelected: (value) {
+                          if (value == 'edit') {
+                            _showEditMenuItemDialog(context, ref, restaurant, item);
+                          } else if (value == 'delete') {
+                            _deleteMenuItem(context, ref, restaurant, item);
+                          }
+                        },
+                        itemBuilder: (context) => [
+                          const PopupMenuItem(value: 'edit', child: Text('Edit')),
+                          const PopupMenuItem(value: 'delete', child: Text('Delete')),
+                        ],
                       ),
-                      ...entry.value.map((item) => ListTile(
-                            title: Text(item.name),
-                            subtitle: item.description != null ? Text(item.description!) : null,
-                            trailing: item.imageUrl != null
-                                ? ClipRRect(
-                                    borderRadius: BorderRadius.circular(8),
-                                    child: Image.network(
-                                      item.imageUrl!,
-                                      width: 50,
-                                      height: 50,
-                                      fit: BoxFit.cover,
-                                      errorBuilder: (_, __, ___) =>
-                                          const Icon(Icons.fastfood),
-                                    ),
-                                  )
-                                : null,
-                          )),
-                    ],
-                  ),
-                );
-              }),
+                    );
+                  },
+                  childCount: sortedMenu.length,
+                ),
+              ),
               const SliverToBoxAdapter(child: SizedBox(height: 80)),
             ],
+          ),
+          floatingActionButton: FloatingActionButton(
+            onPressed: () => _showAddMenuItemDialog(context, ref, restaurant),
+            child: const Icon(Icons.add),
           ),
         );
       },
@@ -241,5 +239,154 @@ class RestaurantDetailPage extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  void _showAddMenuItemDialog(BuildContext context, WidgetRef ref, Restaurant restaurant) {
+    final nameController = TextEditingController();
+    final descriptionController = TextEditingController();
+    final itemNumberController = TextEditingController(text: '${restaurant.menu.length + 1}');
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Add Menu Item'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: nameController,
+                decoration: const InputDecoration(
+                  labelText: 'Item Name',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: descriptionController,
+                decoration: const InputDecoration(
+                  labelText: 'Description (optional)',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: itemNumberController,
+                decoration: const InputDecoration(
+                  labelText: 'Item Number',
+                  border: OutlineInputBorder(),
+                ),
+                keyboardType: TextInputType.number,
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              if (nameController.text.trim().isEmpty) return;
+
+              final newItem = MenuItem(
+                id: const Uuid().v4(),
+                name: nameController.text.trim(),
+                description: descriptionController.text.trim().isEmpty
+                    ? null
+                    : descriptionController.text.trim(),
+                itemNumber: int.tryParse(itemNumberController.text),
+              );
+
+              final updated = restaurant.copyWith(
+                menu: [...restaurant.menu, newItem],
+              );
+              await ref.read(restaurantsProvider.notifier).updateRestaurant(updated);
+              ref.invalidate(restaurantDetailProvider(restaurantId));
+              if (context.mounted) Navigator.pop(context);
+            },
+            child: const Text('Add'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showEditMenuItemDialog(BuildContext context, WidgetRef ref, Restaurant restaurant, MenuItem item) {
+    final nameController = TextEditingController(text: item.name);
+    final descriptionController = TextEditingController(text: item.description ?? '');
+    final itemNumberController = TextEditingController(text: item.itemNumber?.toString() ?? '');
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Edit Menu Item'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: nameController,
+                decoration: const InputDecoration(
+                  labelText: 'Item Name',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: descriptionController,
+                decoration: const InputDecoration(
+                  labelText: 'Description (optional)',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: itemNumberController,
+                decoration: const InputDecoration(
+                  labelText: 'Item Number',
+                  border: OutlineInputBorder(),
+                ),
+                keyboardType: TextInputType.number,
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              if (nameController.text.trim().isEmpty) return;
+
+              final updatedItem = item.copyWith(
+                name: nameController.text.trim(),
+                description: descriptionController.text.trim().isEmpty
+                    ? null
+                    : descriptionController.text.trim(),
+                itemNumber: int.tryParse(itemNumberController.text),
+              );
+
+              final updatedMenu = restaurant.menu.map((i) => i.id == item.id ? updatedItem : i).toList();
+              final updated = restaurant.copyWith(menu: updatedMenu);
+              await ref.read(restaurantsProvider.notifier).updateRestaurant(updated);
+              ref.invalidate(restaurantDetailProvider(restaurantId));
+              if (context.mounted) Navigator.pop(context);
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _deleteMenuItem(BuildContext context, WidgetRef ref, Restaurant restaurant, MenuItem item) async {
+    final updatedMenu = restaurant.menu.where((i) => i.id != item.id).toList();
+    final updated = restaurant.copyWith(menu: updatedMenu);
+    await ref.read(restaurantsProvider.notifier).updateRestaurant(updated);
+    ref.invalidate(restaurantDetailProvider(restaurantId));
   }
 }

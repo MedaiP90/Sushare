@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/theme/app_theme.dart';
 import 'core/router/app_router.dart';
 import 'ui/viewmodels/profile_viewmodel.dart';
+import 'ui/pages/home/settings_page.dart';
+import 'l10n/app_localizations.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -20,13 +22,18 @@ class SushareApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final userAsync = ref.watch(profileViewModelProvider);
     final router = ref.watch(routerProvider);
+    final themeMode = ref.watch(themeModeProvider);
+    final locale = ref.watch(localeProvider);
 
     return MaterialApp.router(
       title: 'Sushare',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(context),
       darkTheme: AppTheme.dark(context),
-      themeMode: ThemeMode.system,
+      themeMode: themeMode,
+      locale: locale,
+      supportedLocales: AppLocalizations.supportedLocales,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
       routerConfig: router,
       builder: (context, child) {
         return userAsync.when(

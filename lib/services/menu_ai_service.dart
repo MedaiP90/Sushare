@@ -5,7 +5,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../domain/models/restaurant.dart';
 
 class MenuAiService {
-  static const _apiKeyKey = 'anthropic_api_key';
+  static const _apiKeyKey = 'gemini_api_key';
   final _secureStorage = const FlutterSecureStorage();
   
   Future<bool> hasApiKey() async {
@@ -36,46 +36,37 @@ class MenuAiService {
       final base64Image = base64Encode(imageBytes);
 
       final response = await http.post(
-        Uri.parse('https://api.anthropic.com/v1/messages'),
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01',
-        },
+        Uri.parse('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=$apiKey'),
+        headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
-          'model': 'claude-sonnet-4-20250514',
-          'max_tokens': 2048,
-          'messages': [
+          'contents': [
             {
-              'role': 'user',
-              'content': [
+              'parts': [
                 {
-                  'type': 'text',
-                  'text': 'Extract all menu items from this image. Return a JSON array with objects containing: id (unique string), name (dish name), category (main/side/drink), description (optional string). Format as valid JSON array only, no other text.'
+                  'text': 'Extract all menu items from this menu image. Return ONLY a valid JSON array with objects containing: id (unique string), name (dish name), description (string, optional), itemNumber (integer for ordering, optional). No other text. Example: [{"id":"1","name":"Pizza","description":"Delicious pizza","itemNumber":1}]'
                 },
                 {
-                  'type': 'image',
-                  'source': {
-                    'type': 'base64',
-                    'media_type': 'image/jpeg',
+                  'inlineData': {
+                    'mimeType': 'image/jpeg',
                     'data': base64Image
                   }
                 }
               ]
             }
-          ]
+          ],
+          'generationConfig': {
+            'temperature': 0.2,
+            'maxOutputTokens': 2048,
+            'responseMimeType': 'application/json'
+          }
         }),
       );
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        final content = data['content'] as List;
-        
-        for (final block in content) {
-          if (block['type'] == 'text') {
-            final text = block['text'] as String;
-            return _parseMenuItems(text);
-          }
+        final text = data['candidates']?[0]['content']?['parts']?[0]?['text'] as String?;
+        if (text != null) {
+          return _parseMenuItems(text);
         }
       }
       
@@ -94,28 +85,17 @@ class MenuAiService {
         final jsonStr = text.substring(start, end);
         final List<dynamic> items = jsonDecode(jsonStr);
         
-        return items.map((item) => MenuItem(
-          id: (item['id'] ?? item['name'].hashCode).toString(),
-          name: item['name'] ?? 'Unknown',
-          category: _normalizeCategory(item['category'] ?? 'Main'),
-          description: item['description'],
+        return items.asMap().entries.map((entry) => MenuItem(
+          id: entry.value['id']?.toString() ?? entry.value['name'].hashCode.toString(),
+          name: entry.value['name'] ?? 'Unknown',
+          description: entry.value['description'],
+          itemNumber: entry.value['itemNumber'] ?? entry.key + 1,
         )).toList();
       }
       return null;
     } catch (e) {
       return null;
     }
-  }
-
-  String _normalizeCategory(String category) {
-    final lower = category.toLowerCase();
-    if (lower.contains('drink') || lower.contains('beverage')) {
-      return 'Drink';
-    }
-    if (lower.contains('side') || lower.contains('appetizer') || lower.contains('starter')) {
-      return 'Side';
-    }
-    return 'Main';
   }
 
   Future<List<MenuItem>?> analyzeMenuText(String text) async {
@@ -126,42 +106,31 @@ class MenuAiService {
       }
 
       final response = await http.post(
-        Uri.parse('https://api.anthropic.com/v1/messages'),
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01',
-        },
+        Uri.parse('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=$apiKey'),
+        headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
-          'model': 'claude-sonnet-4-20250514',
-          'max_tokens': 2048,
-          'messages': [
+          'contents': [
             {
-              'role': 'user',
-              'content': '''Analyze this menu text and extract all items. Return a JSON array with objects containing:
-- id: unique string (use a short hash of the name)
-- name: the dish name  
-- category: categorize as "Main", "Side", or "Drink"
-- description: brief description if available
-
-Menu text:
-$text
-
-Return ONLY a valid JSON array, no other text.'''
+              'parts': [
+                {
+                  'text': 'Analyze this menu text and extract all items. Return ONLY a valid JSON array with objects containing: id (unique string), name (dish name), description (string, optional), itemNumber (integer for ordering, optional). Menu text: $text. No other text.'
+                }
+              ]
             }
-          ]
+          ],
+          'generationConfig': {
+            'temperature': 0.2,
+            'maxOutputTokens': 2048,
+            'responseMimeType': 'application/json'
+          }
         }),
       );
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        final content = data['content'] as List;
-        
-        for (final block in content) {
-          if (block['type'] == 'text') {
-            final text = block['text'] as String;
-            return _parseMenuItems(text);
-          }
+        final text = data['candidates']?[0]['content']?['parts']?[0]?['text'] as String?;
+        if (text != null) {
+          return _parseMenuItems(text);
         }
       }
       
