@@ -4,12 +4,12 @@
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="29"/>
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>
     <uses-permission android:name="android.permission.INTERNET"/>
-    
+
     <uses-feature android:name="android.hardware.camera" android:required="false"/>
     <uses-feature android:name="android.hardware.camera.autofocus" android:required="false"/>
-    
+
     <application
-        android:label="sushare"
+        android:label="Sushare"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
