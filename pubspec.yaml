@@ -52,7 +52,16 @@ dev_dependencies:
   integration_test:
     sdk: flutter
   mocktail: ^1.0.4
+  flutter_launcher_icons: ^0.13.1
 
 flutter:
   uses-material-design: true
   generate: true
+
+flutter_icons:
+  android: true
+  ios: true
+  image_path: "assets/sushare.png"
+  adaptive_icon_background: "#FFF9EC"
+  adaptive_icon_foreground: "assets/sushare.png"
+  remove_alpha_ios: true
