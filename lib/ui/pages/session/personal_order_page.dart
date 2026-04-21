@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:uuid/uuid.dart';
 import '../../../domain/models/restaurant.dart';
 import '../../../domain/models/personal_sub_order.dart';
+import '../../../domain/models/saved_order.dart';
+import '../../../domain/repositories/saved_order_repository.dart';
 import '../../viewmodels/session_viewmodel.dart';
 import '../../viewmodels/restaurant_viewmodel.dart';
 import '../../viewmodels/profile_viewmodel.dart';
@@ -176,16 +179,29 @@ class _PersonalOrderPageState extends ConsumerState<PersonalOrderPage> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      if (!isLocked)
-                        FilledButton(
-                          onPressed: itemCount > 0
-                              ? () => _saveOrder(context, user.id, restaurant.menu)
-                              : null,
-                          child: Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: Text('Save Order ($itemCount items)'),
-                          ),
+                      if (!isLocked) ...[
+                        Row(
+                          children: [
+                            Expanded(
+                              child: FilledButton(
+                                onPressed: itemCount > 0
+                                    ? () => _saveOrder(context, user.id, restaurant.menu)
+                                    : null,
+                                child: Padding(
+                                  padding: const EdgeInsets.all(16),
+                                  child: Text('Save Order ($itemCount items)'),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            IconButton.filled(
+                              onPressed: () => _showSavedOrdersDialog(context, user.id, restaurant.menu, restaurant.id),
+                              icon: const Icon(Icons.bookmark_border),
+                              tooltip: 'Saved orders',
+                            ),
+                          ],
                         ),
+                      ],
                       if (isLocked)
                         OutlinedButton(
                           onPressed: () => _showUnlockDialog(context),
@@ -270,6 +286,152 @@ class _PersonalOrderPageState extends ConsumerState<PersonalOrderPage> {
             child: const Text('Unlock'),
           ),
         ],
+      ),
+    );
+  }
+
+  void _showSavedOrdersDialog(BuildContext context, String userId, List<MenuItem> menuItems, String restaurantId) {
+    final labelController = TextEditingController();
+    final repo = SavedOrderRepository();
+    
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.7,
+        minChildSize: 0.5,
+        maxChildSize: 0.95,
+        expand: false,
+        builder: (context, scrollController) => FutureBuilder<List<SavedOrder>>(
+          future: repo.getSavedOrdersForRestaurant(restaurantId),
+          builder: (context, snapshot) {
+            final orders = snapshot.data ?? [];
+            
+            return Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        'Saved Orders',
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
+                      const Spacer(),
+                      IconButton(
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(Icons.close),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: labelController,
+                          decoration: const InputDecoration(
+                            labelText: 'Save current order as',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      IconButton.filled(
+                        onPressed: () async {
+                          if (labelController.text.trim().isEmpty) return;
+                          if (_quantities.values.every((q) => q == 0)) return;
+                          
+                          final entries = _quantities.entries
+                              .where((e) => e.value > 0)
+                              .map((e) {
+                            final item = menuItems.firstWhere((m) => m.id == e.key);
+                            return SubOrderEntry(
+                              menuItemId: e.key,
+                              name: item.name,
+                              quantity: e.value,
+                            );
+                          }).toList();
+                          
+                          final savedOrder = SavedOrder(
+                            id: const Uuid().v4(),
+                            restaurantId: restaurantId,
+                            label: labelController.text.trim(),
+                            entries: entries,
+                            createdAt: DateTime.now(),
+                          );
+                          
+                          await repo.saveSavedOrder(savedOrder);
+                          labelController.clear();
+                          Navigator.pop(context);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Order saved!')),
+                          );
+                        },
+                        icon: const Icon(Icons.save),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  const Divider(),
+                  const SizedBox(height: 8),
+                  Expanded(
+                    child: orders.isEmpty
+                        ? Center(
+                            child: Text(
+                              'No saved orders for this restaurant',
+                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                    color: Theme.of(context).colorScheme.outline,
+                                  ),
+                            ),
+                          )
+                        : ListView.builder(
+                            controller: scrollController,
+                            itemCount: orders.length,
+                            itemBuilder: (context, index) {
+                              final order = orders[index];
+                              return Card(
+                                child: ListTile(
+                                  title: Text(order.label),
+                                  subtitle: Text('${order.entries.length} items'),
+                                  trailing: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      IconButton(
+                                        icon: const Icon(Icons.delete_outline),
+                                        onPressed: () async {
+                                          await repo.deleteSavedOrder(order.id);
+                                          Navigator.pop(context);
+                                        },
+                                      ),
+                                      IconButton(
+                                        icon: const Icon(Icons.add_circle),
+                                        onPressed: () {
+                                          setState(() {
+                                            for (final entry in order.entries) {
+                                              _quantities[entry.menuItemId] = 
+                                                  (_quantities[entry.menuItemId] ?? 0) + entry.quantity;
+                                            }
+                                          });
+                                          Navigator.pop(context);
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            SnackBar(content: Text('Loaded "${order.label}"')),
+                                          );
+                                        },
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
       ),
     );
   }
