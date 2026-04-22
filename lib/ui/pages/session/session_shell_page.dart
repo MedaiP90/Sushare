@@ -5,6 +5,9 @@ import 'package:qr_flutter/qr_flutter.dart';
 import '../../../domain/models/session.dart';
 import '../../viewmodels/session_viewmodel.dart';
 import '../../viewmodels/profile_viewmodel.dart';
+import 'personal_order_content.dart';
+import 'merged_order_content.dart';
+import 'checklist_content.dart';
 
 class SessionShellPage extends ConsumerStatefulWidget {
   final String sessionId;
@@ -28,67 +31,53 @@ class _SessionShellPageState extends ConsumerState<SessionShellPage> {
         if (session == null) {
           return Scaffold(
             appBar: AppBar(),
-            body: const Center(child: Text('Session not found')),
+            body: const Center(child: Text('Table not found')),
           );
         }
 
         final isHost = user?.id == session.hostUserId;
-        final isOpen = session.status == SessionStatus.open;
+
+        final tabs = [
+          PersonalOrderContent(sessionId: widget.sessionId),
+          MergedOrderContent(sessionId: widget.sessionId),
+          ChecklistContent(sessionId: widget.sessionId),
+        ];
 
         return Scaffold(
           appBar: AppBar(
             title: Text(session.name),
             centerTitle: true,
+            automaticallyImplyLeading: true,
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back),
+              onPressed: () => context.go('/home/sessions'),
+            ),
             actions: [
-              if (isHost && isOpen)
+              if (isHost && session.status == SessionStatus.open)
                 IconButton(
-                  onPressed: () => _showShareDialog(context),
+                  onPressed: () => _showShareSheet(context),
                   icon: const Icon(Icons.share),
-                  tooltip: 'Share session',
+                  tooltip: 'Share table',
                 ),
               PopupMenuButton<String>(
                 onSelected: (value) async {
                   if (value == 'close') {
-                    final confirm = await showDialog<bool>(
-                      context: context,
-                      builder: (context) => AlertDialog(
-                        title: const Text('Close Session'),
-                        content: const Text('Are you sure? Participants won\'t be able to join or order.'),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(context, false),
-                            child: const Text('Cancel'),
-                          ),
-                          FilledButton(
-                            onPressed: () => Navigator.pop(context, true),
-                            child: const Text('Close'),
-                          ),
-                        ],
-                      ),
+                    final confirm = await _showConfirmSheet(
+                      context,
+                      'Close Table',
+                      'Are you sure? Participants won\'t be able to join or order.',
+                      'Close',
                     );
                     if (confirm == true && context.mounted) {
                       await ref.read(sessionsProvider.notifier).closeSession(widget.sessionId);
                     }
                   } else if (value == 'delete') {
-                    final confirm = await showDialog<bool>(
-                      context: context,
-                      builder: (context) => AlertDialog(
-                        title: const Text('Delete Session'),
-                        content: const Text('Are you sure you want to delete this session?'),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(context, false),
-                            child: const Text('Cancel'),
-                          ),
-                          FilledButton(
-                            onPressed: () => Navigator.pop(context, true),
-                            style: FilledButton.styleFrom(
-                              backgroundColor: Theme.of(context).colorScheme.error,
-                            ),
-                            child: const Text('Delete'),
-                          ),
-                        ],
-                      ),
+                    final confirm = await _showConfirmSheet(
+                      context,
+                      'Delete Table',
+                      'Are you sure you want to delete this table?',
+                      'Delete',
+                      isDestructive: true,
                     );
                     if (confirm == true && context.mounted) {
                       await ref.read(sessionsProvider.notifier).deleteSession(widget.sessionId);
@@ -98,40 +87,27 @@ class _SessionShellPageState extends ConsumerState<SessionShellPage> {
                 },
                 itemBuilder: (context) => [
                   const PopupMenuItem(value: 'close', child: Text('Close for new participants')),
-                  const PopupMenuItem(value: 'delete', child: Text('Delete session')),
+                  const PopupMenuItem(value: 'delete', child: Text('Delete table')),
                 ],
               ),
             ],
           ),
-          body: GoRouterState.of(context).uri.path.endsWith('/order')
-              ? const SizedBox.shrink()
-              : null,
+          body: tabs[_currentIndex],
           bottomNavigationBar: NavigationBar(
             selectedIndex: _currentIndex,
             onDestinationSelected: (index) {
               setState(() => _currentIndex = index);
-              switch (index) {
-                case 0:
-                  context.go('/sessions/${widget.sessionId}/order');
-                  break;
-                case 1:
-                  context.go('/sessions/${widget.sessionId}/merged');
-                  break;
-                case 2:
-                  context.go('/sessions/${widget.sessionId}/checklist');
-                  break;
-              }
             },
             destinations: const [
               NavigationDestination(
-                icon: Icon(Icons.edit_note_outlined),
-                selectedIcon: Icon(Icons.edit_note),
+                icon: Icon(Icons.person_outline),
+                selectedIcon: Icon(Icons.person),
                 label: 'My Order',
               ),
               NavigationDestination(
-                icon: Icon(Icons.receipt_long_outlined),
-                selectedIcon: Icon(Icons.receipt_long),
-                label: 'Group Order',
+                icon: Icon(Icons.groups_outlined),
+                selectedIcon: Icon(Icons.groups),
+                label: 'Group',
               ),
               NavigationDestination(
                 icon: Icon(Icons.checklist_outlined),
@@ -153,38 +129,71 @@ class _SessionShellPageState extends ConsumerState<SessionShellPage> {
     );
   }
 
-  void _showShareDialog(BuildContext context) {
-    showDialog(
+  Future<bool?> _showConfirmSheet(
+    BuildContext context,
+    String title,
+    String message,
+    String confirmText, {
+    bool isDestructive = false,
+  }) {
+    return showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Share Session'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('Let others join by scanning this QR code:'),
-            const SizedBox(height: 16),
-            QrImageView(
-              data: 'sushare://join/${widget.sessionId}',
-              size: 200,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Or enter this code:',
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-            const SizedBox(height: 8),
-            SelectableText(
-              widget.sessionId.substring(0, 8).toUpperCase(),
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
-          ],
-        ),
+        title: Text(title),
+        content: Text(message),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: isDestructive
+                ? FilledButton.styleFrom(
+                    backgroundColor: Theme.of(context).colorScheme.error,
+                  )
+                : null,
+            child: Text(confirmText),
           ),
         ],
+      ),
+    );
+  }
+
+  void _showShareSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Share Table',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              const SizedBox(height: 16),
+              const Text('Let others join by scanning this QR code:'),
+              const SizedBox(height: 16),
+              QrImageView(
+                data: 'sushare://join/${widget.sessionId}',
+                size: 200,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Or enter this code:',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              const SizedBox(height: 8),
+              SelectableText(
+                widget.sessionId.substring(0, 8).toUpperCase(),
+                style: Theme.of(context).textTheme.headlineMedium,
+              ),
+              const SizedBox(height: 16),
+            ],
+          ),
+        ),
       ),
     );
   }

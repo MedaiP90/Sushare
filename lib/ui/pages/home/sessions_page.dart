@@ -15,7 +15,7 @@ class SessionsPage extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Sessions'),
+        title: const Text('Tables'),
         centerTitle: true,
       ),
       body: sessionsAsync.when(
@@ -39,7 +39,7 @@ class SessionsPage extends ConsumerWidget {
             itemBuilder: (context, index) => _SessionCard(
               session: sessions[index],
               onTap: () =>
-                  context.push('/sessions/${sessions[index].id}/order'),
+                  context.push('/sessions/${sessions[index].id}'),
               onLongPress: () =>
                   _showSessionActions(context, ref, sessions[index]),
             ),
@@ -83,7 +83,7 @@ class SessionsPage extends ConsumerWidget {
               ref.invalidate(sessionsProvider);
             },
             icon: const Icon(Icons.add),
-            label: const Text('New Session'),
+            label: const Text('New Table'),
           ),
         ],
       ),
@@ -116,7 +116,7 @@ class SessionsPage extends ConsumerWidget {
               title: const Text('Open'),
               onTap: () {
                 Navigator.pop(sheetContext);
-                context.push('/sessions/${session.id}/order');
+                context.push('/sessions/${session.id}');
               },
             ),
             if (session.status == SessionStatus.open)
@@ -128,7 +128,7 @@ class SessionsPage extends ConsumerWidget {
                   final confirm = await showDialog<bool>(
                     context: context,
                     builder: (context) => AlertDialog(
-                      title: const Text('Close Session'),
+                      title: const Text('Close Table'),
                       content: const Text(
                           'Participants won\'t be able to join or order.'),
                       actions: [
@@ -161,7 +161,7 @@ class SessionsPage extends ConsumerWidget {
                 final confirm = await showDialog<bool>(
                   context: context,
                   builder: (context) => AlertDialog(
-                    title: const Text('Delete Session'),
+                    title: const Text('Delete Table'),
                     content: Text(
                         'Are you sure you want to delete "${session.name}"?'),
                     actions: [
@@ -346,12 +346,12 @@ class _EmptyState extends StatelessWidget {
             Icon(Icons.groups_outlined, size: 80, color: scheme.outline),
             const SizedBox(height: 16),
             Text(
-              'No sessions yet',
+              'No tables yet',
               style: Theme.of(context).textTheme.titleLarge,
             ),
             const SizedBox(height: 8),
             Text(
-              'Start a new session to order together, or join one from a friend.',
+              'Start a new table to order together, or join one from a friend.',
               textAlign: TextAlign.center,
               style: Theme.of(context)
                   .textTheme
@@ -362,13 +362,13 @@ class _EmptyState extends StatelessWidget {
             FilledButton.icon(
               onPressed: onNew,
               icon: const Icon(Icons.add),
-              label: const Text('New Session'),
+label: const Text('New Table'),
             ),
             const SizedBox(height: 12),
             OutlinedButton.icon(
               onPressed: onJoin,
               icon: const Icon(Icons.qr_code_scanner),
-              label: const Text('Join a Session'),
+              label: const Text('Join a Table'),
             ),
           ],
         ),

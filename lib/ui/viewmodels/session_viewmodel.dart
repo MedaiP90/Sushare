@@ -1,9 +1,12 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 import '../../domain/models/session.dart';
+import '../../domain/models/personal_sub_order.dart';
 import '../../domain/repositories/session_repository.dart';
+import '../../domain/repositories/personal_sub_order_repository.dart';
 
 final sessionRepositoryProvider = Provider<SessionRepository>((ref) => SessionRepository());
+final personalSubOrderRepositoryProvider = Provider<PersonalSubOrderRepository>((ref) => PersonalSubOrderRepository());
 
 final sessionsProvider = AsyncNotifierProvider<SessionsNotifier, List<Session>>(() => SessionsNotifier());
 
@@ -19,9 +22,12 @@ class SessionsNotifier extends AsyncNotifier<List<Session>> {
     required String restaurantId,
     required String hostUserId,
   }) async {
-    final repo = ref.read(sessionRepositoryProvider);
+    final sessionRepo = ref.read(sessionRepositoryProvider);
+    final subOrderRepo = ref.read(personalSubOrderRepositoryProvider);
+    
+    final sessionId = const Uuid().v4();
     final session = Session(
-      id: const Uuid().v4(),
+      id: sessionId,
       name: name,
       restaurantId: restaurantId,
       hostUserId: hostUserId,
@@ -30,7 +36,19 @@ class SessionsNotifier extends AsyncNotifier<List<Session>> {
       additionalOrders: [],
       createdAt: DateTime.now(),
     );
-    await repo.saveSession(session);
+    await sessionRepo.saveSession(session);
+    
+    final personalOrder = PersonalSubOrder(
+      id: const Uuid().v4(),
+      sessionId: sessionId,
+      userId: hostUserId,
+      entries: [],
+      checklist: [],
+      locked: false,
+      updatedAt: DateTime.now(),
+    );
+    await subOrderRepo.saveSubOrder(personalOrder);
+    
     state = AsyncValue.data([session, ...state.value ?? []]);
     return session.id;
   }
@@ -45,6 +63,7 @@ class SessionsNotifier extends AsyncNotifier<List<Session>> {
       updated[index] = session;
       state = AsyncValue.data(updated);
     }
+    ref.invalidate(sessionDetailProvider(session.id));
   }
 
   Future<void> deleteSession(String id) async {
@@ -61,18 +80,14 @@ class SessionsNotifier extends AsyncNotifier<List<Session>> {
 
     final updated = session.copyWith(status: SessionStatus.closed);
     await repo.updateSession(updated);
-    ref.invalidate(sessionDetailProvider(id));
   }
 
-  Future<void> sendMainOrder(String id) async {
+  Future<void> openNewRound(String id) async {
     final repo = ref.read(sessionRepositoryProvider);
     final session = await repo.getSessionById(id);
     if (session == null) return;
 
-    final updated = session.copyWith(
-      status: SessionStatus.sent,
-      sentAt: DateTime.now(),
-    );
+    final updated = session.copyWith(status: SessionStatus.open);
     await repo.updateSession(updated);
     ref.invalidate(sessionDetailProvider(id));
   }

@@ -1,9 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 import '../../domain/models/personal_sub_order.dart';
-import '../../domain/repositories/personal_sub_order_repository.dart';
-
-final personalSubOrderRepositoryProvider = Provider<PersonalSubOrderRepository>((ref) => PersonalSubOrderRepository());
+import 'session_viewmodel.dart';
 
 final personalOrderProvider = AsyncNotifierProvider.family<PersonalOrderNotifier, PersonalSubOrder?, String>(
   () => PersonalOrderNotifier(),
