@@ -240,7 +240,6 @@ class _PersonalOrderContentState extends ConsumerState<PersonalOrderContent> {
 
                     return ListTile(
                       leading: CircleAvatar(
-                        radius: 14,
                         backgroundColor: Theme.of(context).colorScheme.primaryContainer,
                         child: Text('${item.itemNumber ?? '-'}'),
                       ),
