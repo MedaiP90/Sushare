@@ -6,7 +6,6 @@ import '../../../domain/models/session.dart';
 import '../../viewmodels/session_viewmodel.dart';
 import '../../viewmodels/restaurant_viewmodel.dart';
 import '../../viewmodels/profile_viewmodel.dart';
-import '../../viewmodels/personal_order_viewmodel.dart';
 
 class SessionsPage extends ConsumerWidget {
   const SessionsPage({super.key});
@@ -259,7 +258,6 @@ class _SessionCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final restaurantsAsync = ref.watch(restaurantsProvider);
     final userAsync = ref.watch(profileViewModelProvider);
-    final checklistAsync = ref.watch(sessionChecklistProvider(session.id));
     final scheme = Theme.of(context).colorScheme;
 
     final restaurantName = restaurantsAsync.maybeWhen(
@@ -316,7 +314,7 @@ class _SessionCard extends ConsumerWidget {
                           ),
                     ),
                   ),
-                ],
+],
               ),
               const SizedBox(height: 6),
               Row(
@@ -340,29 +338,6 @@ class _SessionCard extends ConsumerWidget {
                           color: scheme.onSurfaceVariant,
                         ),
                   ),
-                  checklistAsync.whenOrNull(
-                    data: (checklist) {
-                      final pending = checklist
-                          .where((e) => e.arrivedCount < e.orderedQuantity)
-                          .length;
-                      if (pending == 0) return null;
-                      return Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const SizedBox(width: 12),
-                          Icon(Icons.pending_outlined,
-                              size: 14, color: scheme.error),
-                          const SizedBox(width: 4),
-                          Text(
-                            '$pending',
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color: scheme.error,
-                                ),
-                          ),
-                        ],
-                      );
-                    },
-                  ) ?? const SizedBox.shrink(),
                   if (isHost) ...[
                     const SizedBox(width: 12),
                     Icon(Icons.star, size: 14, color: scheme.primary),
