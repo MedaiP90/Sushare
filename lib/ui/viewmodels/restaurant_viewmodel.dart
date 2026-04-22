@@ -46,6 +46,7 @@ class RestaurantsNotifier extends AsyncNotifier<List<Restaurant>> {
       updated[index] = restaurant;
       state = AsyncValue.data(updated);
     }
+    ref.invalidate(restaurantDetailProvider(restaurant.id));
   }
 
   Future<void> deleteRestaurant(String id) async {

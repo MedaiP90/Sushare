@@ -111,30 +111,26 @@ class _PersonalOrderContentState extends ConsumerState<PersonalOrderContent> {
                           ...orderedItems.map((item) => Card(
                                 margin: const EdgeInsets.only(bottom: 8),
                                 child: ListTile(
-                                  leading: item.isCustom
-                                      ? CircleAvatar(
-                                          backgroundColor: Theme.of(context).colorScheme.tertiaryContainer,
-                                          child: const Icon(Icons.add, size: 14),
-                                        )
-                                      : CircleAvatar(
-                                          backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-                                          child: Text('${_getItemNumber(restaurant, item.id)}'),
-                                        ),
+                                  leading: CircleAvatar(
+                                    backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                                    child: Text('${_getItemNumber(restaurant, item.id) ?? '-'}'),
+                                  ),
                                   title: Text(item.name),
                                   trailing: Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
                                       IconButton(
                                         icon: const Icon(Icons.remove),
-                                        onPressed: () {
+                                        onPressed: () async {
+                                          final qty = _quantities[item.id] ?? 0;
                                           setState(() {
-                                            final qty = _quantities[item.id] ?? 0;
                                             if (qty > 1) {
                                               _quantities[item.id] = qty - 1;
                                             } else {
                                               _quantities.remove(item.id);
                                             }
                                           });
+                                          await _saveOrder(context, user.id, restaurant.menu, silent: true);
                                         },
                                       ),
                                       SizedBox(
@@ -147,10 +143,11 @@ class _PersonalOrderContentState extends ConsumerState<PersonalOrderContent> {
                                       ),
                                       IconButton(
                                         icon: const Icon(Icons.add),
-                                        onPressed: () {
+                                        onPressed: () async {
                                           setState(() {
                                             _quantities[item.id] = (_quantities[item.id] ?? 0) + 1;
                                           });
+                                          await _saveOrder(context, user.id, restaurant.menu, silent: true);
                                         },
                                       ),
                                     ],
@@ -374,7 +371,11 @@ class _PersonalOrderContentState extends ConsumerState<PersonalOrderContent> {
 
     if (result != null && mounted) {
       final dishId = const Uuid().v4();
-      final number = result['number']!.isEmpty ? null : int.tryParse(result['number']!);
+      final currentRestaurantForNum = ref.read(restaurantDetailProvider(restaurant.id)).valueOrNull ?? restaurant;
+      final maxNumber = currentRestaurantForNum.menu
+          .map((m) => m.itemNumber ?? 0)
+          .fold(0, (a, b) => a > b ? a : b);
+      final number = result['number']!.isEmpty ? maxNumber + 1 : int.tryParse(result['number']!);
 
       final newItem = MenuItem(
         id: dishId,
@@ -383,9 +384,8 @@ class _PersonalOrderContentState extends ConsumerState<PersonalOrderContent> {
         itemNumber: number,
       );
 
-      final currentRestaurant = ref.read(restaurantDetailProvider(restaurant.id)).valueOrNull ?? restaurant;
-      final updatedRestaurant = currentRestaurant.copyWith(
-        menu: [...currentRestaurant.menu, newItem],
+      final updatedRestaurant = currentRestaurantForNum.copyWith(
+        menu: [...currentRestaurantForNum.menu, newItem],
       );
 
       await ref.read(restaurantsProvider.notifier).updateRestaurant(updatedRestaurant);
@@ -423,7 +423,7 @@ class _PersonalOrderContentState extends ConsumerState<PersonalOrderContent> {
     }
   }
 
-  Future<void> _saveOrder(BuildContext context, String userId, List<MenuItem> menuItems) async {
+  Future<void> _saveOrder(BuildContext context, String userId, List<MenuItem> menuItems, {bool silent = false}) async {
     final entries = _quantities.entries
         .where((e) => e.value > 0)
         .map((e) {
@@ -445,7 +445,7 @@ class _PersonalOrderContentState extends ConsumerState<PersonalOrderContent> {
     ref.invalidate(subOrdersForSessionProvider(widget.sessionId));
     ref.invalidate(sessionDetailProvider(widget.sessionId));
 
-    if (context.mounted) {
+    if (!silent && context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Order saved with ${entries.length} items')),
       );
