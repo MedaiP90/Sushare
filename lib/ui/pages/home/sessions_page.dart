@@ -63,20 +63,20 @@ class SessionsPage extends ConsumerWidget {
           ),
         ),
       ),
-      floatingActionButton: Column(
+      floatingActionButton: Row(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          FloatingActionButton.extended(
+          FloatingActionButton(
             heroTag: 'join',
             onPressed: () async {
               await context.push('/sessions/join');
               ref.invalidate(sessionsProvider);
             },
-            icon: const Icon(Icons.qr_code_scanner),
-            label: const Text('Join'),
+            tooltip: 'Join table',
+            child: const Icon(Icons.qr_code_scanner),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(width: 12),
           FloatingActionButton.extended(
             heroTag: 'new',
             onPressed: () async {
@@ -314,7 +314,7 @@ class _SessionCard extends ConsumerWidget {
                           ),
                     ),
                   ),
-                ],
+],
               ),
               const SizedBox(height: 6),
               Row(

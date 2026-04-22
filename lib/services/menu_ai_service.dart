@@ -84,7 +84,7 @@ class MenuAiService {
             'parts': [
               {
                 'text':
-                    'Extract all menu items from this menu image. Return ONLY a valid JSON array (not an object, just the raw array) where each element has: "id" (unique string), "name" (dish name, required), "description" (string or null), "itemNumber" (integer or null). Example: [{"id":"1","name":"Pizza Margherita","description":"Classic tomato and mozzarella","itemNumber":1}]'
+                    'You are analyzing a menu image. Extract ONLY the menu items visible in THIS specific image. Do NOT include any items from memory, previous scans, or your training data — only items clearly present in the provided image. Return ONLY a valid JSON array (not an object, just the raw array) where each element has: "name" (dish name, required), "description" (string or null), "itemNumber" (integer or null). If a dish has no visible number, use null. Example: [{"name":"Pizza Margherita","description":"Classic tomato and mozzarella","itemNumber":1}]'
               },
               {
                 'inlineData': {
@@ -184,7 +184,7 @@ class MenuAiService {
             'parts': [
               {
                 'text':
-                    'Analyze this menu text and extract all items. Return ONLY a valid JSON array where each element has: "id" (unique string), "name" (dish name, required), "description" (string or null), "itemNumber" (integer or null). Menu text: $menuText'
+                    'You are analyzing a menu. Extract ONLY the menu items from THIS provided text. Do NOT include any items from memory, previous analyses, or your training data — only items clearly present in the provided text. Return ONLY a valid JSON array where each element has: "name" (dish name, required), "description" (string or null), "itemNumber" (integer or null). If a dish has no visible number, use null. Menu text: $menuText'
               }
             ]
           }

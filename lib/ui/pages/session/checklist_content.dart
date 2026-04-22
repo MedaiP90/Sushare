@@ -206,10 +206,20 @@ class ChecklistContent extends ConsumerWidget {
               return Column(
                 children: [
                   ListTile(
+                    leading: menuItem?.itemNumber != null
+                        ? CircleAvatar(
+                            radius: 14,
+                            backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                            child: Text(
+                              '${menuItem!.itemNumber}',
+                              style: Theme.of(context).textTheme.labelSmall,
+                            ),
+                          )
+                        : null,
                     title: Row(
                       children: [
                         if (isYummie) ...[
-                          Icon(Icons.restaurant, size: 14, color: Colors.amber[700]),
+                          const Icon(Icons.restaurant, size: 14),
                           const SizedBox(width: 4),
                         ],
                         Expanded(
@@ -249,7 +259,7 @@ class ChecklistContent extends ConsumerWidget {
                             Icons.restaurant,
                             size: 20,
                             color: isYummie
-                                ? Colors.amber[700]
+                                ? Theme.of(context).colorScheme.primary
                                 : Theme.of(context).colorScheme.outlineVariant,
                           ),
                           tooltip: isYummie ? 'Remove Yummie' : 'Mark as Yummie',

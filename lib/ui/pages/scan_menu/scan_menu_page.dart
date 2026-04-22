@@ -31,8 +31,7 @@ class _ScanMenuPageState extends ConsumerState<ScanMenuPage> {
   }
 
   Future<void> _captureMenu() async {
-    final hasPermission =
-        await PermissionService.checkAndRequestCamera(context);
+    final hasPermission = await PermissionService.checkAndRequestCamera(context);
     if (!hasPermission) return;
 
     final camera = ref.read(cameraServiceProvider);
@@ -45,8 +44,7 @@ class _ScanMenuPageState extends ConsumerState<ScanMenuPage> {
   }
 
   Future<void> _pickImage() async {
-    final hasPermission =
-        await PermissionService.checkAndRequestPhotos(context);
+    final hasPermission = await PermissionService.checkAndRequestPhotos(context);
     if (!hasPermission) return;
 
     final camera = ref.read(cameraServiceProvider);
@@ -111,8 +109,18 @@ class _ScanMenuPageState extends ConsumerState<ScanMenuPage> {
     final restaurant = await ref.read(restaurantDetailProvider(widget.restaurantId).future);
     if (restaurant == null) return;
 
+    final existingMax = restaurant.menu
+        .map((m) => m.itemNumber ?? 0)
+        .fold<int>(0, (a, b) => a > b ? a : b);
+
+    final enriched = _parsedItems!.asMap().entries.map((entry) {
+      final item = entry.value;
+      if (item.itemNumber != null) return item;
+      return item.copyWith(itemNumber: existingMax + entry.key + 1);
+    }).toList();
+
     final updated = restaurant.copyWith(
-      menu: [...restaurant.menu, ..._parsedItems!],
+      menu: [...restaurant.menu, ...enriched],
     );
 
     await ref.read(restaurantsProvider.notifier).updateRestaurant(updated);
@@ -120,7 +128,7 @@ class _ScanMenuPageState extends ConsumerState<ScanMenuPage> {
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Added ${_parsedItems!.length} menu items!')),
+        SnackBar(content: Text('Added ${enriched.length} menu items!')),
       );
       setState(() {
         _capturedImage = null;
