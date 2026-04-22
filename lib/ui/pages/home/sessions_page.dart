@@ -83,7 +83,7 @@ class SessionsPage extends ConsumerWidget {
               ref.invalidate(sessionsProvider);
             },
             icon: const Icon(Icons.add),
-            label: const Text('New Session'),
+            label: const Text('New Table'),
           ),
         ],
       ),

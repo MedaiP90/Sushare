@@ -170,7 +170,7 @@ class _SessionShellPageState extends ConsumerState<SessionShellPage> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                'Share Session',
+                'Share Table',
                 style: Theme.of(context).textTheme.titleLarge,
               ),
               const SizedBox(height: 16),
