@@ -116,9 +116,21 @@ class _PersonalOrderContentState extends ConsumerState<PersonalOrderContent> {
                   : ListView(
                       padding: const EdgeInsets.all(16),
                       children: [
-                        Text(
-                          'Your Order ($totalItems items)',
-                          style: Theme.of(context).textTheme.titleMedium,
+                        Row(
+                          children: [
+                            Text(
+                              'Your Order ($totalItems items)',
+                              style: Theme.of(context).textTheme.titleMedium,
+                            ),
+                            const Spacer(),
+                            if (_quantities.isNotEmpty)
+                              TextButton.icon(
+                                onPressed: () => _saveAsTemplate(
+                                    context, ref, restaurant, userName),
+                                icon: const Icon(Icons.bookmark_add_outlined, size: 18),
+                                label: const Text('Save'),
+                              ),
+                          ],
                         ),
                         const SizedBox(height: 12),
                         ...orderedItems.map((item) => Card(
@@ -133,8 +145,7 @@ class _PersonalOrderContentState extends ConsumerState<PersonalOrderContent> {
                                 title: Row(
                                   children: [
                                     if (item.isYummie) ...[
-                                      Icon(Icons.restaurant,
-                                          size: 14, color: Colors.amber[700]),
+                                      const Icon(Icons.restaurant, size: 14),
                                       const SizedBox(width: 4),
                                     ],
                                     Expanded(child: Text(item.name)),
@@ -195,36 +206,37 @@ class _PersonalOrderContentState extends ConsumerState<PersonalOrderContent> {
                       ],
                     ),
               floatingActionButton: isEditable
-                  ? _SpeedDial(
-                      items: [
-                        if (_quantities.isNotEmpty)
-                          _DialItem(
-                            icon: Icons.bookmark_add_outlined,
-                            label: 'Save as template',
-                            onTap: () => _saveAsTemplate(
-                                context, ref, restaurant, userName),
-                          ),
+                  ? Row(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
                         if (templates.isNotEmpty)
-                          _DialItem(
-                            icon: Icons.bookmarks_outlined,
-                            label: 'Use template',
-                            onTap: () => _showUseTemplateSheet(
+                          FloatingActionButton(
+                            heroTag: 'fab_use_template',
+                            onPressed: () => _showUseTemplateSheet(
                                 context, ref, templates, restaurant, user.id,
                                 userName, userFullName, userProfilePicturePath),
+                            tooltip: 'Use template',
+                            child: const Icon(Icons.bookmarks_outlined),
                           ),
-                        _DialItem(
-                          icon: Icons.restaurant_menu,
-                          label: 'Menu',
-                          onTap: () => _showAddFromMenuSheet(
+                        const SizedBox(width: 12),
+                        FloatingActionButton(
+                          heroTag: 'fab_menu',
+                          onPressed: () => _showAddFromMenuSheet(
                               context, restaurant, user.id, userName,
                               userFullName, userProfilePicturePath),
+                          tooltip: 'From menu',
+                          child: const Icon(Icons.restaurant_menu),
                         ),
-                        _DialItem(
-                          icon: Icons.add,
-                          label: 'Custom dish',
-                          onTap: () => _showAddCustomDishSheet(
+                        const SizedBox(width: 12),
+                        FloatingActionButton.extended(
+                          heroTag: 'fab_custom_dish',
+                          onPressed: () => _showAddCustomDishSheet(
                               context, restaurant, user.id, userName,
                               userFullName, userProfilePicturePath),
+                          tooltip: 'Custom dish',
+                          icon: const Icon(Icons.add),
+                          label: const Text('Custom dish'),
                         ),
                       ],
                     )
@@ -314,8 +326,7 @@ class _PersonalOrderContentState extends ConsumerState<PersonalOrderContent> {
                         title: Row(
                           children: [
                             if (item.isYummie) ...[
-                              Icon(Icons.restaurant,
-                                  size: 14, color: Colors.amber[700]),
+                              const Icon(Icons.restaurant, size: 14),
                               const SizedBox(width: 4),
                             ],
                             Expanded(child: Text(item.name)),
@@ -608,27 +619,42 @@ class _PersonalOrderContentState extends ConsumerState<PersonalOrderContent> {
       String? userProfilePicturePath) {
     showModalBottomSheet(
       context: context,
-      builder: (context) => SafeArea(
-        child: SizedBox(
-          width: double.infinity,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(24, 20, 24, 8),
-                child: Text(
-                  'Choose a Template',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
+      isScrollControlled: true,
+      builder: (sheetContext) => DraggableScrollableSheet(
+        initialChildSize: 0.5,
+        minChildSize: 0.3,
+        maxChildSize: 0.85,
+        expand: false,
+        builder: (ctx, scrollController) => Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
+              child: Row(
+                children: [
+                  Text(
+                    'Choose a Template',
+                    style: Theme.of(ctx).textTheme.titleLarge,
+                  ),
+                  const Spacer(),
+                  IconButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    icon: const Icon(Icons.close),
+                  ),
+                ],
               ),
-              const Divider(),
-              ...templates.map((t) => ListTile(
-                    leading: const Icon(Icons.bookmarks_outlined),
-                    title: Text(t.label),
-                    subtitle: Text('${t.entries.length} items'),
-                    onTap: () async {
-                      Navigator.pop(context);
+            ),
+            const Divider(height: 1),
+            Expanded(
+              child: ListView.builder(
+                controller: scrollController,
+                itemCount: templates.length,
+                itemBuilder: (ctx, index) {
+                  final t = templates[index];
+                  return _ExpandableTemplateTile(
+                    template: t,
+                    restaurant: restaurant,
+                    onApply: () async {
+                      Navigator.pop(sheetContext);
                       setState(() {
                         for (final entry in t.entries) {
                           _quantities[entry.menuItemId] =
@@ -640,116 +666,83 @@ class _PersonalOrderContentState extends ConsumerState<PersonalOrderContent> {
                           userFullName: userFullName,
                           userProfilePicturePath: userProfilePicturePath);
                     },
-                  )),
-              const SizedBox(height: 8),
-            ],
-          ),
+                  );
+                },
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 }
 
-// ── Speed Dial ────────────────────────────────────────────────────────────────
+class _ExpandableTemplateTile extends StatefulWidget {
+  final SavedOrder template;
+  final Restaurant restaurant;
+  final VoidCallback onApply;
 
-class _SpeedDial extends StatefulWidget {
-  final List<_DialItem> items;
-  const _SpeedDial({required this.items});
+  const _ExpandableTemplateTile({
+    required this.template,
+    required this.restaurant,
+    required this.onApply,
+  });
 
   @override
-  State<_SpeedDial> createState() => _SpeedDialState();
+  State<_ExpandableTemplateTile> createState() => _ExpandableTemplateTileState();
 }
 
-class _SpeedDialState extends State<_SpeedDial> with SingleTickerProviderStateMixin {
-  bool _open = false;
-  late final AnimationController _ctrl;
-  late final Animation<double> _anim;
-
-  @override
-  void initState() {
-    super.initState();
-    _ctrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 250));
-    _anim = CurvedAnimation(parent: _ctrl, curve: Curves.easeOutCubic);
-  }
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
-
-  void _toggle() {
-    setState(() => _open = !_open);
-    _open ? _ctrl.forward() : _ctrl.reverse();
-  }
-
-  void _close() {
-    setState(() => _open = false);
-    _ctrl.reverse();
-  }
+class _ExpandableTemplateTileState extends State<_ExpandableTemplateTile> {
+  bool _expanded = false;
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.end,
       children: [
-        ...widget.items.map((item) => FadeTransition(
-              opacity: _anim,
-              child: SizeTransition(
-                sizeFactor: _anim,
-                axisAlignment: 1.0,
-                child: Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Material(
-                        elevation: 1,
-                        color: scheme.surfaceContainerHigh,
-                        borderRadius: BorderRadius.circular(8),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 6),
-                          child: Text(item.label,
-                              style: Theme.of(context).textTheme.labelLarge),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      FloatingActionButton.small(
-                        heroTag: 'dial_${item.label}',
-                        onPressed: () {
-                          _close();
-                          item.onTap();
-                        },
-                        child: Icon(item.icon),
-                      ),
-                    ],
-                  ),
-                ),
+        ListTile(
+          leading: const Icon(Icons.bookmarks_outlined),
+          title: Text(widget.template.label),
+          subtitle: Text('${widget.template.entries.length} items'),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                icon: Icon(_expanded ? Icons.expand_less : Icons.expand_more),
+                onPressed: () => setState(() => _expanded = !_expanded),
               ),
-            )),
-        FloatingActionButton(
-          heroTag: 'speed_dial_main',
-          onPressed: _toggle,
-          child: AnimatedRotation(
-            turns: _open ? 0.125 : 0,
-            duration: const Duration(milliseconds: 250),
-            child: const Icon(Icons.add),
+              IconButton(
+                icon: const Icon(Icons.add),
+                onPressed: widget.onApply,
+              ),
+            ],
           ),
         ),
+        if (_expanded)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            child: Column(
+              children: widget.template.entries
+                  .map((entry) {
+                    final menuItem = widget.restaurant.menu
+                        .where((m) => m.id == entry.menuItemId)
+                        .firstOrNull;
+                    return ListTile(
+                      dense: true,
+                      contentPadding: const EdgeInsets.only(left: 48),
+                      title: Text(entry.name),
+                      trailing: Text(
+                        '#${menuItem?.itemNumber ?? '-'}',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    );
+                  })
+                  .toList(),
+            ),
+          ),
+        const Divider(height: 1),
       ],
     );
   }
-}
-
-class _DialItem {
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-  const _DialItem({required this.icon, required this.label, required this.onTap});
 }
 
 class _OrderedItem {
