@@ -4,9 +4,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../domain/models/session.dart';
 import '../../../domain/models/personal_sub_order.dart';
 import '../../../domain/models/order.dart';
+import '../../../domain/models/restaurant.dart';
 import '../../../core/utils/order_aggregator.dart';
 import '../../viewmodels/session_viewmodel.dart';
 import '../../viewmodels/profile_viewmodel.dart';
+import '../../viewmodels/restaurant_viewmodel.dart';
 import '../../viewmodels/personal_order_viewmodel.dart';
 
 class MergedOrderContent extends ConsumerWidget {
@@ -27,12 +29,14 @@ class MergedOrderContent extends ConsumerWidget {
 
         final isHost = user?.id == session.hostUserId;
         final subOrdersAsync = ref.watch(subOrdersForSessionProvider(sessionId));
+        final restaurantAsync = ref.watch(restaurantDetailProvider(session.restaurantId));
 
         return subOrdersAsync.when(
           data: (subOrders) {
             final activeOrders = subOrders.where((o) => o.entries.isNotEmpty).toList();
             final isHostOnly = session.participantIds.length == 1;
             final allReady = isHostOnly || activeOrders.every((o) => o.locked);
+            final restaurant = restaurantAsync.valueOrNull;
 
             final allOrders = <_OrderWithLabel>[];
             if (session.mainOrder != null) {
@@ -74,13 +78,13 @@ class MergedOrderContent extends ConsumerWidget {
                         ),
                       ),
                     const SizedBox(height: 16),
-                    _buildCurrentRound(context, activeOrders, allReady),
+                    _buildCurrentRound(context, activeOrders, allReady, restaurant),
                   ],
                   if (allOrders.isNotEmpty) ...[
                     if (session.status == SessionStatus.open) const SizedBox(height: 24),
                     for (int i = 0; i < allOrders.length; i++) ...[
                       if (i > 0) const SizedBox(height: 24),
-                      _buildOrderSection(context, allOrders[i].label, allOrders[i].order),
+                      _buildOrderSection(context, allOrders[i].label, allOrders[i].order, restaurant),
                     ],
                   ],
                   const SizedBox(height: 100),
@@ -260,7 +264,7 @@ class MergedOrderContent extends ConsumerWidget {
     );
   }
 
-  Widget _buildCurrentRound(BuildContext context, List<PersonalSubOrder> activeOrders, bool allReady) {
+  Widget _buildCurrentRound(BuildContext context, List<PersonalSubOrder> activeOrders, bool allReady, Restaurant? restaurant) {
     if (activeOrders.isEmpty) {
       return Card(
         color: Theme.of(context).colorScheme.surfaceContainerLow,
@@ -282,10 +286,10 @@ class MergedOrderContent extends ConsumerWidget {
       );
     }
     if (!allReady) return const SizedBox.shrink();
-    return _buildAggregatedOrder(context, activeOrders, 'Current Order');
+    return _buildAggregatedOrder(context, activeOrders, 'Current Order', restaurant);
   }
 
-  Widget _buildAggregatedOrder(BuildContext context, List<PersonalSubOrder> subOrders, String label) {
+  Widget _buildAggregatedOrder(BuildContext context, List<PersonalSubOrder> subOrders, String label, Restaurant? restaurant) {
     final aggregated = aggregateSubOrders(subOrders, label);
 
     return Card(
@@ -297,57 +301,44 @@ class MergedOrderContent extends ConsumerWidget {
           children: [
             Row(
               children: [
-                Icon(
-                  Icons.receipt_long,
-                  color: Theme.of(context).colorScheme.primary,
-                ),
+                Icon(Icons.receipt_long, color: Theme.of(context).colorScheme.primary),
                 const SizedBox(width: 8),
-                Text(
-                  label,
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
+                Text(label, style: Theme.of(context).textTheme.titleMedium),
               ],
             ),
             const Divider(),
             if (aggregated.items.isEmpty)
               Padding(
                 padding: const EdgeInsets.all(8),
-                child: Text(
-                  'No items yet',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Theme.of(context).colorScheme.outline,
-                      ),
-                ),
+                child: Text('No items yet', style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).colorScheme.outline)),
               )
             else
-              ...aggregated.items.map((item) => ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: Text(item.name),
-                    subtitle: Text('By ${item.contributorIds.length} participant(s)'),
-                    trailing: Text(
-                      'x${item.quantity}',
-                      style: Theme.of(context).textTheme.titleLarge,
-                    ),
-                  )),
+              ...aggregated.items.map((item) {
+                final menuItem = restaurant?.menu.where((m) => m.id == item.menuItemId).firstOrNull;
+                return ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: menuItem?.itemNumber != null
+                      ? CircleAvatar(radius: 14, backgroundColor: Theme.of(context).colorScheme.primaryContainer, child: Text('${menuItem!.itemNumber}', style: Theme.of(context).textTheme.labelSmall))
+                      : null,
+                  title: Text(item.name),
+                  subtitle: Text('By ${item.contributorIds.length} participant(s)'),
+                  trailing: Text('x${item.quantity}', style: Theme.of(context).textTheme.titleLarge),
+                );
+              }),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildOrderSection(BuildContext context, String label, Order order) {
+  Widget _buildOrderSection(BuildContext context, String label, Order order, Restaurant? restaurant) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
             Expanded(
-              child: Text(
-                label,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
-              ),
+              child: Text(label, style: Theme.of(context).textTheme.titleMedium?.copyWith(color: Theme.of(context).colorScheme.primary)),
             ),
             Chip(
               label: Text('${order.items.length} items'),
@@ -362,15 +353,21 @@ class MergedOrderContent extends ConsumerWidget {
             children: order.items.asMap().entries.map((entry) {
               final index = entry.key;
               final item = entry.value;
+              final menuItem = restaurant?.menu.where((m) => m.id == item.menuItemId).firstOrNull;
               return Column(
                 children: [
                   ListTile(
-                    title: Text(item.name),
-                    subtitle: Text('By ${item.contributorIds.length} participant(s)'),
-                    trailing: Text(
-                      'x${item.quantity}',
-                      style: Theme.of(context).textTheme.titleMedium,
+                    leading: menuItem?.itemNumber != null
+                        ? CircleAvatar(radius: 14, backgroundColor: Theme.of(context).colorScheme.primaryContainer, child: Text('${menuItem!.itemNumber}', style: Theme.of(context).textTheme.labelSmall))
+                        : null,
+                    title: Row(
+                      children: [
+                        if (menuItem?.isYummie ?? false) ...[const Icon(Icons.restaurant, size: 14), const SizedBox(width: 4)],
+                        Expanded(child: Text(item.name)),
+                      ],
                     ),
+                    subtitle: Text('By ${item.contributorIds.length} participant(s)'),
+                    trailing: Text('x${item.quantity}', style: Theme.of(context).textTheme.titleMedium),
                   ),
                   if (index < order.items.length - 1) const Divider(height: 1),
                 ],

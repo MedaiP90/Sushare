@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import '../../../domain/models/restaurant.dart';
 import '../../viewmodels/restaurant_viewmodel.dart';
+import '../../viewmodels/saved_order_viewmodel.dart';
 import '../restaurant/restaurant_detail_page.dart';
 
 class RestaurantsPage extends ConsumerWidget {
@@ -60,6 +61,8 @@ class RestaurantsPage extends ConsumerWidget {
             itemCount: restaurants.length,
             itemBuilder: (context, index) {
               final restaurant = restaurants[index];
+              final templatesAsync = ref.watch(savedOrdersForRestaurantProvider(restaurant.id));
+              final templateCount = templatesAsync.valueOrNull?.length ?? 0;
               return Card(
                 margin: const EdgeInsets.only(bottom: 16),
                 clipBehavior: Clip.antiAlias,
@@ -124,9 +127,20 @@ class RestaurantsPage extends ConsumerWidget {
                               ),
                             ],
                             const SizedBox(height: 8),
-                            Chip(
-                              label: Text('${restaurant.menu.length} items'),
-                              visualDensity: VisualDensity.compact,
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 4,
+                              children: [
+                                Chip(
+                                  label: Text('${restaurant.menu.length} dishes'),
+                                  visualDensity: VisualDensity.compact,
+                                ),
+                                if (templateCount > 0)
+                                  Chip(
+                                    label: Text('$templateCount templates'),
+                                    visualDensity: VisualDensity.compact,
+                                  ),
+                              ],
                             ),
                           ],
                         ),

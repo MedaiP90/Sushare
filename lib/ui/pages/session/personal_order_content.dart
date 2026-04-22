@@ -619,27 +619,42 @@ class _PersonalOrderContentState extends ConsumerState<PersonalOrderContent> {
       String? userProfilePicturePath) {
     showModalBottomSheet(
       context: context,
-      builder: (context) => SafeArea(
-        child: SizedBox(
-          width: double.infinity,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(24, 20, 24, 8),
-                child: Text(
-                  'Choose a Template',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
+      isScrollControlled: true,
+      builder: (sheetContext) => DraggableScrollableSheet(
+        initialChildSize: 0.5,
+        minChildSize: 0.3,
+        maxChildSize: 0.85,
+        expand: false,
+        builder: (ctx, scrollController) => Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
+              child: Row(
+                children: [
+                  Text(
+                    'Choose a Template',
+                    style: Theme.of(ctx).textTheme.titleLarge,
+                  ),
+                  const Spacer(),
+                  IconButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    icon: const Icon(Icons.close),
+                  ),
+                ],
               ),
-              const Divider(),
-              ...templates.map((t) => ListTile(
-                    leading: const Icon(Icons.bookmarks_outlined),
-                    title: Text(t.label),
-                    subtitle: Text('${t.entries.length} items'),
-                    onTap: () async {
-                      Navigator.pop(context);
+            ),
+            const Divider(height: 1),
+            Expanded(
+              child: ListView.builder(
+                controller: scrollController,
+                itemCount: templates.length,
+                itemBuilder: (ctx, index) {
+                  final t = templates[index];
+                  return _ExpandableTemplateTile(
+                    template: t,
+                    restaurant: restaurant,
+                    onApply: () async {
+                      Navigator.pop(sheetContext);
                       setState(() {
                         for (final entry in t.entries) {
                           _quantities[entry.menuItemId] =
@@ -651,12 +666,81 @@ class _PersonalOrderContentState extends ConsumerState<PersonalOrderContent> {
                           userFullName: userFullName,
                           userProfilePicturePath: userProfilePicturePath);
                     },
-                  )),
-              const SizedBox(height: 8),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ExpandableTemplateTile extends StatefulWidget {
+  final SavedOrder template;
+  final Restaurant restaurant;
+  final VoidCallback onApply;
+
+  const _ExpandableTemplateTile({
+    required this.template,
+    required this.restaurant,
+    required this.onApply,
+  });
+
+  @override
+  State<_ExpandableTemplateTile> createState() => _ExpandableTemplateTileState();
+}
+
+class _ExpandableTemplateTileState extends State<_ExpandableTemplateTile> {
+  bool _expanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        ListTile(
+          leading: const Icon(Icons.bookmarks_outlined),
+          title: Text(widget.template.label),
+          subtitle: Text('${widget.template.entries.length} items'),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                icon: Icon(_expanded ? Icons.expand_less : Icons.expand_more),
+                onPressed: () => setState(() => _expanded = !_expanded),
+              ),
+              IconButton(
+                icon: const Icon(Icons.add),
+                onPressed: widget.onApply,
+              ),
             ],
           ),
         ),
-      ),
+        if (_expanded)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            child: Column(
+              children: widget.template.entries
+                  .map((entry) {
+                    final menuItem = widget.restaurant.menu
+                        .where((m) => m.id == entry.menuItemId)
+                        .firstOrNull;
+                    return ListTile(
+                      dense: true,
+                      contentPadding: const EdgeInsets.only(left: 48),
+                      title: Text(entry.name),
+                      trailing: Text(
+                        '#${menuItem?.itemNumber ?? '-'}',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    );
+                  })
+                  .toList(),
+            ),
+          ),
+        const Divider(height: 1),
+      ],
     );
   }
 }

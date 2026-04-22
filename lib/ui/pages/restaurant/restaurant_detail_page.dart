@@ -171,11 +171,10 @@ class RestaurantDetailPage extends ConsumerWidget {
                             spacing: 8,
                             runSpacing: 4,
                             children: templates
-                                .map((t) => Chip(
-                                      label: Text(t.label),
-                                      avatar: const Icon(Icons.bookmarks_outlined, size: 16),
-                                      deleteIcon: const Icon(Icons.close, size: 16),
-                                      onDeleted: () => _deleteTemplate(ref, t),
+                                .map((t) => _TemplateChip(
+                                      label: '${t.label} (${t.entries.length})',
+                                      onTap: () => _editTemplate(ref, restaurant, t),
+                                      onDelete: () => _deleteTemplate(ref, t),
                                     ))
                                 .toList(),
                           ),
@@ -283,6 +282,38 @@ class RestaurantDetailPage extends ConsumerWidget {
     await ref
         .read(savedOrderActionsProvider)
         .deleteTemplate(template.id, template.restaurantId);
+  }
+
+  void _editTemplate(WidgetRef ref, Restaurant restaurant, SavedOrder template) {
+    showModalBottomSheet(
+      context: ref.context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (sheetContext) => _AddTemplateSheet(
+        restaurant: restaurant,
+        editingTemplate: template,
+        onSave: (label, selectedIds) async {
+          if (label.isEmpty || selectedIds.isEmpty) return;
+          final entries = selectedIds.map((id) {
+            final item = restaurant.menu.where((m) => m.id == id).firstOrNull;
+            return SubOrderEntry(
+              menuItemId: id,
+              name: item?.name ?? id,
+              quantity: 1,
+            );
+          }).toList();
+          await ref.read(savedOrderActionsProvider).saveTemplate(
+                restaurantId: restaurant.id,
+                label: label,
+                entries: entries,
+              );
+          await ref
+              .read(savedOrderActionsProvider)
+              .deleteTemplate(template.id, template.restaurantId);
+          if (sheetContext.mounted) Navigator.pop(sheetContext);
+        },
+      ),
+    );
   }
 
   void _showEditSheet(BuildContext context, WidgetRef ref, Restaurant restaurant) {
@@ -404,17 +435,34 @@ class RestaurantDetailPage extends ConsumerWidget {
 
 class _AddTemplateSheet extends StatefulWidget {
   final Restaurant restaurant;
+  final SavedOrder? editingTemplate;
   final Future<void> Function(String label, Set<String> selectedIds) onSave;
 
-  const _AddTemplateSheet({required this.restaurant, required this.onSave});
+  const _AddTemplateSheet({
+    required this.restaurant,
+    this.editingTemplate,
+    required this.onSave,
+  });
 
   @override
   State<_AddTemplateSheet> createState() => _AddTemplateSheetState();
 }
 
 class _AddTemplateSheetState extends State<_AddTemplateSheet> {
-  final _nameController = TextEditingController();
-  final _selectedIds = <String>{};
+  late final TextEditingController _nameController;
+  late final Set<String> _selectedIds;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController = TextEditingController(
+      text: widget.editingTemplate?.label ?? '',
+    );
+    _selectedIds = widget.editingTemplate?.entries
+            .map((e) => e.menuItemId)
+            .toSet() ??
+        {};
+  }
 
   @override
   void dispose() {
@@ -445,8 +493,12 @@ class _AddTemplateSheetState extends State<_AddTemplateSheet> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 _DragHandle(scheme: scheme),
-                Text('New Order Template',
-                    style: Theme.of(context).textTheme.titleLarge),
+                Text(
+                  widget.editingTemplate != null
+                      ? 'Edit Order Template'
+                      : 'New Order Template',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
                 const SizedBox(height: 16),
                 TextField(
                   controller: _nameController,
@@ -803,6 +855,46 @@ class _MenuItemSheetState extends State<_MenuItemSheet> {
 }
 
 // ── Shared ────────────────────────────────────────────────────────────────────
+
+class _TemplateChip extends StatelessWidget {
+  final String label;
+  final VoidCallback onTap;
+  final VoidCallback onDelete;
+
+  const _TemplateChip({
+    required this.label,
+    required this.onTap,
+    required this.onDelete,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Theme.of(context).colorScheme.secondaryContainer,
+      borderRadius: BorderRadius.circular(8),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: Padding(
+          padding: const EdgeInsets.only(left: 12, right: 4, top: 4, bottom: 4),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.bookmarks_outlined, size: 16),
+              const SizedBox(width: 6),
+              Text(label, style: Theme.of(context).textTheme.labelLarge),
+              const SizedBox(width: 4),
+              InkWell(
+                onTap: onDelete,
+                child: const Icon(Icons.close, size: 16),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
 
 class _DragHandle extends StatelessWidget {
   final ColorScheme scheme;

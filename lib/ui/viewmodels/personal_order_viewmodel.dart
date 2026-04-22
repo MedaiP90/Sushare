@@ -79,3 +79,24 @@ final subOrdersForSessionProvider = FutureProvider.family<List<PersonalSubOrder>
   final repo = ref.read(personalSubOrderRepositoryProvider);
   return repo.getSubOrdersForSession(sessionId);
 });
+
+final sessionChecklistProvider = FutureProvider.family<List<ChecklistEntry>, String>((ref, sessionId) async {
+  final subOrders = await ref.watch(subOrdersForSessionProvider(sessionId).future);
+  final allEntries = <String, ChecklistEntry>{};
+  for (final subOrder in subOrders) {
+    for (final entry in subOrder.checklist) {
+      final existing = allEntries[entry.menuItemId];
+      if (existing != null) {
+        allEntries[entry.menuItemId] = ChecklistEntry(
+          menuItemId: entry.menuItemId,
+          name: entry.name,
+          orderedQuantity: existing.orderedQuantity + entry.orderedQuantity,
+          arrivedCount: existing.arrivedCount + entry.arrivedCount,
+        );
+      } else {
+        allEntries[entry.menuItemId] = entry;
+      }
+    }
+  }
+  return allEntries.values.toList();
+});

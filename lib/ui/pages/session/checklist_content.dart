@@ -206,6 +206,16 @@ class ChecklistContent extends ConsumerWidget {
               return Column(
                 children: [
                   ListTile(
+                    leading: menuItem?.itemNumber != null
+                        ? CircleAvatar(
+                            radius: 14,
+                            backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                            child: Text(
+                              '${menuItem!.itemNumber}',
+                              style: Theme.of(context).textTheme.labelSmall,
+                            ),
+                          )
+                        : null,
                     title: Row(
                       children: [
                         if (isYummie) ...[
