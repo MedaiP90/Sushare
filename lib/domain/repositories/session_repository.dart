@@ -56,6 +56,11 @@ class SessionRepository {
       orElse: () => SessionStatus.open,
     );
 
+    final arrivedCountsJson = row['arrived_counts_json'] as String?;
+    final arrivedCounts = arrivedCountsJson != null
+        ? (jsonDecode(arrivedCountsJson) as Map<String, dynamic>).map((k, v) => MapEntry(k, v as int))
+        : <String, int>{};
+
     return Session(
       id: row['id'] as String,
       name: row['name'] as String,
@@ -65,8 +70,9 @@ class SessionRepository {
       status: status,
       mainOrder: mainOrder,
       additionalOrders: additionalOrders,
+      arrivedCounts: arrivedCounts,
       createdAt: DateTime.parse(row['created_at'] as String),
-      sentAt: row['sent_at'] != null 
+      sentAt: row['sent_at'] != null
           ? DateTime.parse(row['sent_at'] as String)
           : null,
     );
@@ -101,6 +107,7 @@ class SessionRepository {
       'status': session.status.name,
       'main_order_json': session.mainOrder != null ? jsonEncode(session.mainOrder!.toJson()) : null,
       'additional_orders_json': jsonEncode(session.additionalOrders.map((o) => o.toJson()).toList()),
+      'arrived_counts_json': jsonEncode(session.arrivedCounts),
       'created_at': session.createdAt.toIso8601String(),
       'sent_at': session.sentAt?.toIso8601String(),
     };

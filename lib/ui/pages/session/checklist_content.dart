@@ -1,30 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../domain/models/order.dart';
-import '../../../domain/models/personal_sub_order.dart';
 import '../../../domain/models/session.dart';
 import '../../viewmodels/session_viewmodel.dart';
 import '../../viewmodels/profile_viewmodel.dart';
-import '../../viewmodels/personal_order_viewmodel.dart';
 
-class ChecklistContent extends ConsumerStatefulWidget {
+class ChecklistContent extends ConsumerWidget {
   final String sessionId;
 
   const ChecklistContent({super.key, required this.sessionId});
 
   @override
-  ConsumerState<ChecklistContent> createState() => _ChecklistContentState();
-}
-
-class _ChecklistContentState extends ConsumerState<ChecklistContent> {
-  final _arrivedCounts = <String, int>{};
-  DateTime? _lastLoadedAt;
-
-  @override
-  Widget build(BuildContext context) {
-    final sessionAsync = ref.watch(sessionDetailProvider(widget.sessionId));
+  Widget build(BuildContext context, WidgetRef ref) {
+    final sessionAsync = ref.watch(sessionDetailProvider(sessionId));
     final user = ref.watch(profileViewModelProvider).value;
-    final subOrdersAsync = ref.watch(subOrdersForSessionProvider(widget.sessionId));
 
     return sessionAsync.when(
       data: (session) {
@@ -33,6 +22,7 @@ class _ChecklistContentState extends ConsumerState<ChecklistContent> {
         }
 
         final isHost = user?.id == session.hostUserId;
+        final isEditable = session.status != SessionStatus.closed;
 
         if (session.mainOrder == null) {
           return Center(
@@ -69,25 +59,11 @@ class _ChecklistContentState extends ConsumerState<ChecklistContent> {
           allOrders.add(_OrderWithLabel(session.additionalOrders[i], 'Order ${i + 2}'));
         }
 
-        // Reload arrived counts from the host's sub-order checklist when it changes.
-        subOrdersAsync.whenData((subOrders) {
-          final hostSubOrder = subOrders.where((s) => s.userId == session.hostUserId).firstOrNull;
-          final subOrderUpdatedAt = hostSubOrder?.updatedAt;
-          final isNewer = _lastLoadedAt == null ||
-              (subOrderUpdatedAt != null && subOrderUpdatedAt.isAfter(_lastLoadedAt!));
-          if (isNewer) {
-            _lastLoadedAt = subOrderUpdatedAt ?? DateTime.now();
-            if (hostSubOrder != null && hostSubOrder.checklist.isNotEmpty) {
-              for (final entry in hostSubOrder.checklist) {
-                _arrivedCounts[entry.menuItemId] = entry.arrivedCount;
-              }
-            }
-          }
-        });
+        final arrivedCounts = session.arrivedCounts;
 
         final allArrived = allOrders.every((o) =>
             o.order.items.every((item) {
-              final arrived = _arrivedCounts[item.menuItemId] ?? 0;
+              final arrived = arrivedCounts[item.menuItemId] ?? 0;
               return arrived >= item.quantity;
             }));
 
@@ -123,7 +99,7 @@ class _ChecklistContentState extends ConsumerState<ChecklistContent> {
               const SizedBox(height: 16),
               for (int i = 0; i < allOrders.length; i++) ...[
                 if (i > 0) const SizedBox(height: 24),
-                _buildOrderChecklist(context, isHost, allOrders[i], session, allOrders),
+                _buildOrderChecklist(context, ref, isHost && isEditable, allOrders[i], session, arrivedCounts),
               ],
               if (!isHost)
                 Padding(
@@ -161,32 +137,23 @@ class _ChecklistContentState extends ConsumerState<ChecklistContent> {
     );
   }
 
-  Future<void> _saveChecklist(Session session, List<_OrderWithLabel> allOrders) async {
-    final repo = ref.read(personalSubOrderRepositoryProvider);
-    final hostSubOrder = await repo.getSubOrder(session.id, session.hostUserId);
-    if (hostSubOrder == null) return;
-
-    final entries = allOrders
-        .expand((o) => o.order.items)
-        .map((item) => ChecklistEntry(
-              menuItemId: item.menuItemId,
-              name: item.name,
-              orderedQuantity: item.quantity,
-              arrivedCount: _arrivedCounts[item.menuItemId] ?? 0,
-            ))
-        .toList();
-
-    final updated = hostSubOrder.copyWith(checklist: entries, updatedAt: DateTime.now());
-    await repo.updateSubOrder(updated);
-    ref.invalidate(subOrdersForSessionProvider(session.id));
+  Future<void> _updateCount(WidgetRef ref, Session session, String menuItemId, int newCount) async {
+    final updated = Map<String, int>.from(session.arrivedCounts);
+    if (newCount <= 0) {
+      updated.remove(menuItemId);
+    } else {
+      updated[menuItemId] = newCount;
+    }
+    await ref.read(sessionsProvider.notifier).updateArrivedCounts(session.id, updated);
   }
 
   Widget _buildOrderChecklist(
     BuildContext context,
+    WidgetRef ref,
     bool isHost,
     _OrderWithLabel orderWithLabel,
     Session session,
-    List<_OrderWithLabel> allOrders,
+    Map<String, int> arrivedCounts,
   ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -214,7 +181,7 @@ class _ChecklistContentState extends ConsumerState<ChecklistContent> {
             children: orderWithLabel.order.items.asMap().entries.map((entry) {
               final index = entry.key;
               final item = entry.value;
-              final arrived = _arrivedCounts[item.menuItemId] ?? 0;
+              final arrived = arrivedCounts[item.menuItemId] ?? 0;
               final total = item.quantity;
               final progress = arrived / total;
 
@@ -253,23 +220,13 @@ class _ChecklistContentState extends ConsumerState<ChecklistContent> {
                               IconButton(
                                 icon: const Icon(Icons.remove_circle_outline),
                                 onPressed: arrived > 0
-                                    ? () async {
-                                        setState(() {
-                                          _arrivedCounts[item.menuItemId] = arrived - 1;
-                                        });
-                                        await _saveChecklist(session, allOrders);
-                                      }
+                                    ? () => _updateCount(ref, session, item.menuItemId, arrived - 1)
                                     : null,
                               ),
                               IconButton(
                                 icon: const Icon(Icons.add_circle_outline),
                                 onPressed: arrived < total
-                                    ? () async {
-                                        setState(() {
-                                          _arrivedCounts[item.menuItemId] = arrived + 1;
-                                        });
-                                        await _saveChecklist(session, allOrders);
-                                      }
+                                    ? () => _updateCount(ref, session, item.menuItemId, arrived + 1)
                                     : null,
                               ),
                             ],

@@ -53,7 +53,7 @@ class _SessionShellPageState extends ConsumerState<SessionShellPage> {
               onPressed: () => context.go('/home/sessions'),
             ),
             actions: [
-              if (isHost && session.status == SessionStatus.open)
+              if (isHost && session.status != SessionStatus.closed)
                 IconButton(
                   onPressed: () => _showShareSheet(context),
                   icon: const Icon(Icons.share),
@@ -86,13 +86,37 @@ class _SessionShellPageState extends ConsumerState<SessionShellPage> {
                   }
                 },
                 itemBuilder: (context) => [
-                  const PopupMenuItem(value: 'close', child: Text('Close for new participants')),
+                  if (session.status != SessionStatus.closed)
+                    const PopupMenuItem(value: 'close', child: Text('Leave the table')),
                   const PopupMenuItem(value: 'delete', child: Text('Delete table')),
                 ],
               ),
             ],
           ),
-          body: tabs[_currentIndex],
+          body: Column(
+            children: [
+              if (session.status == SessionStatus.closed)
+                Material(
+                  color: Theme.of(context).colorScheme.secondaryContainer,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    child: Row(
+                      children: [
+                        Icon(Icons.lock_outline, size: 16, color: Theme.of(context).colorScheme.onSecondaryContainer),
+                        const SizedBox(width: 8),
+                        Text(
+                          'This table has been left — no further changes can be made',
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: Theme.of(context).colorScheme.onSecondaryContainer,
+                              ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              Expanded(child: tabs[_currentIndex]),
+            ],
+          ),
           bottomNavigationBar: NavigationBar(
             selectedIndex: _currentIndex,
             onDestinationSelected: (index) {
@@ -164,7 +188,9 @@ class _SessionShellPageState extends ConsumerState<SessionShellPage> {
     showModalBottomSheet(
       context: context,
       builder: (context) => SafeArea(
-        child: Padding(
+        child: SizedBox(
+          width: double.infinity,
+          child: Padding(
           padding: const EdgeInsets.all(24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -193,6 +219,7 @@ class _SessionShellPageState extends ConsumerState<SessionShellPage> {
               const SizedBox(height: 16),
             ],
           ),
+        ),
         ),
       ),
     );

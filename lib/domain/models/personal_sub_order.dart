@@ -3,6 +3,8 @@ class PersonalSubOrder {
   final String sessionId;
   final String userId;
   final String? userName;
+  final String? userFullName;
+  final String? userProfilePicturePath;
   final List<SubOrderEntry> entries;
   final List<ChecklistEntry> checklist;
   final bool locked;
@@ -13,6 +15,8 @@ class PersonalSubOrder {
     required this.sessionId,
     required this.userId,
     this.userName,
+    this.userFullName,
+    this.userProfilePicturePath,
     required this.entries,
     required this.checklist,
     required this.locked,
@@ -25,6 +29,8 @@ class PersonalSubOrder {
       sessionId: json['sessionId'] as String,
       userId: json['userId'] as String,
       userName: json['userName'] as String?,
+      userFullName: json['userFullName'] as String?,
+      userProfilePicturePath: json['userProfilePicturePath'] as String?,
       entries: (json['entries'] as List<dynamic>)
           .map((e) => SubOrderEntry.fromJson(e as Map<String, dynamic>))
           .toList(),
@@ -42,6 +48,8 @@ class PersonalSubOrder {
       'sessionId': sessionId,
       'userId': userId,
       'userName': userName,
+      'userFullName': userFullName,
+      'userProfilePicturePath': userProfilePicturePath,
       'entries': entries.map((e) => e.toJson()).toList(),
       'checklist': checklist.map((e) => e.toJson()).toList(),
       'locked': locked,
@@ -54,6 +62,8 @@ class PersonalSubOrder {
     String? sessionId,
     String? userId,
     String? userName,
+    String? userFullName,
+    String? userProfilePicturePath,
     List<SubOrderEntry>? entries,
     List<ChecklistEntry>? checklist,
     bool? locked,
@@ -64,6 +74,8 @@ class PersonalSubOrder {
       sessionId: sessionId ?? this.sessionId,
       userId: userId ?? this.userId,
       userName: userName ?? this.userName,
+      userFullName: userFullName ?? this.userFullName,
+      userProfilePicturePath: userProfilePicturePath ?? this.userProfilePicturePath,
       entries: entries ?? this.entries,
       checklist: checklist ?? this.checklist,
       locked: locked ?? this.locked,

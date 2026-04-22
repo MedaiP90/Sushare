@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../domain/models/session.dart';
@@ -153,25 +154,109 @@ class MergedOrderContent extends ConsumerWidget {
             final subOrder = subOrders.where((s) => s.userId == participantId).firstOrNull;
             final hasOrdered = subOrder != null && subOrder.entries.isNotEmpty;
             final displayName = subOrder?.userName ?? participantId.substring(0, 6);
+            final picturePath = subOrder?.userProfilePicturePath;
 
-            return Chip(
+            return ActionChip(
               avatar: CircleAvatar(
+                backgroundImage: picturePath != null ? FileImage(File(picturePath)) : null,
                 backgroundColor: hasOrdered
                     ? Theme.of(context).colorScheme.primaryContainer
                     : Theme.of(context).colorScheme.surfaceContainerHighest,
                 foregroundColor: hasOrdered
                     ? Theme.of(context).colorScheme.onPrimaryContainer
                     : Theme.of(context).colorScheme.onSurfaceVariant,
-                child: Text(displayName.substring(0, 1).toUpperCase()),
+                child: picturePath == null
+                    ? Text(displayName.substring(0, 1).toUpperCase())
+                    : null,
               ),
               label: Text(displayName),
               backgroundColor: hasOrdered
                   ? Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.5)
                   : Theme.of(context).colorScheme.surfaceContainerHighest,
+              onPressed: () => _showParticipantInfo(context, subOrder, displayName, subOrder?.userFullName, picturePath, hasOrdered),
             );
           }).toList(),
         ),
       ],
+    );
+  }
+
+  void _showParticipantInfo(
+    BuildContext context,
+    PersonalSubOrder? subOrder,
+    String displayName,
+    String? fullName,
+    String? picturePath,
+    bool hasOrdered,
+  ) {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => SafeArea(
+        child: SizedBox(
+          width: double.infinity,
+          child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircleAvatar(
+                radius: 40,
+                backgroundImage: picturePath != null ? FileImage(File(picturePath)) : null,
+                backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                child: picturePath == null
+                    ? Text(
+                        displayName.substring(0, 1).toUpperCase(),
+                        style: Theme.of(context).textTheme.headlineMedium,
+                      )
+                    : null,
+              ),
+              const SizedBox(height: 16),
+              if (fullName != null && fullName.isNotEmpty)
+                Text(
+                  fullName,
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+              const SizedBox(height: 4),
+              Text(
+                '@$displayName',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+              ),
+              const SizedBox(height: 8),
+              Chip(
+                label: Text(hasOrdered ? 'Order added' : 'No order yet'),
+                avatar: Icon(
+                  hasOrdered ? Icons.check_circle : Icons.hourglass_empty,
+                  size: 16,
+                ),
+                backgroundColor: hasOrdered
+                    ? Theme.of(context).colorScheme.primaryContainer
+                    : Theme.of(context).colorScheme.surfaceContainerHighest,
+              ),
+              if (subOrder != null && subOrder.entries.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                const Divider(),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Items ordered',
+                    style: Theme.of(context).textTheme.labelLarge,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                ...subOrder.entries.map((e) => ListTile(
+                      dense: true,
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(e.name),
+                      trailing: Text('x${e.quantity}'),
+                    )),
+              ],
+            ],
+          ),
+        ),
+        ),
+      ),
     );
   }
 
