@@ -116,12 +116,16 @@ class _ScanMenuPageState extends ConsumerState<ScanMenuPage> {
     );
 
     await ref.read(restaurantsProvider.notifier).updateRestaurant(updated);
+    ref.invalidate(restaurantDetailProvider(widget.restaurantId));
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Added ${_parsedItems!.length} menu items!')),
       );
-      Navigator.pop(context);
+      setState(() {
+        _capturedImage = null;
+        _parsedItems = null;
+      });
     }
   }
 

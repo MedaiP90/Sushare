@@ -62,6 +62,13 @@ class LocaleNotifier extends StateNotifier<Locale> {
   }
 }
 
+final _selectedModelProvider = FutureProvider<String?>((ref) async {
+  final service = MenuAiService();
+  final hasKey = await service.hasApiKey();
+  if (!hasKey) return null;
+  return service.getModel();
+});
+
 class SettingsPage extends ConsumerWidget {
   const SettingsPage({super.key});
 
@@ -135,6 +142,17 @@ class SettingsPage extends ConsumerWidget {
             subtitle: const Text('For menu scanning'),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => _showApiKeySheet(context),
+          ),
+          ListTile(
+            leading: const Icon(Icons.model_training),
+            title: const Text('AI Model'),
+            subtitle: ref.watch(_selectedModelProvider).when(
+              data: (model) => Text(model ?? 'gemini-2.0-flash'),
+              loading: () => const Text('Loading...'),
+              error: (_, __) => const Text('gemini-2.0-flash'),
+            ),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => _showModelSheet(context, ref),
           ),
           const Divider(),
           const _SectionHeader(title: 'About'),
@@ -259,6 +277,38 @@ class SettingsPage extends ConsumerWidget {
       builder: (context) => _ApiKeySheet(
         controller: controller,
         menuAiService: menuAiService,
+      ),
+    );
+  }
+
+  void _showModelSheet(BuildContext context, WidgetRef ref) async {
+    final menuAiService = MenuAiService();
+    final hasKey = await menuAiService.hasApiKey();
+
+    if (!hasKey) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please set your API key first')),
+        );
+      }
+      return;
+    }
+
+    final availableModels = await menuAiService.getAvailableModels();
+    final currentModel = await menuAiService.getModel();
+
+    if (!context.mounted) return;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => _ModelPickerSheet(
+        availableModels: availableModels,
+        currentModel: currentModel,
+        menuAiService: menuAiService,
+        onModelSelected: () {
+          ref.invalidate(_selectedModelProvider);
+        },
       ),
     );
   }
@@ -598,6 +648,128 @@ class _ApiKeySheet extends StatelessWidget {
                   child: const Text('Save'),
                 ),
               ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ModelPickerSheet extends StatefulWidget {
+  final List<String> availableModels;
+  final String currentModel;
+  final MenuAiService menuAiService;
+  final VoidCallback onModelSelected;
+
+  const _ModelPickerSheet({
+    required this.availableModels,
+    required this.currentModel,
+    required this.menuAiService,
+    required this.onModelSelected,
+  });
+
+  @override
+  State<_ModelPickerSheet> createState() => _ModelPickerSheetState();
+}
+
+class _ModelPickerSheetState extends State<_ModelPickerSheet> {
+  late String _selectedModel;
+  bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedModel = widget.currentModel;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final models = widget.availableModels.isEmpty
+        ? [widget.currentModel]
+        : widget.availableModels;
+
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(0, 8, 0, 0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Center(
+              child: Container(
+                width: 32,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: scheme.outlineVariant,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
+              child: Row(
+                children: [
+                  Text('AI Model',
+                      style: Theme.of(context).textTheme.titleLarge),
+                  const Spacer(),
+                  if (_isLoading)
+                    const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                ],
+              ),
+            ),
+            if (widget.availableModels.isEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Text(
+                  'Could not fetch models from API. Using default.',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: scheme.outline,
+                      ),
+                ),
+              ),
+            const SizedBox(height: 8),
+            ListView(
+              shrinkWrap: true,
+              children: models.map((model) => RadioListTile<String>(
+                  title: Text(model, overflow: TextOverflow.ellipsis),
+                  value: model,
+                  groupValue: _selectedModel,
+                  onChanged: widget.availableModels.isEmpty
+                      ? null
+                      : (value) {
+                          setState(() => _selectedModel = value!);
+                        },
+              )).toList(),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
+              child: Row(
+                children: [
+                  OutlinedButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('Cancel'),
+                  ),
+                  const Spacer(),
+                  FilledButton(
+                    onPressed: _isLoading ||
+                            _selectedModel == widget.currentModel
+                        ? null
+                        : () async {
+                            setState(() => _isLoading = true);
+                            await widget.menuAiService.setModel(_selectedModel);
+                            widget.onModelSelected();
+                            if (context.mounted) Navigator.pop(context);
+                          },
+                    child: const Text('Save'),
+                  ),
+                ],
+              ),
             ),
           ],
         ),

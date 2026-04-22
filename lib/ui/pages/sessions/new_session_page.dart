@@ -42,12 +42,12 @@ class _NewSessionPageState extends ConsumerState<NewSessionPage> {
           );
 
       if (mounted) {
-        context.go('/sessions/$sessionId/order');
+        context.go('/sessions/$sessionId');
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error creating session: $e')),
+          SnackBar(content: Text('Error creating table: $e')),
         );
       }
     } finally {
@@ -75,7 +75,7 @@ class _NewSessionPageState extends ConsumerState<NewSessionPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('New Session'),
+        title: const Text('New Table'),
         centerTitle: true,
       ),
       body: SingleChildScrollView(
@@ -86,12 +86,12 @@ class _NewSessionPageState extends ConsumerState<NewSessionPage> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Text(
-                'Start a new ordering session',
+                'Start a new ordering table',
                 style: Theme.of(context).textTheme.titleLarge,
               ),
               const SizedBox(height: 8),
               Text(
-                'Create a session and invite others to join',
+                'Create a table and invite others to join',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: colorScheme.onSurfaceVariant,
                     ),
@@ -100,14 +100,14 @@ class _NewSessionPageState extends ConsumerState<NewSessionPage> {
               TextFormField(
                 controller: _nameController,
                 decoration: const InputDecoration(
-                  labelText: 'Session Name',
+                  labelText: 'Table Name',
                   hintText: 'e.g., Friday dinner',
                   prefixIcon: Icon(Icons.groups),
                   border: OutlineInputBorder(),
                 ),
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
-                    return 'Please enter a session name';
+                    return 'Please enter a table name';
                   }
                   return null;
                 },
@@ -131,7 +131,7 @@ class _NewSessionPageState extends ConsumerState<NewSessionPage> {
                             const Text('No restaurants saved yet'),
                             const SizedBox(height: 4),
                             Text(
-                              'A restaurant will be created automatically when you start the session.',
+                              'A restaurant will be created automatically when you start the table.',
                               textAlign: TextAlign.center,
                               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                                     color: colorScheme.onSurfaceVariant,
@@ -203,7 +203,7 @@ class _NewSessionPageState extends ConsumerState<NewSessionPage> {
                             color: colorScheme.onPrimary,
                           ),
                         )
-                      : const Text('Start Session'),
+                      : const Text('Start Table'),
                 ),
               ),
             ],

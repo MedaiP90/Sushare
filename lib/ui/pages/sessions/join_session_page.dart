@@ -45,17 +45,17 @@ class _JoinSessionPageState extends ConsumerState<JoinSessionPage> {
       final session = await sessionRepo.getSessionById(cleanCode);
 
       if (session == null) {
-        throw Exception('Session not found');
+        throw Exception('Table not found');
       }
 
       if (session.status.name == 'closed') {
-        throw Exception('This session is closed');
+        throw Exception('This table is closed');
       }
 
       await sessionRepo.addParticipant(cleanCode, user.id);
 
       if (mounted) {
-        context.go('/sessions/$cleanCode/order');
+        context.go('/sessions/$cleanCode');
       }
     } catch (e) {
       setState(() {
@@ -141,7 +141,7 @@ class _JoinSessionPageState extends ConsumerState<JoinSessionPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Join Session'),
+        title: const Text('Join Table'),
         centerTitle: true,
       ),
       body: SingleChildScrollView(
@@ -150,12 +150,12 @@ class _JoinSessionPageState extends ConsumerState<JoinSessionPage> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              'Join a session',
+              'Join a table',
               style: Theme.of(context).textTheme.headlineMedium,
             ),
             const SizedBox(height: 8),
             Text(
-              'Enter the session code or scan the QR code',
+              'Enter the table code or scan the QR code',
               style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                     color: colorScheme.onSurfaceVariant,
                   ),
@@ -214,7 +214,7 @@ class _JoinSessionPageState extends ConsumerState<JoinSessionPage> {
                     TextField(
                       controller: _codeController,
                       decoration: const InputDecoration(
-                        labelText: 'Session Code',
+                        labelText: 'Table Code',
                         hintText: 'e.g., ABC12345',
                         border: OutlineInputBorder(),
                         prefixIcon: Icon(Icons.tag),
@@ -244,7 +244,7 @@ class _JoinSessionPageState extends ConsumerState<JoinSessionPage> {
                                 strokeWidth: 2,
                               ),
                             )
-                          : const Text('Join Session'),
+                          : const Text('Join Table'),
                     ),
                   ],
                 ),
@@ -254,7 +254,7 @@ class _JoinSessionPageState extends ConsumerState<JoinSessionPage> {
             Center(
               child: TextButton(
                 onPressed: () => context.go('/sessions/new'),
-                child: const Text('Or start a new session'),
+                child: const Text('Or start a new table'),
               ),
             ),
           ],

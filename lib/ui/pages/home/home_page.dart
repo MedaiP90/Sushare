@@ -37,7 +37,7 @@ class HomePage extends StatelessWidget {
           NavigationDestination(
             icon: Icon(Icons.groups_outlined),
             selectedIcon: Icon(Icons.groups),
-            label: 'Sessions',
+            label: 'Tables',
           ),
           NavigationDestination(
             icon: Icon(Icons.restaurant_outlined),
