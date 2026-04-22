@@ -2,6 +2,7 @@ class PersonalSubOrder {
   final String id;
   final String sessionId;
   final String userId;
+  final String? userName;
   final List<SubOrderEntry> entries;
   final List<ChecklistEntry> checklist;
   final bool locked;
@@ -11,6 +12,7 @@ class PersonalSubOrder {
     required this.id,
     required this.sessionId,
     required this.userId,
+    this.userName,
     required this.entries,
     required this.checklist,
     required this.locked,
@@ -22,6 +24,7 @@ class PersonalSubOrder {
       id: json['id'] as String,
       sessionId: json['sessionId'] as String,
       userId: json['userId'] as String,
+      userName: json['userName'] as String?,
       entries: (json['entries'] as List<dynamic>)
           .map((e) => SubOrderEntry.fromJson(e as Map<String, dynamic>))
           .toList(),
@@ -38,6 +41,7 @@ class PersonalSubOrder {
       'id': id,
       'sessionId': sessionId,
       'userId': userId,
+      'userName': userName,
       'entries': entries.map((e) => e.toJson()).toList(),
       'checklist': checklist.map((e) => e.toJson()).toList(),
       'locked': locked,
@@ -49,6 +53,7 @@ class PersonalSubOrder {
     String? id,
     String? sessionId,
     String? userId,
+    String? userName,
     List<SubOrderEntry>? entries,
     List<ChecklistEntry>? checklist,
     bool? locked,
@@ -58,6 +63,7 @@ class PersonalSubOrder {
       id: id ?? this.id,
       sessionId: sessionId ?? this.sessionId,
       userId: userId ?? this.userId,
+      userName: userName ?? this.userName,
       entries: entries ?? this.entries,
       checklist: checklist ?? this.checklist,
       locked: locked ?? this.locked,

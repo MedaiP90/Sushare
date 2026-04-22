@@ -39,6 +39,7 @@ class _NewSessionPageState extends ConsumerState<NewSessionPage> {
             name: _nameController.text.trim(),
             restaurantId: restaurantId,
             hostUserId: user.id,
+            hostUserName: '${user.firstName} ${user.lastName}'.trim(),
           );
 
       if (mounted) {

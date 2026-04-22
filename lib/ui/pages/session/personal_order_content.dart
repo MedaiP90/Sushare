@@ -19,7 +19,7 @@ class PersonalOrderContent extends ConsumerStatefulWidget {
 
 class _PersonalOrderContentState extends ConsumerState<PersonalOrderContent> {
   final _quantities = <String, int>{};
-  bool _initialized = false;
+  DateTime? _lastLoadedAt;
 
   @override
   Widget build(BuildContext context) {
@@ -46,16 +46,20 @@ class _PersonalOrderContentState extends ConsumerState<PersonalOrderContent> {
               return const Center(child: Text('Restaurant not found'));
             }
 
-            if (!_initialized) {
-              _initialized = true;
-              personalOrderAsync.whenData((order) {
+            personalOrderAsync.whenData((order) {
+              final orderUpdatedAt = order?.updatedAt;
+              final isNewer = _lastLoadedAt == null ||
+                  (orderUpdatedAt != null && orderUpdatedAt.isAfter(_lastLoadedAt!));
+              if (isNewer) {
+                _lastLoadedAt = orderUpdatedAt ?? DateTime.now();
+                _quantities.clear();
                 if (order != null) {
                   for (final entry in order.entries) {
                     _quantities[entry.menuItemId] = entry.quantity;
                   }
                 }
-              });
-            }
+              }
+            });
 
             final orderedItems = _quantities.entries
                 .where((e) => e.value > 0)
@@ -130,7 +134,7 @@ class _PersonalOrderContentState extends ConsumerState<PersonalOrderContent> {
                                               _quantities.remove(item.id);
                                             }
                                           });
-                                          await _saveOrder(context, user.id, restaurant.menu, silent: true);
+                                          await _saveOrder(context, user.id, restaurant.menu, silent: true, userName: '${user.firstName} ${user.lastName}'.trim());
                                         },
                                       ),
                                       SizedBox(
@@ -147,7 +151,7 @@ class _PersonalOrderContentState extends ConsumerState<PersonalOrderContent> {
                                           setState(() {
                                             _quantities[item.id] = (_quantities[item.id] ?? 0) + 1;
                                           });
-                                          await _saveOrder(context, user.id, restaurant.menu, silent: true);
+                                          await _saveOrder(context, user.id, restaurant.menu, silent: true, userName: '${user.firstName} ${user.lastName}'.trim());
                                         },
                                       ),
                                     ],
@@ -163,14 +167,14 @@ class _PersonalOrderContentState extends ConsumerState<PersonalOrderContent> {
                 children: [
                   FloatingActionButton.extended(
                     heroTag: 'addFromMenu',
-                    onPressed: () => _showAddFromMenuSheet(context, restaurant, user.id),
+                    onPressed: () => _showAddFromMenuSheet(context, restaurant, user.id, '${user.firstName} ${user.lastName}'.trim()),
                     icon: const Icon(Icons.restaurant_menu),
                     label: const Text('Menu'),
                   ),
                   const SizedBox(height: 12),
                   FloatingActionButton.extended(
                     heroTag: 'addCustom',
-                    onPressed: () => _showAddCustomDishSheet(context, restaurant, user.id),
+                    onPressed: () => _showAddCustomDishSheet(context, restaurant, user.id, '${user.firstName} ${user.lastName}'.trim()),
                     icon: const Icon(Icons.add),
                     label: const Text('Add Dish'),
                   ),
@@ -192,7 +196,7 @@ class _PersonalOrderContentState extends ConsumerState<PersonalOrderContent> {
     return item?.itemNumber;
   }
 
-  void _showAddFromMenuSheet(BuildContext context, Restaurant restaurant, String userId) {
+  void _showAddFromMenuSheet(BuildContext context, Restaurant restaurant, String userId, String userName) {
     final selectedIds = <String>{};
 
     showModalBottomSheet(
@@ -270,7 +274,7 @@ class _PersonalOrderContentState extends ConsumerState<PersonalOrderContent> {
                               }
                             });
                             final r = ref.read(restaurantDetailProvider(restaurant.id)).valueOrNull ?? restaurant;
-                            await _saveOrder(context, userId, r.menu);
+                            await _saveOrder(context, userId, r.menu, userName: userName);
                           }
                         : null,
                     child: Padding(
@@ -288,7 +292,7 @@ class _PersonalOrderContentState extends ConsumerState<PersonalOrderContent> {
     );
   }
 
-  Future<void> _showAddCustomDishSheet(BuildContext context, Restaurant restaurant, String userId) async {
+  Future<void> _showAddCustomDishSheet(BuildContext context, Restaurant restaurant, String userId, String userName) async {
     final nameController = TextEditingController();
     final descController = TextEditingController();
     final numberController = TextEditingController();
@@ -410,6 +414,7 @@ class _PersonalOrderContentState extends ConsumerState<PersonalOrderContent> {
             sessionId: widget.sessionId,
             userId: userId,
             entries: entries,
+            userName: userName,
           );
 
       ref.invalidate(subOrdersForSessionProvider(widget.sessionId));
@@ -423,7 +428,7 @@ class _PersonalOrderContentState extends ConsumerState<PersonalOrderContent> {
     }
   }
 
-  Future<void> _saveOrder(BuildContext context, String userId, List<MenuItem> menuItems, {bool silent = false}) async {
+  Future<void> _saveOrder(BuildContext context, String userId, List<MenuItem> menuItems, {bool silent = false, String? userName}) async {
     final entries = _quantities.entries
         .where((e) => e.value > 0)
         .map((e) {
@@ -440,6 +445,7 @@ class _PersonalOrderContentState extends ConsumerState<PersonalOrderContent> {
           sessionId: widget.sessionId,
           userId: userId,
           entries: entries,
+          userName: userName,
         );
 
     ref.invalidate(subOrdersForSessionProvider(widget.sessionId));

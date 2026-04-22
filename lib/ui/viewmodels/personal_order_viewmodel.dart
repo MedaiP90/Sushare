@@ -24,14 +24,16 @@ class PersonalOrderNotifier extends FamilyAsyncNotifier<PersonalSubOrder?, Strin
     required String sessionId,
     required String userId,
     required List<SubOrderEntry> entries,
+    String? userName,
   }) async {
     final repo = ref.read(personalSubOrderRepositoryProvider);
     final existing = await repo.getSubOrder(sessionId, userId);
-    
+
     final subOrder = PersonalSubOrder(
       id: existing?.id ?? const Uuid().v4(),
       sessionId: sessionId,
       userId: userId,
+      userName: userName ?? existing?.userName,
       entries: entries,
       checklist: [],
       locked: false,

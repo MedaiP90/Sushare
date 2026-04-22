@@ -21,10 +21,11 @@ class SessionsNotifier extends AsyncNotifier<List<Session>> {
     required String name,
     required String restaurantId,
     required String hostUserId,
+    String? hostUserName,
   }) async {
     final sessionRepo = ref.read(sessionRepositoryProvider);
     final subOrderRepo = ref.read(personalSubOrderRepositoryProvider);
-    
+
     final sessionId = const Uuid().v4();
     final session = Session(
       id: sessionId,
@@ -37,11 +38,12 @@ class SessionsNotifier extends AsyncNotifier<List<Session>> {
       createdAt: DateTime.now(),
     );
     await sessionRepo.saveSession(session);
-    
+
     final personalOrder = PersonalSubOrder(
       id: const Uuid().v4(),
       sessionId: sessionId,
       userId: hostUserId,
+      userName: hostUserName,
       entries: [],
       checklist: [],
       locked: false,

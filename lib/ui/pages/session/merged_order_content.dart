@@ -30,6 +30,8 @@ class MergedOrderContent extends ConsumerWidget {
         return subOrdersAsync.when(
           data: (subOrders) {
             final activeOrders = subOrders.where((o) => o.entries.isNotEmpty).toList();
+            final isHostOnly = session.participantIds.length == 1;
+            final allReady = isHostOnly || activeOrders.every((o) => o.locked);
 
             final allOrders = <_OrderWithLabel>[];
             if (session.mainOrder != null) {
@@ -45,8 +47,8 @@ class MergedOrderContent extends ConsumerWidget {
                 children: [
                   _buildParticipantsSection(context, subOrders, session),
                   const SizedBox(height: 24),
-                  if (session.status == SessionStatus.open && activeOrders.isNotEmpty) ...[
-                    if (activeOrders.any((o) => !o.locked))
+                  if (session.status == SessionStatus.open) ...[
+                    if (!isHostOnly && activeOrders.isNotEmpty && activeOrders.any((o) => !o.locked))
                       Card(
                         color: Theme.of(context).colorScheme.errorContainer,
                         child: Padding(
@@ -71,36 +73,10 @@ class MergedOrderContent extends ConsumerWidget {
                         ),
                       ),
                     const SizedBox(height: 16),
-                    if (activeOrders.every((o) => o.locked))
-                      _buildAggregatedOrder(context, activeOrders, 'Current Order'),
+                    _buildCurrentRound(context, activeOrders, allReady),
                   ],
-                  if (allOrders.isEmpty)
-                    Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const SizedBox(height: 48),
-                          Icon(
-                            Icons.hourglass_empty,
-                            size: 64,
-                            color: Theme.of(context).colorScheme.outline,
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            'No orders yet',
-                            style: Theme.of(context).textTheme.titleMedium,
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Participants will appear here when they add items',
-                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                                ),
-                          ),
-                        ],
-                      ),
-                    )
-                  else ...[
+                  if (allOrders.isNotEmpty) ...[
+                    if (session.status == SessionStatus.open) const SizedBox(height: 24),
                     for (int i = 0; i < allOrders.length; i++) ...[
                       if (i > 0) const SizedBox(height: 24),
                       _buildOrderSection(context, allOrders[i].label, allOrders[i].order),
@@ -126,7 +102,7 @@ class MergedOrderContent extends ConsumerWidget {
                           FloatingActionButton.extended(
                             heroTag: 'sendOrder',
                             onPressed: () {
-                              if (activeOrders.every((o) => o.locked)) {
+                              if (allReady) {
                                 _sendOrder(context, ref, session, activeOrders);
                               } else {
                                 ScaffoldMessenger.of(context).showSnackBar(
@@ -176,7 +152,8 @@ class MergedOrderContent extends ConsumerWidget {
           children: session.participantIds.map((participantId) {
             final subOrder = subOrders.where((s) => s.userId == participantId).firstOrNull;
             final hasOrdered = subOrder != null && subOrder.entries.isNotEmpty;
-            
+            final displayName = subOrder?.userName ?? participantId.substring(0, 6);
+
             return Chip(
               avatar: CircleAvatar(
                 backgroundColor: hasOrdered
@@ -185,9 +162,9 @@ class MergedOrderContent extends ConsumerWidget {
                 foregroundColor: hasOrdered
                     ? Theme.of(context).colorScheme.onPrimaryContainer
                     : Theme.of(context).colorScheme.onSurfaceVariant,
-                child: Text(participantId.substring(0, 1).toUpperCase()),
+                child: Text(displayName.substring(0, 1).toUpperCase()),
               ),
-              label: Text('User ${participantId.substring(0, 6)}'),
+              label: Text(displayName),
               backgroundColor: hasOrdered
                   ? Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.5)
                   : Theme.of(context).colorScheme.surfaceContainerHighest,
@@ -196,6 +173,31 @@ class MergedOrderContent extends ConsumerWidget {
         ),
       ],
     );
+  }
+
+  Widget _buildCurrentRound(BuildContext context, List<PersonalSubOrder> activeOrders, bool allReady) {
+    if (activeOrders.isEmpty) {
+      return Card(
+        color: Theme.of(context).colorScheme.surfaceContainerLow,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Icon(Icons.receipt_long, color: Theme.of(context).colorScheme.outline),
+              const SizedBox(width: 8),
+              Text(
+                'Current Order — empty',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Theme.of(context).colorScheme.outline,
+                    ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+    if (!allReady) return const SizedBox.shrink();
+    return _buildAggregatedOrder(context, activeOrders, 'Current Order');
   }
 
   Widget _buildAggregatedOrder(BuildContext context, List<PersonalSubOrder> subOrders, String label) {
@@ -322,8 +324,9 @@ class MergedOrderContent extends ConsumerWidget {
     await ref.read(sessionsProvider.notifier).updateSession(updated);
 
     for (final subOrder in subOrders) {
-      final lockedSubOrder = subOrder.copyWith(locked: true);
-      await ref.read(personalSubOrderRepositoryProvider).updateSubOrder(lockedSubOrder);
+      final clearedSubOrder = subOrder.copyWith(locked: true, entries: [], updatedAt: DateTime.now());
+      await ref.read(personalSubOrderRepositoryProvider).updateSubOrder(clearedSubOrder);
+      ref.invalidate(personalOrderProvider('${session.id}:${subOrder.userId}'));
     }
     ref.invalidate(subOrdersForSessionProvider(session.id));
     ref.invalidate(sessionDetailProvider(session.id));
@@ -403,7 +406,6 @@ class MergedOrderContent extends ConsumerWidget {
       final unlockedSubOrder = subOrder.copyWith(
         locked: false,
         entries: [],
-        checklist: [],
         updatedAt: DateTime.now(),
       );
       await ref.read(personalSubOrderRepositoryProvider).updateSubOrder(unlockedSubOrder);
