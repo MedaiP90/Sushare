@@ -174,7 +174,7 @@ class RestaurantDetailPage extends ConsumerWidget {
                                 .map((t) => _TemplateChip(
                                       label: '${t.label} (${t.entries.length})',
                                       onTap: () => _editTemplate(ref, restaurant, t),
-                                      onDelete: () => _deleteTemplate(ref, t),
+                                      onDelete: () => _deleteTemplate(context, ref, t),
                                     ))
                                 .toList(),
                           ),
@@ -278,10 +278,30 @@ class RestaurantDetailPage extends ConsumerWidget {
         );
   }
 
-  Future<void> _deleteTemplate(WidgetRef ref, SavedOrder template) async {
-    await ref
-        .read(savedOrderActionsProvider)
-        .deleteTemplate(template.id, template.restaurantId);
+  Future<void> _deleteTemplate(BuildContext context, WidgetRef ref, SavedOrder template) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Template'),
+        content: Text('Are you sure you want to delete "${template.label}"?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirm == true) {
+      await ref.read(savedOrderActionsProvider).deleteTemplate(template.id, template.restaurantId);
+    }
   }
 
   void _editTemplate(WidgetRef ref, Restaurant restaurant, SavedOrder template) {
@@ -307,9 +327,29 @@ class RestaurantDetailPage extends ConsumerWidget {
                 label: label,
                 entries: entries,
               );
-          await ref
-              .read(savedOrderActionsProvider)
-              .deleteTemplate(template.id, template.restaurantId);
+          final confirmDelete = await showDialog<bool>(
+            context: sheetContext,
+            builder: (ctx) => AlertDialog(
+              title: const Text('Replace Template'),
+              content: const Text('Do you also want to delete the old version?'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx, false),
+                  child: const Text('Keep'),
+                ),
+                FilledButton(
+                  onPressed: () => Navigator.pop(ctx, true),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: Theme.of(ctx).colorScheme.error,
+                  ),
+                  child: const Text('Delete'),
+                ),
+              ],
+            ),
+          );
+          if (confirmDelete == true) {
+            await ref.read(savedOrderActionsProvider).deleteTemplate(template.id, template.restaurantId);
+          }
           if (sheetContext.mounted) Navigator.pop(sheetContext);
         },
       ),
