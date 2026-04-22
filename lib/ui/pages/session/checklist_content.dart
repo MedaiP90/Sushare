@@ -63,7 +63,7 @@ class ChecklistContent extends ConsumerWidget {
 
         final allArrived = allOrders.every((o) =>
             o.order.items.every((item) {
-              final arrived = arrivedCounts[item.menuItemId] ?? 0;
+              final arrived = arrivedCounts['${o.label}:${item.menuItemId}'] ?? 0;
               return arrived >= item.quantity;
             }));
 
@@ -137,12 +137,12 @@ class ChecklistContent extends ConsumerWidget {
     );
   }
 
-  Future<void> _updateCount(WidgetRef ref, Session session, String menuItemId, int newCount) async {
+  Future<void> _updateCount(WidgetRef ref, Session session, String key, int newCount) async {
     final updated = Map<String, int>.from(session.arrivedCounts);
     if (newCount <= 0) {
-      updated.remove(menuItemId);
+      updated.remove(key);
     } else {
-      updated[menuItemId] = newCount;
+      updated[key] = newCount;
     }
     await ref.read(sessionsProvider.notifier).updateArrivedCounts(session.id, updated);
   }
@@ -181,7 +181,8 @@ class ChecklistContent extends ConsumerWidget {
             children: orderWithLabel.order.items.asMap().entries.map((entry) {
               final index = entry.key;
               final item = entry.value;
-              final arrived = arrivedCounts[item.menuItemId] ?? 0;
+              final countKey = '${orderWithLabel.label}:${item.menuItemId}';
+              final arrived = arrivedCounts[countKey] ?? 0;
               final total = item.quantity;
               final progress = arrived / total;
 
@@ -220,13 +221,13 @@ class ChecklistContent extends ConsumerWidget {
                               IconButton(
                                 icon: const Icon(Icons.remove_circle_outline),
                                 onPressed: arrived > 0
-                                    ? () => _updateCount(ref, session, item.menuItemId, arrived - 1)
+                                    ? () => _updateCount(ref, session, countKey, arrived - 1)
                                     : null,
                               ),
                               IconButton(
                                 icon: const Icon(Icons.add_circle_outline),
                                 onPressed: arrived < total
-                                    ? () => _updateCount(ref, session, item.menuItemId, arrived + 1)
+                                    ? () => _updateCount(ref, session, countKey, arrived + 1)
                                     : null,
                               ),
                             ],
