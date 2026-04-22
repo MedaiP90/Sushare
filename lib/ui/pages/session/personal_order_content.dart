@@ -691,7 +691,6 @@ class _SpeedDialState extends State<_SpeedDial> with SingleTickerProviderStateMi
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.end,
@@ -703,30 +702,14 @@ class _SpeedDialState extends State<_SpeedDial> with SingleTickerProviderStateMi
                 axisAlignment: 1.0,
                 child: Padding(
                   padding: const EdgeInsets.only(bottom: 12),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Material(
-                        elevation: 1,
-                        color: scheme.surfaceContainerHigh,
-                        borderRadius: BorderRadius.circular(8),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 6),
-                          child: Text(item.label,
-                              style: Theme.of(context).textTheme.labelLarge),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      FloatingActionButton.small(
-                        heroTag: 'dial_${item.label}',
-                        onPressed: () {
-                          _close();
-                          item.onTap();
-                        },
-                        child: Icon(item.icon),
-                      ),
-                    ],
+                  child: FloatingActionButton.extended(
+                    heroTag: 'dial_${item.label}',
+                    onPressed: () {
+                      _close();
+                      item.onTap();
+                    },
+                    icon: Icon(item.icon),
+                    label: Text(item.label),
                   ),
                 ),
               ),
