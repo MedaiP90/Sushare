@@ -217,8 +217,7 @@ class RestaurantDetailPage extends ConsumerWidget {
                       title: Row(
                         children: [
                           if (item.isYummie) ...[
-                            Icon(Icons.restaurant,
-                                size: 14, color: Colors.amber[700]),
+                            const Icon(Icons.restaurant, size: 14),
                             const SizedBox(width: 4),
                           ],
                           Expanded(child: Text(item.name)),
@@ -241,17 +240,7 @@ class RestaurantDetailPage extends ConsumerWidget {
                           const PopupMenuItem(value: 'edit', child: Text('Edit')),
                           PopupMenuItem(
                             value: 'yummie',
-                            child: Row(
-                              children: [
-                                Icon(Icons.restaurant,
-                                    size: 18,
-                                    color: item.isYummie
-                                        ? Colors.amber[700]
-                                        : Theme.of(context).colorScheme.onSurface),
-                                const SizedBox(width: 8),
-                                Text(item.isYummie ? 'Remove Yummie' : 'Mark as Yummie'),
-                              ],
-                            ),
+                            child: Text(item.isYummie ? 'Remove Yummie' : 'Mark as Yummie'),
                           ),
                           const PopupMenuItem(value: 'delete', child: Text('Delete')),
                         ],
@@ -504,7 +493,7 @@ class _AddTemplateSheetState extends State<_AddTemplateSheet> {
                     title: Row(
                       children: [
                         if (item.isYummie) ...[
-                          Icon(Icons.restaurant, size: 14, color: Colors.amber[700]),
+                          const Icon(Icons.restaurant, size: 14),
                           const SizedBox(width: 4),
                         ],
                         Expanded(child: Text(item.name)),

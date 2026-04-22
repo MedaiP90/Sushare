@@ -209,7 +209,7 @@ class ChecklistContent extends ConsumerWidget {
                     title: Row(
                       children: [
                         if (isYummie) ...[
-                          Icon(Icons.restaurant, size: 14, color: Colors.amber[700]),
+                          const Icon(Icons.restaurant, size: 14),
                           const SizedBox(width: 4),
                         ],
                         Expanded(
@@ -249,7 +249,7 @@ class ChecklistContent extends ConsumerWidget {
                             Icons.restaurant,
                             size: 20,
                             color: isYummie
-                                ? Colors.amber[700]
+                                ? Theme.of(context).colorScheme.primary
                                 : Theme.of(context).colorScheme.outlineVariant,
                           ),
                           tooltip: isYummie ? 'Remove Yummie' : 'Mark as Yummie',
