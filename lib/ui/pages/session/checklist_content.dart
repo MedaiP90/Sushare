@@ -1,24 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../domain/models/order.dart';
+import '../../../domain/models/session.dart';
 import '../../viewmodels/session_viewmodel.dart';
 import '../../viewmodels/profile_viewmodel.dart';
 
-class ChecklistContent extends ConsumerStatefulWidget {
+class ChecklistContent extends ConsumerWidget {
   final String sessionId;
 
   const ChecklistContent({super.key, required this.sessionId});
 
   @override
-  ConsumerState<ChecklistContent> createState() => _ChecklistContentState();
-}
-
-class _ChecklistContentState extends ConsumerState<ChecklistContent> {
-  final _arrivedCounts = <String, int>{};
-
-  @override
-  Widget build(BuildContext context) {
-    final sessionAsync = ref.watch(sessionDetailProvider(widget.sessionId));
+  Widget build(BuildContext context, WidgetRef ref) {
+    final sessionAsync = ref.watch(sessionDetailProvider(sessionId));
     final user = ref.watch(profileViewModelProvider).value;
 
     return sessionAsync.when(
@@ -28,6 +22,7 @@ class _ChecklistContentState extends ConsumerState<ChecklistContent> {
         }
 
         final isHost = user?.id == session.hostUserId;
+        final isEditable = session.status != SessionStatus.closed;
 
         if (session.mainOrder == null) {
           return Center(
@@ -64,9 +59,11 @@ class _ChecklistContentState extends ConsumerState<ChecklistContent> {
           allOrders.add(_OrderWithLabel(session.additionalOrders[i], 'Order ${i + 2}'));
         }
 
+        final arrivedCounts = session.arrivedCounts;
+
         final allArrived = allOrders.every((o) =>
             o.order.items.every((item) {
-              final arrived = _arrivedCounts[item.menuItemId] ?? 0;
+              final arrived = arrivedCounts['${o.label}:${item.menuItemId}'] ?? 0;
               return arrived >= item.quantity;
             }));
 
@@ -102,7 +99,7 @@ class _ChecklistContentState extends ConsumerState<ChecklistContent> {
               const SizedBox(height: 16),
               for (int i = 0; i < allOrders.length; i++) ...[
                 if (i > 0) const SizedBox(height: 24),
-                _buildOrderChecklist(context, isHost, allOrders[i]),
+                _buildOrderChecklist(context, ref, isHost && isEditable, allOrders[i], session, arrivedCounts),
               ],
               if (!isHost)
                 Padding(
@@ -140,7 +137,24 @@ class _ChecklistContentState extends ConsumerState<ChecklistContent> {
     );
   }
 
-  Widget _buildOrderChecklist(BuildContext context, bool isHost, _OrderWithLabel orderWithLabel) {
+  Future<void> _updateCount(WidgetRef ref, Session session, String key, int newCount) async {
+    final updated = Map<String, int>.from(session.arrivedCounts);
+    if (newCount <= 0) {
+      updated.remove(key);
+    } else {
+      updated[key] = newCount;
+    }
+    await ref.read(sessionsProvider.notifier).updateArrivedCounts(session.id, updated);
+  }
+
+  Widget _buildOrderChecklist(
+    BuildContext context,
+    WidgetRef ref,
+    bool isHost,
+    _OrderWithLabel orderWithLabel,
+    Session session,
+    Map<String, int> arrivedCounts,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -167,7 +181,8 @@ class _ChecklistContentState extends ConsumerState<ChecklistContent> {
             children: orderWithLabel.order.items.asMap().entries.map((entry) {
               final index = entry.key;
               final item = entry.value;
-              final arrived = _arrivedCounts[item.menuItemId] ?? 0;
+              final countKey = '${orderWithLabel.label}:${item.menuItemId}';
+              final arrived = arrivedCounts[countKey] ?? 0;
               final total = item.quantity;
               final progress = arrived / total;
 
@@ -206,21 +221,13 @@ class _ChecklistContentState extends ConsumerState<ChecklistContent> {
                               IconButton(
                                 icon: const Icon(Icons.remove_circle_outline),
                                 onPressed: arrived > 0
-                                    ? () {
-                                        setState(() {
-                                          _arrivedCounts[item.menuItemId] = arrived - 1;
-                                        });
-                                      }
+                                    ? () => _updateCount(ref, session, countKey, arrived - 1)
                                     : null,
                               ),
                               IconButton(
                                 icon: const Icon(Icons.add_circle_outline),
                                 onPressed: arrived < total
-                                    ? () {
-                                        setState(() {
-                                          _arrivedCounts[item.menuItemId] = arrived + 1;
-                                        });
-                                      }
+                                    ? () => _updateCount(ref, session, countKey, arrived + 1)
                                     : null,
                               ),
                             ],

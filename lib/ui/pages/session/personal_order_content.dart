@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 import '../../../domain/models/restaurant.dart';
 import '../../../domain/models/personal_sub_order.dart';
+import '../../../domain/models/session.dart';
 import '../../viewmodels/session_viewmodel.dart';
 import '../../viewmodels/restaurant_viewmodel.dart';
 import '../../viewmodels/profile_viewmodel.dart';
@@ -19,7 +20,7 @@ class PersonalOrderContent extends ConsumerStatefulWidget {
 
 class _PersonalOrderContentState extends ConsumerState<PersonalOrderContent> {
   final _quantities = <String, int>{};
-  bool _initialized = false;
+  DateTime? _lastLoadedAt;
 
   @override
   Widget build(BuildContext context) {
@@ -46,16 +47,20 @@ class _PersonalOrderContentState extends ConsumerState<PersonalOrderContent> {
               return const Center(child: Text('Restaurant not found'));
             }
 
-            if (!_initialized) {
-              _initialized = true;
-              personalOrderAsync.whenData((order) {
+            personalOrderAsync.whenData((order) {
+              final orderUpdatedAt = order?.updatedAt;
+              final isNewer = _lastLoadedAt == null ||
+                  (orderUpdatedAt != null && orderUpdatedAt.isAfter(_lastLoadedAt!));
+              if (isNewer) {
+                _lastLoadedAt = orderUpdatedAt ?? DateTime.now();
+                _quantities.clear();
                 if (order != null) {
                   for (final entry in order.entries) {
                     _quantities[entry.menuItemId] = entry.quantity;
                   }
                 }
-              });
-            }
+              }
+            });
 
             final orderedItems = _quantities.entries
                 .where((e) => e.value > 0)
@@ -72,6 +77,7 @@ class _PersonalOrderContentState extends ConsumerState<PersonalOrderContent> {
                 .toList();
 
             final totalItems = _quantities.values.fold(0, (a, b) => a + b);
+            final isEditable = session.status != SessionStatus.closed;
 
             return Scaffold(
               body: orderedItems.isEmpty
@@ -111,76 +117,78 @@ class _PersonalOrderContentState extends ConsumerState<PersonalOrderContent> {
                           ...orderedItems.map((item) => Card(
                                 margin: const EdgeInsets.only(bottom: 8),
                                 child: ListTile(
-                                  leading: item.isCustom
-                                      ? CircleAvatar(
-                                          radius: 14,
-                                          backgroundColor: Theme.of(context).colorScheme.tertiaryContainer,
-                                          child: const Icon(Icons.add, size: 14),
-                                        )
-                                      : CircleAvatar(
-                                          radius: 14,
-                                          backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-                                          child: Text('${_getItemNumber(restaurant, item.id)}'),
-                                        ),
+                                  leading: CircleAvatar(
+                                    backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                                    child: Text('${_getItemNumber(restaurant, item.id) ?? '-'}'),
+                                  ),
                                   title: Text(item.name),
-                                  trailing: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      IconButton(
-                                        icon: const Icon(Icons.remove),
-                                        onPressed: () {
-                                          setState(() {
-                                            final qty = _quantities[item.id] ?? 0;
-                                            if (qty > 1) {
-                                              _quantities[item.id] = qty - 1;
-                                            } else {
-                                              _quantities.remove(item.id);
-                                            }
-                                          });
-                                        },
-                                      ),
-                                      SizedBox(
-                                        width: 32,
-                                        child: Text(
-                                          '${item.quantity}',
-                                          textAlign: TextAlign.center,
+                                  trailing: isEditable
+                                      ? Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            IconButton(
+                                              icon: const Icon(Icons.remove),
+                                              onPressed: () async {
+                                                final qty = _quantities[item.id] ?? 0;
+                                                setState(() {
+                                                  if (qty > 1) {
+                                                    _quantities[item.id] = qty - 1;
+                                                  } else {
+                                                    _quantities.remove(item.id);
+                                                  }
+                                                });
+                                                await _saveOrder(context, user.id, restaurant.menu, silent: true, userName: user.username, userFullName: '${user.firstName} ${user.lastName}'.trim(), userProfilePicturePath: user.profilePicturePath);
+                                              },
+                                            ),
+                                            SizedBox(
+                                              width: 32,
+                                              child: Text(
+                                                '${item.quantity}',
+                                                textAlign: TextAlign.center,
+                                                style: Theme.of(context).textTheme.titleMedium,
+                                              ),
+                                            ),
+                                            IconButton(
+                                              icon: const Icon(Icons.add),
+                                              onPressed: () async {
+                                                setState(() {
+                                                  _quantities[item.id] = (_quantities[item.id] ?? 0) + 1;
+                                                });
+                                                await _saveOrder(context, user.id, restaurant.menu, silent: true, userName: user.username, userFullName: '${user.firstName} ${user.lastName}'.trim(), userProfilePicturePath: user.profilePicturePath);
+                                              },
+                                            ),
+                                          ],
+                                        )
+                                      : Text(
+                                          'x${item.quantity}',
                                           style: Theme.of(context).textTheme.titleMedium,
                                         ),
-                                      ),
-                                      IconButton(
-                                        icon: const Icon(Icons.add),
-                                        onPressed: () {
-                                          setState(() {
-                                            _quantities[item.id] = (_quantities[item.id] ?? 0) + 1;
-                                          });
-                                        },
-                                      ),
-                                    ],
-                                  ),
                                 ),
                               )),
                         ],
                       ],
                     ),
-              floatingActionButton: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  FloatingActionButton.extended(
-                    heroTag: 'addFromMenu',
-                    onPressed: () => _showAddFromMenuSheet(context, restaurant, user.id),
-                    icon: const Icon(Icons.restaurant_menu),
-                    label: const Text('Menu'),
-                  ),
-                  const SizedBox(height: 12),
-                  FloatingActionButton.extended(
-                    heroTag: 'addCustom',
-                    onPressed: () => _showAddCustomDishSheet(context, restaurant, user.id),
-                    icon: const Icon(Icons.add),
-                    label: const Text('Add Dish'),
-                  ),
-                ],
-              ),
+              floatingActionButton: isEditable
+                  ? Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        FloatingActionButton.extended(
+                          heroTag: 'addFromMenu',
+                          onPressed: () => _showAddFromMenuSheet(context, restaurant, user.id, user.username, '${user.firstName} ${user.lastName}'.trim(), user.profilePicturePath),
+                          icon: const Icon(Icons.restaurant_menu),
+                          label: const Text('Menu'),
+                        ),
+                        const SizedBox(height: 12),
+                        FloatingActionButton.extended(
+                          heroTag: 'addCustom',
+                          onPressed: () => _showAddCustomDishSheet(context, restaurant, user.id, user.username, '${user.firstName} ${user.lastName}'.trim(), user.profilePicturePath),
+                          icon: const Icon(Icons.add),
+                          label: const Text('Add Dish'),
+                        ),
+                      ],
+                    )
+                  : null,
             );
           },
           loading: () => const Center(child: CircularProgressIndicator()),
@@ -197,106 +205,90 @@ class _PersonalOrderContentState extends ConsumerState<PersonalOrderContent> {
     return item?.itemNumber;
   }
 
-  void _showAddFromMenuSheet(BuildContext context, Restaurant restaurant, String userId) {
+  void _showAddFromMenuSheet(BuildContext context, Restaurant restaurant, String userId, String userName, String userFullName, String? userProfilePicturePath) {
+    final selectedIds = <String>{};
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      builder: (context) => DraggableScrollableSheet(
-        initialChildSize: 0.7,
-        minChildSize: 0.5,
-        maxChildSize: 0.95,
-        expand: false,
-        builder: (context, scrollController) {
-          final currentRestaurant = ref.read(restaurantDetailProvider(restaurant.id)).valueOrNull ?? restaurant;
-          final sortedMenu = List<MenuItem>.from(currentRestaurant.menu)
-            ..sort((a, b) => (a.itemNumber ?? 0).compareTo(b.itemNumber ?? 0));
+      builder: (context) => StatefulBuilder(
+        builder: (context, setSheetState) => DraggableScrollableSheet(
+          initialChildSize: 0.7,
+          minChildSize: 0.5,
+          maxChildSize: 0.95,
+          expand: false,
+          builder: (context, scrollController) {
+            final currentRestaurant = ref.read(restaurantDetailProvider(restaurant.id)).valueOrNull ?? restaurant;
+            final sortedMenu = List<MenuItem>.from(currentRestaurant.menu)
+              ..sort((a, b) => (a.itemNumber ?? 0).compareTo(b.itemNumber ?? 0));
 
-          return Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  children: [
-                    Text(
-                      'Add from Menu',
-                      style: Theme.of(context).textTheme.titleLarge,
-                    ),
-                    const Spacer(),
-                    IconButton(
-                      onPressed: () => Navigator.pop(context),
-                      icon: const Icon(Icons.close),
-                    ),
-                  ],
+            return Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    children: [
+                      Text(
+                        'Add from Menu',
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
+                      const Spacer(),
+                      IconButton(
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(Icons.close),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              const Divider(),
-              Expanded(
-                child: ListView.builder(
-                  controller: scrollController,
-                  itemCount: sortedMenu.length,
-                  itemBuilder: (context, index) {
-                    final item = sortedMenu[index];
-                    final quantity = _quantities[item.id] ?? 0;
+                const Divider(),
+                Expanded(
+                  child: ListView.builder(
+                    controller: scrollController,
+                    itemCount: sortedMenu.length,
+                    itemBuilder: (context, index) {
+                      final item = sortedMenu[index];
+                      final isSelected = selectedIds.contains(item.id);
 
-                    return ListTile(
-                      leading: CircleAvatar(
-                        backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-                        child: Text('${item.itemNumber ?? '-'}'),
-                      ),
-                      title: Text(item.name),
-                      subtitle: item.description != null ? Text(item.description!) : null,
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          IconButton(
-                            icon: const Icon(Icons.remove_circle_outline),
-                            onPressed: quantity > 0
-                                ? () {
-                                    setState(() {
-                                      if (quantity > 1) {
-                                        _quantities[item.id] = quantity - 1;
-                                      } else {
-                                        _quantities.remove(item.id);
-                                      }
-                                    });
-                                  }
-                                : null,
-                          ),
-                          SizedBox(
-                            width: 32,
-                            child: Text(
-                              '$quantity',
-                              textAlign: TextAlign.center,
-                              style: Theme.of(context).textTheme.titleMedium,
-                            ),
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.add_circle_outline),
-                            onPressed: () {
-                              setState(() {
-                                _quantities[item.id] = quantity + 1;
-                              });
-                            },
-                          ),
-                        ],
-                      ),
-                    );
-                  },
+                      return CheckboxListTile(
+                        value: isSelected,
+                        onChanged: (checked) {
+                          setSheetState(() {
+                            if (checked == true) {
+                              selectedIds.add(item.id);
+                            } else {
+                              selectedIds.remove(item.id);
+                            }
+                          });
+                        },
+                        secondary: CircleAvatar(
+                          backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                          child: Text('${item.itemNumber ?? '-'}'),
+                        ),
+                        title: Text(item.name),
+                        subtitle: item.description != null ? Text(item.description!) : null,
+                      );
+                    },
+                  ),
                 ),
-              ),
               SafeArea(
                 child: Padding(
                   padding: const EdgeInsets.all(16),
                   child: FilledButton(
-                    onPressed: _quantities.values.any((q) => q > 0)
+                    onPressed: selectedIds.isNotEmpty
                         ? () async {
+                            Navigator.pop(context);
+                            setState(() {
+                              for (final id in selectedIds) {
+                                _quantities[id] = (_quantities[id] ?? 0) + 1;
+                              }
+                            });
                             final r = ref.read(restaurantDetailProvider(restaurant.id)).valueOrNull ?? restaurant;
-                            await _saveOrder(context, userId, r.menu);
+                            await _saveOrder(context, userId, r.menu, userName: userName, userFullName: userFullName, userProfilePicturePath: userProfilePicturePath);
                           }
                         : null,
                     child: Padding(
                       padding: const EdgeInsets.all(16),
-                      child: Text('Add ${_quantities.values.where((q) => q > 0).length} items'),
+                      child: Text('Add ${selectedIds.length} items'),
                     ),
                   ),
                 ),
@@ -305,10 +297,11 @@ class _PersonalOrderContentState extends ConsumerState<PersonalOrderContent> {
           );
         },
       ),
+    ),
     );
   }
 
-  Future<void> _showAddCustomDishSheet(BuildContext context, Restaurant restaurant, String userId) async {
+  Future<void> _showAddCustomDishSheet(BuildContext context, Restaurant restaurant, String userId, String userName, String userFullName, String? userProfilePicturePath) async {
     final nameController = TextEditingController();
     final descController = TextEditingController();
     final numberController = TextEditingController();
@@ -391,7 +384,11 @@ class _PersonalOrderContentState extends ConsumerState<PersonalOrderContent> {
 
     if (result != null && mounted) {
       final dishId = const Uuid().v4();
-      final number = result['number']!.isEmpty ? null : int.tryParse(result['number']!);
+      final currentRestaurantForNum = ref.read(restaurantDetailProvider(restaurant.id)).valueOrNull ?? restaurant;
+      final maxNumber = currentRestaurantForNum.menu
+          .map((m) => m.itemNumber ?? 0)
+          .fold(0, (a, b) => a > b ? a : b);
+      final number = result['number']!.isEmpty ? maxNumber + 1 : int.tryParse(result['number']!);
 
       final newItem = MenuItem(
         id: dishId,
@@ -400,9 +397,8 @@ class _PersonalOrderContentState extends ConsumerState<PersonalOrderContent> {
         itemNumber: number,
       );
 
-      final currentRestaurant = ref.read(restaurantDetailProvider(restaurant.id)).valueOrNull ?? restaurant;
-      final updatedRestaurant = currentRestaurant.copyWith(
-        menu: [...currentRestaurant.menu, newItem],
+      final updatedRestaurant = currentRestaurantForNum.copyWith(
+        menu: [...currentRestaurantForNum.menu, newItem],
       );
 
       await ref.read(restaurantsProvider.notifier).updateRestaurant(updatedRestaurant);
@@ -427,6 +423,9 @@ class _PersonalOrderContentState extends ConsumerState<PersonalOrderContent> {
             sessionId: widget.sessionId,
             userId: userId,
             entries: entries,
+            userName: userName,
+          userFullName: userFullName,
+          userProfilePicturePath: userProfilePicturePath,
           );
 
       ref.invalidate(subOrdersForSessionProvider(widget.sessionId));
@@ -440,7 +439,7 @@ class _PersonalOrderContentState extends ConsumerState<PersonalOrderContent> {
     }
   }
 
-  Future<void> _saveOrder(BuildContext context, String userId, List<MenuItem> menuItems) async {
+  Future<void> _saveOrder(BuildContext context, String userId, List<MenuItem> menuItems, {bool silent = false, String? userName, String? userFullName, String? userProfilePicturePath}) async {
     final entries = _quantities.entries
         .where((e) => e.value > 0)
         .map((e) {
@@ -457,12 +456,15 @@ class _PersonalOrderContentState extends ConsumerState<PersonalOrderContent> {
           sessionId: widget.sessionId,
           userId: userId,
           entries: entries,
+          userName: userName,
+          userFullName: userFullName,
+          userProfilePicturePath: userProfilePicturePath,
         );
 
     ref.invalidate(subOrdersForSessionProvider(widget.sessionId));
     ref.invalidate(sessionDetailProvider(widget.sessionId));
 
-    if (context.mounted) {
+    if (!silent && context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Order saved with ${entries.length} items')),
       );

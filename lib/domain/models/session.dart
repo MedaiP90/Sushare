@@ -11,6 +11,7 @@ class Session {
   final SessionStatus status;
   final Order? mainOrder;
   final List<Order> additionalOrders;
+  final Map<String, int> arrivedCounts;
   final DateTime createdAt;
   final DateTime? sentAt;
 
@@ -23,6 +24,7 @@ class Session {
     required this.status,
     this.mainOrder,
     required this.additionalOrders,
+    this.arrivedCounts = const {},
     required this.createdAt,
     this.sentAt,
   });
@@ -46,6 +48,9 @@ class Session {
       additionalOrders: (json['additionalOrders'] as List<dynamic>)
           .map((e) => Order.fromJson(e as Map<String, dynamic>))
           .toList(),
+      arrivedCounts: (json['arrivedCounts'] as Map<String, dynamic>?)
+              ?.map((k, v) => MapEntry(k, v as int)) ??
+          {},
       createdAt: DateTime.parse(json['createdAt'] as String),
       sentAt: json['sentAt'] != null
           ? DateTime.parse(json['sentAt'] as String)
@@ -63,6 +68,7 @@ class Session {
       'status': status.name,
       'mainOrder': mainOrder?.toJson(),
       'additionalOrders': additionalOrders.map((e) => e.toJson()).toList(),
+      'arrivedCounts': arrivedCounts,
       'createdAt': createdAt.toIso8601String(),
       'sentAt': sentAt?.toIso8601String(),
     };
@@ -77,6 +83,7 @@ class Session {
     SessionStatus? status,
     Order? mainOrder,
     List<Order>? additionalOrders,
+    Map<String, int>? arrivedCounts,
     DateTime? createdAt,
     DateTime? sentAt,
   }) {
@@ -89,6 +96,7 @@ class Session {
       status: status ?? this.status,
       mainOrder: mainOrder ?? this.mainOrder,
       additionalOrders: additionalOrders ?? this.additionalOrders,
+      arrivedCounts: arrivedCounts ?? this.arrivedCounts,
       createdAt: createdAt ?? this.createdAt,
       sentAt: sentAt ?? this.sentAt,
     );
