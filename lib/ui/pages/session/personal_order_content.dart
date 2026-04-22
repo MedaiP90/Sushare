@@ -113,12 +113,10 @@ class _PersonalOrderContentState extends ConsumerState<PersonalOrderContent> {
                                 child: ListTile(
                                   leading: item.isCustom
                                       ? CircleAvatar(
-                                          radius: 14,
                                           backgroundColor: Theme.of(context).colorScheme.tertiaryContainer,
                                           child: const Icon(Icons.add, size: 14),
                                         )
                                       : CircleAvatar(
-                                          radius: 14,
                                           backgroundColor: Theme.of(context).colorScheme.primaryContainer,
                                           child: Text('${_getItemNumber(restaurant, item.id)}'),
                                         ),
@@ -198,105 +196,89 @@ class _PersonalOrderContentState extends ConsumerState<PersonalOrderContent> {
   }
 
   void _showAddFromMenuSheet(BuildContext context, Restaurant restaurant, String userId) {
+    final selectedIds = <String>{};
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      builder: (context) => DraggableScrollableSheet(
-        initialChildSize: 0.7,
-        minChildSize: 0.5,
-        maxChildSize: 0.95,
-        expand: false,
-        builder: (context, scrollController) {
-          final currentRestaurant = ref.read(restaurantDetailProvider(restaurant.id)).valueOrNull ?? restaurant;
-          final sortedMenu = List<MenuItem>.from(currentRestaurant.menu)
-            ..sort((a, b) => (a.itemNumber ?? 0).compareTo(b.itemNumber ?? 0));
+      builder: (context) => StatefulBuilder(
+        builder: (context, setSheetState) => DraggableScrollableSheet(
+          initialChildSize: 0.7,
+          minChildSize: 0.5,
+          maxChildSize: 0.95,
+          expand: false,
+          builder: (context, scrollController) {
+            final currentRestaurant = ref.read(restaurantDetailProvider(restaurant.id)).valueOrNull ?? restaurant;
+            final sortedMenu = List<MenuItem>.from(currentRestaurant.menu)
+              ..sort((a, b) => (a.itemNumber ?? 0).compareTo(b.itemNumber ?? 0));
 
-          return Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  children: [
-                    Text(
-                      'Add from Menu',
-                      style: Theme.of(context).textTheme.titleLarge,
-                    ),
-                    const Spacer(),
-                    IconButton(
-                      onPressed: () => Navigator.pop(context),
-                      icon: const Icon(Icons.close),
-                    ),
-                  ],
+            return Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    children: [
+                      Text(
+                        'Add from Menu',
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
+                      const Spacer(),
+                      IconButton(
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(Icons.close),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              const Divider(),
-              Expanded(
-                child: ListView.builder(
-                  controller: scrollController,
-                  itemCount: sortedMenu.length,
-                  itemBuilder: (context, index) {
-                    final item = sortedMenu[index];
-                    final quantity = _quantities[item.id] ?? 0;
+                const Divider(),
+                Expanded(
+                  child: ListView.builder(
+                    controller: scrollController,
+                    itemCount: sortedMenu.length,
+                    itemBuilder: (context, index) {
+                      final item = sortedMenu[index];
+                      final isSelected = selectedIds.contains(item.id);
 
-                    return ListTile(
-                      leading: CircleAvatar(
-                        backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-                        child: Text('${item.itemNumber ?? '-'}'),
-                      ),
-                      title: Text(item.name),
-                      subtitle: item.description != null ? Text(item.description!) : null,
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          IconButton(
-                            icon: const Icon(Icons.remove_circle_outline),
-                            onPressed: quantity > 0
-                                ? () {
-                                    setState(() {
-                                      if (quantity > 1) {
-                                        _quantities[item.id] = quantity - 1;
-                                      } else {
-                                        _quantities.remove(item.id);
-                                      }
-                                    });
-                                  }
-                                : null,
-                          ),
-                          SizedBox(
-                            width: 32,
-                            child: Text(
-                              '$quantity',
-                              textAlign: TextAlign.center,
-                              style: Theme.of(context).textTheme.titleMedium,
-                            ),
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.add_circle_outline),
-                            onPressed: () {
-                              setState(() {
-                                _quantities[item.id] = quantity + 1;
-                              });
-                            },
-                          ),
-                        ],
-                      ),
-                    );
-                  },
+                      return CheckboxListTile(
+                        value: isSelected,
+                        onChanged: (checked) {
+                          setSheetState(() {
+                            if (checked == true) {
+                              selectedIds.add(item.id);
+                            } else {
+                              selectedIds.remove(item.id);
+                            }
+                          });
+                        },
+                        secondary: CircleAvatar(
+                          backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                          child: Text('${item.itemNumber ?? '-'}'),
+                        ),
+                        title: Text(item.name),
+                        subtitle: item.description != null ? Text(item.description!) : null,
+                      );
+                    },
+                  ),
                 ),
-              ),
               SafeArea(
                 child: Padding(
                   padding: const EdgeInsets.all(16),
                   child: FilledButton(
-                    onPressed: _quantities.values.any((q) => q > 0)
+                    onPressed: selectedIds.isNotEmpty
                         ? () async {
+                            Navigator.pop(context);
+                            setState(() {
+                              for (final id in selectedIds) {
+                                _quantities[id] = (_quantities[id] ?? 0) + 1;
+                              }
+                            });
                             final r = ref.read(restaurantDetailProvider(restaurant.id)).valueOrNull ?? restaurant;
                             await _saveOrder(context, userId, r.menu);
                           }
                         : null,
                     child: Padding(
                       padding: const EdgeInsets.all(16),
-                      child: Text('Add ${_quantities.values.where((q) => q > 0).length} items'),
+                      child: Text('Add ${selectedIds.length} items'),
                     ),
                   ),
                 ),
@@ -305,6 +287,7 @@ class _PersonalOrderContentState extends ConsumerState<PersonalOrderContent> {
           );
         },
       ),
+    ),
     );
   }
 
