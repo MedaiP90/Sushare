@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 import '../../../domain/models/restaurant.dart';
 import '../../../domain/models/personal_sub_order.dart';
-import '../../../domain/repositories/restaurant_repository.dart';
 import '../../viewmodels/session_viewmodel.dart';
 import '../../viewmodels/restaurant_viewmodel.dart';
 import '../../viewmodels/profile_viewmodel.dart';
@@ -34,7 +33,7 @@ class _PersonalOrderContentState extends ConsumerState<PersonalOrderContent> {
     return sessionAsync.when(
       data: (session) {
         if (session == null) {
-          return const Center(child: Text('Session not found'));
+          return const Center(child: Text('Table not found'));
         }
 
         final restaurantAsync = ref.watch(restaurantDetailProvider(session.restaurantId));
@@ -402,13 +401,12 @@ class _PersonalOrderContentState extends ConsumerState<PersonalOrderContent> {
         itemNumber: number,
       );
 
-      final updatedRestaurant = restaurant.copyWith(
-        menu: [...restaurant.menu, newItem],
+      final currentRestaurant = ref.read(restaurantDetailProvider(restaurant.id)).valueOrNull ?? restaurant;
+      final updatedRestaurant = currentRestaurant.copyWith(
+        menu: [...currentRestaurant.menu, newItem],
       );
 
-      final repo = RestaurantRepository();
-      await repo.saveRestaurant(updatedRestaurant);
-      ref.invalidate(restaurantDetailProvider(restaurant.id));
+      await ref.read(restaurantsProvider.notifier).updateRestaurant(updatedRestaurant);
 
       setState(() {
         _quantities[dishId] = 1;

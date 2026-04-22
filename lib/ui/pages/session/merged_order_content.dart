@@ -21,7 +21,7 @@ class MergedOrderContent extends ConsumerWidget {
     return sessionAsync.when(
       data: (session) {
         if (session == null) {
-          return const Center(child: Text('Session not found'));
+          return const Center(child: Text('Table not found'));
         }
 
         final isHost = user?.id == session.hostUserId;

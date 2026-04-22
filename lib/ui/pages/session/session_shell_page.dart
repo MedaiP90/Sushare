@@ -31,7 +31,7 @@ class _SessionShellPageState extends ConsumerState<SessionShellPage> {
         if (session == null) {
           return Scaffold(
             appBar: AppBar(),
-            body: const Center(child: Text('Session not found')),
+            body: const Center(child: Text('Table not found')),
           );
         }
 
@@ -57,14 +57,14 @@ class _SessionShellPageState extends ConsumerState<SessionShellPage> {
                 IconButton(
                   onPressed: () => _showShareSheet(context),
                   icon: const Icon(Icons.share),
-                  tooltip: 'Share session',
+                  tooltip: 'Share table',
                 ),
               PopupMenuButton<String>(
                 onSelected: (value) async {
                   if (value == 'close') {
                     final confirm = await _showConfirmSheet(
                       context,
-                      'Close Session',
+                      'Close Table',
                       'Are you sure? Participants won\'t be able to join or order.',
                       'Close',
                     );
@@ -74,8 +74,8 @@ class _SessionShellPageState extends ConsumerState<SessionShellPage> {
                   } else if (value == 'delete') {
                     final confirm = await _showConfirmSheet(
                       context,
-                      'Delete Session',
-                      'Are you sure you want to delete this session?',
+                      'Delete Table',
+                      'Are you sure you want to delete this table?',
                       'Delete',
                       isDestructive: true,
                     );
@@ -87,7 +87,7 @@ class _SessionShellPageState extends ConsumerState<SessionShellPage> {
                 },
                 itemBuilder: (context) => [
                   const PopupMenuItem(value: 'close', child: Text('Close for new participants')),
-                  const PopupMenuItem(value: 'delete', child: Text('Delete session')),
+                  const PopupMenuItem(value: 'delete', child: Text('Delete table')),
                 ],
               ),
             ],
