@@ -6,7 +6,10 @@ import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
 import '../../../domain/models/restaurant.dart';
+import '../../../domain/models/saved_order.dart';
+import '../../../domain/models/personal_sub_order.dart';
 import '../../viewmodels/restaurant_viewmodel.dart';
+import '../../viewmodels/saved_order_viewmodel.dart';
 
 class RestaurantDetailPage extends ConsumerWidget {
   final String restaurantId;
@@ -16,6 +19,7 @@ class RestaurantDetailPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final restaurantAsync = ref.watch(restaurantDetailProvider(restaurantId));
+    final templatesAsync = ref.watch(savedOrdersForRestaurantProvider(restaurantId));
 
     return restaurantAsync.when(
       data: (restaurant) {
@@ -27,7 +31,11 @@ class RestaurantDetailPage extends ConsumerWidget {
         }
 
         final sortedMenu = List<MenuItem>.from(restaurant.menu)
-          ..sort((a, b) => (a.itemNumber ?? 0).compareTo(b.itemNumber ?? 0));
+          ..sort((a, b) {
+            if (a.isYummie && !b.isYummie) return -1;
+            if (!a.isYummie && b.isYummie) return 1;
+            return (a.itemNumber ?? 0).compareTo(b.itemNumber ?? 0);
+          });
 
         return Scaffold(
           body: CustomScrollView(
@@ -58,22 +66,17 @@ class RestaurantDetailPage extends ConsumerWidget {
                             File(restaurant.coverImagePath!),
                             fit: BoxFit.cover,
                             errorBuilder: (_, __, ___) => Container(
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .primaryContainer,
+                              color: Theme.of(context).colorScheme.primaryContainer,
                               child: const Icon(Icons.restaurant, size: 64),
                             ),
                           ),
                         )
                       : Container(
-                          color:
-                              Theme.of(context).colorScheme.primaryContainer,
+                          color: Theme.of(context).colorScheme.primaryContainer,
                           child: Icon(
                             Icons.restaurant,
                             size: 64,
-                            color: Theme.of(context)
-                                .colorScheme
-                                .onPrimaryContainer,
+                            color: Theme.of(context).colorScheme.onPrimaryContainer,
                           ),
                         ),
                 ),
@@ -91,16 +94,13 @@ class RestaurantDetailPage extends ConsumerWidget {
                                 'Are you sure you want to delete "${restaurant.name}"?'),
                             actions: [
                               TextButton(
-                                onPressed: () =>
-                                    Navigator.pop(context, false),
+                                onPressed: () => Navigator.pop(context, false),
                                 child: const Text('Cancel'),
                               ),
                               FilledButton(
-                                onPressed: () =>
-                                    Navigator.pop(context, true),
+                                onPressed: () => Navigator.pop(context, true),
                                 style: FilledButton.styleFrom(
-                                  backgroundColor:
-                                      Theme.of(context).colorScheme.error,
+                                  backgroundColor: Theme.of(context).colorScheme.error,
                                 ),
                                 child: const Text('Delete'),
                               ),
@@ -108,17 +108,14 @@ class RestaurantDetailPage extends ConsumerWidget {
                           ),
                         );
                         if (confirm == true && context.mounted) {
-                          await ref
-                              .read(restaurantsProvider.notifier)
-                              .deleteRestaurant(restaurantId);
+                          await ref.read(restaurantsProvider.notifier).deleteRestaurant(restaurantId);
                           if (context.mounted) context.pop();
                         }
                       }
                     },
                     itemBuilder: (context) => [
                       const PopupMenuItem(value: 'edit', child: Text('Edit')),
-                      const PopupMenuItem(
-                          value: 'delete', child: Text('Delete')),
+                      const PopupMenuItem(value: 'delete', child: Text('Delete')),
                     ],
                   ),
                 ],
@@ -130,29 +127,73 @@ class RestaurantDetailPage extends ConsumerWidget {
                     child: Row(
                       children: [
                         Icon(Icons.location_on_outlined,
-                            color:
-                                Theme.of(context).colorScheme.outline),
+                            color: Theme.of(context).colorScheme.outline),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(restaurant.address!,
-                              style:
-                                  Theme.of(context).textTheme.bodyLarge),
+                              style: Theme.of(context).textTheme.bodyLarge),
                         ),
                       ],
                     ),
                   ),
                 ),
+              // ── Templates section ──────────────────────────────────────────
               SliverToBoxAdapter(
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
                   child: Row(
                     children: [
-                      Text('Menu',
+                      Text('Order Templates',
                           style: Theme.of(context).textTheme.titleLarge),
                       const Spacer(),
                       FilledButton.tonalIcon(
                         onPressed: () =>
-                            context.push('/scan-menu/$restaurantId'),
+                            _showAddTemplateSheet(context, ref, restaurant),
+                        icon: const Icon(Icons.add),
+                        label: const Text('Add'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                  child: templatesAsync.when(
+                    data: (templates) => templates.isEmpty
+                        ? Text(
+                            'No templates yet. Add one here or save from a personal order.',
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  color: Theme.of(context).colorScheme.outline,
+                                ),
+                          )
+                        : Wrap(
+                            spacing: 8,
+                            runSpacing: 4,
+                            children: templates
+                                .map((t) => Chip(
+                                      label: Text(t.label),
+                                      avatar: const Icon(Icons.bookmarks_outlined, size: 16),
+                                      deleteIcon: const Icon(Icons.close, size: 16),
+                                      onDeleted: () => _deleteTemplate(ref, t),
+                                    ))
+                                .toList(),
+                          ),
+                    loading: () => const SizedBox.shrink(),
+                    error: (_, __) => const SizedBox.shrink(),
+                  ),
+                ),
+              ),
+              // ── Menu section ───────────────────────────────────────────────
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                  child: Row(
+                    children: [
+                      Text('Menu', style: Theme.of(context).textTheme.titleLarge),
+                      const Spacer(),
+                      FilledButton.tonalIcon(
+                        onPressed: () => context.push('/scan-menu/$restaurantId'),
                         icon: const Icon(Icons.document_scanner),
                         label: const Text('Scan'),
                       ),
@@ -168,30 +209,51 @@ class RestaurantDetailPage extends ConsumerWidget {
                     return ListTile(
                       leading: item.itemNumber != null
                           ? CircleAvatar(
-                              backgroundColor: Theme.of(context)
-                                  .colorScheme
-                                  .primaryContainer,
+                              backgroundColor:
+                                  Theme.of(context).colorScheme.primaryContainer,
                               child: Text('${item.itemNumber}'),
                             )
                           : null,
-                      title: Text(item.name),
+                      title: Row(
+                        children: [
+                          if (item.isYummie) ...[
+                            Icon(Icons.restaurant,
+                                size: 14, color: Colors.amber[700]),
+                            const SizedBox(width: 4),
+                          ],
+                          Expanded(child: Text(item.name)),
+                        ],
+                      ),
                       subtitle: item.description != null
                           ? Text(item.description!)
                           : null,
                       trailing: PopupMenuButton<String>(
                         onSelected: (value) {
                           if (value == 'edit') {
-                            _showEditMenuItemSheet(
-                                context, ref, restaurant, item);
+                            _showEditMenuItemSheet(context, ref, restaurant, item);
+                          } else if (value == 'yummie') {
+                            _toggleYummie(ref, restaurant, item);
                           } else if (value == 'delete') {
                             _deleteMenuItem(ref, restaurant, item);
                           }
                         },
                         itemBuilder: (context) => [
-                          const PopupMenuItem(
-                              value: 'edit', child: Text('Edit')),
-                          const PopupMenuItem(
-                              value: 'delete', child: Text('Delete')),
+                          const PopupMenuItem(value: 'edit', child: Text('Edit')),
+                          PopupMenuItem(
+                            value: 'yummie',
+                            child: Row(
+                              children: [
+                                Icon(Icons.restaurant,
+                                    size: 18,
+                                    color: item.isYummie
+                                        ? Colors.amber[700]
+                                        : Theme.of(context).colorScheme.onSurface),
+                                const SizedBox(width: 8),
+                                Text(item.isYummie ? 'Remove Yummie' : 'Mark as Yummie'),
+                              ],
+                            ),
+                          ),
+                          const PopupMenuItem(value: 'delete', child: Text('Delete')),
                         ],
                       ),
                     );
@@ -203,8 +265,7 @@ class RestaurantDetailPage extends ConsumerWidget {
             ],
           ),
           floatingActionButton: FloatingActionButton(
-            onPressed: () =>
-                _showAddMenuItemSheet(context, ref, restaurant),
+            onPressed: () => _showAddMenuItemSheet(context, ref, restaurant),
             child: const Icon(Icons.add),
           ),
         );
@@ -220,8 +281,22 @@ class RestaurantDetailPage extends ConsumerWidget {
     );
   }
 
-  void _showEditSheet(
-      BuildContext context, WidgetRef ref, Restaurant restaurant) {
+  void _toggleYummie(WidgetRef ref, Restaurant restaurant, MenuItem item) {
+    final updatedItem = item.copyWith(isYummie: !item.isYummie);
+    final updatedMenu =
+        restaurant.menu.map((i) => i.id == item.id ? updatedItem : i).toList();
+    ref.read(restaurantsProvider.notifier).updateRestaurant(
+          restaurant.copyWith(menu: updatedMenu),
+        );
+  }
+
+  Future<void> _deleteTemplate(WidgetRef ref, SavedOrder template) async {
+    await ref
+        .read(savedOrderActionsProvider)
+        .deleteTemplate(template.id, template.restaurantId);
+  }
+
+  void _showEditSheet(BuildContext context, WidgetRef ref, Restaurant restaurant) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -286,9 +361,8 @@ class RestaurantDetailPage extends ConsumerWidget {
             description: description,
             itemNumber: itemNumber,
           );
-          final updatedMenu = restaurant.menu
-              .map((i) => i.id == item.id ? updatedItem : i)
-              .toList();
+          final updatedMenu =
+              restaurant.menu.map((i) => i.id == item.id ? updatedItem : i).toList();
           final updated = restaurant.copyWith(menu: updatedMenu);
           await ref.read(restaurantsProvider.notifier).updateRestaurant(updated);
           ref.invalidate(restaurantDetailProvider(restaurantId));
@@ -301,13 +375,168 @@ class RestaurantDetailPage extends ConsumerWidget {
   void _deleteMenuItem(WidgetRef ref, Restaurant restaurant, MenuItem item) {
     final updatedMenu =
         restaurant.menu.where((i) => i.id != item.id).toList();
-    final updated = restaurant.copyWith(menu: updatedMenu);
-    ref.read(restaurantsProvider.notifier).updateRestaurant(updated);
+    ref.read(restaurantsProvider.notifier).updateRestaurant(
+          restaurant.copyWith(menu: updatedMenu),
+        );
     ref.invalidate(restaurantDetailProvider(restaurantId));
+  }
+
+  void _showAddTemplateSheet(
+      BuildContext context, WidgetRef ref, Restaurant restaurant) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (context) => _AddTemplateSheet(
+        restaurant: restaurant,
+        onSave: (label, selectedIds) async {
+          if (label.isEmpty || selectedIds.isEmpty) return;
+          final entries = selectedIds.map((id) {
+            final item = restaurant.menu.where((m) => m.id == id).firstOrNull;
+            return SubOrderEntry(
+              menuItemId: id,
+              name: item?.name ?? id,
+              quantity: 1,
+            );
+          }).toList();
+          await ref.read(savedOrderActionsProvider).saveTemplate(
+                restaurantId: restaurant.id,
+                label: label,
+                entries: entries,
+              );
+          if (context.mounted) Navigator.pop(context);
+        },
+      ),
+    );
   }
 }
 
-// ── Edit Restaurant Sheet ────────────────────────────────────────────────────
+// ── Add Template Sheet ────────────────────────────────────────────────────────
+
+class _AddTemplateSheet extends StatefulWidget {
+  final Restaurant restaurant;
+  final Future<void> Function(String label, Set<String> selectedIds) onSave;
+
+  const _AddTemplateSheet({required this.restaurant, required this.onSave});
+
+  @override
+  State<_AddTemplateSheet> createState() => _AddTemplateSheetState();
+}
+
+class _AddTemplateSheetState extends State<_AddTemplateSheet> {
+  final _nameController = TextEditingController();
+  final _selectedIds = <String>{};
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final sortedMenu = List<MenuItem>.from(widget.restaurant.menu)
+      ..sort((a, b) {
+        if (a.isYummie && !b.isYummie) return -1;
+        if (!a.isYummie && b.isYummie) return 1;
+        return (a.itemNumber ?? 0).compareTo(b.itemNumber ?? 0);
+      });
+
+    return DraggableScrollableSheet(
+      initialChildSize: 0.75,
+      minChildSize: 0.5,
+      maxChildSize: 0.95,
+      expand: false,
+      builder: (context, scrollController) => Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _DragHandle(scheme: scheme),
+                Text('New Order Template',
+                    style: Theme.of(context).textTheme.titleLarge),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: _nameController,
+                  autofocus: true,
+                  textCapitalization: TextCapitalization.sentences,
+                  decoration: const InputDecoration(
+                    labelText: 'Template name',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Select dishes to include:',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                      ),
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1),
+          Expanded(
+            child: ListView.builder(
+              controller: scrollController,
+              itemCount: sortedMenu.length,
+              itemBuilder: (context, index) {
+                final item = sortedMenu[index];
+                return StatefulBuilder(
+                  builder: (context, setItem) => CheckboxListTile(
+                    value: _selectedIds.contains(item.id),
+                    onChanged: (checked) {
+                      setState(() {
+                        if (checked == true) {
+                          _selectedIds.add(item.id);
+                        } else {
+                          _selectedIds.remove(item.id);
+                        }
+                      });
+                    },
+                    secondary: CircleAvatar(
+                      backgroundColor: scheme.primaryContainer,
+                      child: Text('${item.itemNumber ?? '-'}'),
+                    ),
+                    title: Row(
+                      children: [
+                        if (item.isYummie) ...[
+                          Icon(Icons.restaurant, size: 14, color: Colors.amber[700]),
+                          const SizedBox(width: 4),
+                        ],
+                        Expanded(child: Text(item.name)),
+                      ],
+                    ),
+                    subtitle: item.description != null ? Text(item.description!) : null,
+                  ),
+                );
+              },
+            ),
+          ),
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: FilledButton(
+                onPressed: _selectedIds.isNotEmpty && _nameController.text.trim().isNotEmpty
+                    ? () => widget.onSave(_nameController.text.trim(), _selectedIds)
+                    : null,
+                child: Padding(
+                  padding: const EdgeInsets.all(4),
+                  child: Text('Save template (${_selectedIds.length} items)'),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Edit Restaurant Sheet ─────────────────────────────────────────────────────
 
 class EditRestaurantSheet extends StatefulWidget {
   final Restaurant restaurant;
@@ -329,8 +558,7 @@ class _EditRestaurantSheetState extends State<EditRestaurantSheet> {
   @override
   void initState() {
     super.initState();
-    _nameController =
-        TextEditingController(text: widget.restaurant.name);
+    _nameController = TextEditingController(text: widget.restaurant.name);
     _addressController =
         TextEditingController(text: widget.restaurant.address ?? '');
     _coverImagePath = widget.restaurant.coverImagePath;
@@ -348,10 +576,8 @@ class _EditRestaurantSheetState extends State<EditRestaurantSheet> {
     final image = await picker.pickImage(source: ImageSource.gallery);
     if (image != null) {
       final appDir = await getApplicationDocumentsDirectory();
-      final fileName =
-          'restaurant_${DateTime.now().millisecondsSinceEpoch}.jpg';
-      final saved =
-          await File(image.path).copy('${appDir.path}/$fileName');
+      final fileName = 'restaurant_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      final saved = await File(image.path).copy('${appDir.path}/$fileName');
       setState(() => _coverImagePath = saved.path);
     }
   }
@@ -405,8 +631,7 @@ class _EditRestaurantSheetState extends State<EditRestaurantSheet> {
                         radius: 16,
                         backgroundColor: scheme.primaryContainer,
                         child: Icon(Icons.edit,
-                            size: 16,
-                            color: scheme.onPrimaryContainer),
+                            size: 16, color: scheme.onPrimaryContainer),
                       ),
                     ),
                   ],
@@ -461,7 +686,7 @@ class _EditRestaurantSheetState extends State<EditRestaurantSheet> {
   }
 }
 
-// ── Menu Item Sheet (add & edit) ─────────────────────────────────────────────
+// ── Menu Item Sheet (add & edit) ──────────────────────────────────────────────
 
 class _MenuItemSheet extends StatefulWidget {
   final String? initialName;
@@ -493,13 +718,11 @@ class _MenuItemSheetState extends State<_MenuItemSheet> {
   @override
   void initState() {
     super.initState();
-    _nameController =
-        TextEditingController(text: widget.initialName ?? '');
+    _nameController = TextEditingController(text: widget.initialName ?? '');
     _descriptionController =
         TextEditingController(text: widget.initialDescription ?? '');
     _numberController = TextEditingController(
-      text: widget.initialNumber?.toString() ??
-          widget.nextNumber.toString(),
+      text: widget.initialNumber?.toString() ?? widget.nextNumber.toString(),
     );
   }
 
@@ -578,8 +801,7 @@ class _MenuItemSheetState extends State<_MenuItemSheet> {
                         int.tryParse(_numberController.text),
                       );
                     },
-                    child:
-                        Text(widget.isEditing ? 'Save' : 'Add'),
+                    child: Text(widget.isEditing ? 'Save' : 'Add'),
                   ),
                 ),
               ],
@@ -591,7 +813,7 @@ class _MenuItemSheetState extends State<_MenuItemSheet> {
   }
 }
 
-// ── Shared ───────────────────────────────────────────────────────────────────
+// ── Shared ────────────────────────────────────────────────────────────────────
 
 class _DragHandle extends StatelessWidget {
   final ColorScheme scheme;

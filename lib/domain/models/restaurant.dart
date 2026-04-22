@@ -64,6 +64,7 @@ class MenuItem {
   final String? description;
   final String? imageUrl;
   final int? itemNumber;
+  final bool isYummie;
 
   MenuItem({
     required this.id,
@@ -71,6 +72,7 @@ class MenuItem {
     this.description,
     this.imageUrl,
     this.itemNumber,
+    this.isYummie = false,
   });
 
   factory MenuItem.fromJson(Map<String, dynamic> json) {
@@ -80,6 +82,7 @@ class MenuItem {
       description: json['description'] as String?,
       imageUrl: json['imageUrl'] as String?,
       itemNumber: json['itemNumber'] as int?,
+      isYummie: json['isYummie'] as bool? ?? false,
     );
   }
 
@@ -90,6 +93,7 @@ class MenuItem {
       'description': description,
       'imageUrl': imageUrl,
       'itemNumber': itemNumber,
+      'isYummie': isYummie,
     };
   }
 
@@ -99,6 +103,7 @@ class MenuItem {
     String? description,
     String? imageUrl,
     int? itemNumber,
+    bool? isYummie,
   }) {
     return MenuItem(
       id: id ?? this.id,
@@ -106,6 +111,7 @@ class MenuItem {
       description: description ?? this.description,
       imageUrl: imageUrl ?? this.imageUrl,
       itemNumber: itemNumber ?? this.itemNumber,
+      isYummie: isYummie ?? this.isYummie,
     );
   }
 }

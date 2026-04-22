@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 import '../../../domain/models/session.dart';
 import '../../viewmodels/session_viewmodel.dart';
 import '../../viewmodels/restaurant_viewmodel.dart';
@@ -92,10 +93,15 @@ class SessionsPage extends ConsumerWidget {
 
   void _showSessionActions(
       BuildContext context, WidgetRef ref, Session session) {
+    final currentUser = ref.read(profileViewModelProvider).value;
+    final isHost = currentUser?.id == session.hostUserId;
+
     showModalBottomSheet(
       context: context,
       builder: (sheetContext) => SafeArea(
-        child: Column(
+        child: SizedBox(
+          width: double.infinity,
+          child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Padding(
@@ -111,26 +117,27 @@ class SessionsPage extends ConsumerWidget {
               ),
             ),
             const SizedBox(height: 20),
-            ListTile(
-              leading: const Icon(Icons.open_in_new_outlined),
-              title: const Text('Open'),
-              onTap: () {
-                Navigator.pop(sheetContext);
-                context.push('/sessions/${session.id}');
-              },
-            ),
-            if (session.status == SessionStatus.open)
+            if (isHost && session.status != SessionStatus.closed)
               ListTile(
-                leading: const Icon(Icons.lock_outline),
-                title: const Text('Close for new participants'),
+                leading: const Icon(Icons.share),
+                title: const Text('Share table'),
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  _showShareSheet(context, session.id);
+                },
+              ),
+            if (session.status != SessionStatus.closed)
+              ListTile(
+                leading: const Icon(Icons.exit_to_app),
+                title: const Text('Leave the table'),
                 onTap: () async {
                   Navigator.pop(sheetContext);
                   final confirm = await showDialog<bool>(
                     context: context,
                     builder: (context) => AlertDialog(
-                      title: const Text('Close Table'),
+                      title: const Text('Leave the table'),
                       content: const Text(
-                          'Participants won\'t be able to join or order.'),
+                          'The table will be frozen. No one will be able to join or make changes.'),
                       actions: [
                         TextButton(
                           onPressed: () => Navigator.pop(context, false),
@@ -138,7 +145,7 @@ class SessionsPage extends ConsumerWidget {
                         ),
                         FilledButton(
                           onPressed: () => Navigator.pop(context, true),
-                          child: const Text('Close'),
+                          child: const Text('Leave'),
                         ),
                       ],
                     ),
@@ -189,6 +196,48 @@ class SessionsPage extends ConsumerWidget {
             ),
             const SizedBox(height: 8),
           ],
+        ),
+        ),
+      ),
+    );
+  }
+
+  void _showShareSheet(BuildContext context, String sessionId) {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => SafeArea(
+        child: SizedBox(
+          width: double.infinity,
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Share Table',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+                const SizedBox(height: 16),
+                const Text('Let others join by scanning this QR code:'),
+                const SizedBox(height: 16),
+                QrImageView(
+                  data: 'sushare://join/$sessionId',
+                  size: 200,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Or enter this code:',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+                const SizedBox(height: 8),
+                SelectableText(
+                  sessionId.substring(0, 8).toUpperCase(),
+                  style: Theme.of(context).textTheme.headlineMedium,
+                ),
+                const SizedBox(height: 16),
+              ],
+            ),
+          ),
         ),
       ),
     );
