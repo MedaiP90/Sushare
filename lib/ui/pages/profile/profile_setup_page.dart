@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../services/permission_service.dart';
 import '../../viewmodels/profile_viewmodel.dart';
 
@@ -36,7 +37,6 @@ class _ProfileSetupPageState extends ConsumerState<ProfileSetupPage> {
     if (image != null) {
       final hasPermission = await PermissionService.checkAndRequestPhotos(context);
       if (!hasPermission) return;
-      
       final appDir = await getApplicationDocumentsDirectory();
       final fileName = 'profile_${DateTime.now().millisecondsSinceEpoch}.jpg';
       final savedImage = await File(image.path).copy('${appDir.path}/$fileName');
@@ -63,8 +63,9 @@ class _ProfileSetupPageState extends ConsumerState<ProfileSetupPage> {
       }
     } catch (e) {
       if (mounted) {
+        final l10n = AppLocalizations.of(context)!;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error saving profile: $e')),
+          SnackBar(content: Text(l10n.errorSavingProfile(e.toString()))),
         );
       }
     } finally {
@@ -77,6 +78,7 @@ class _ProfileSetupPageState extends ConsumerState<ProfileSetupPage> {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
       body: SafeArea(
@@ -89,7 +91,7 @@ class _ProfileSetupPageState extends ConsumerState<ProfileSetupPage> {
               children: [
                 const SizedBox(height: 40),
                 Text(
-                  'Welcome to Sushare',
+                  l10n.welcomeTitle,
                   style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                         fontWeight: FontWeight.bold,
                       ),
@@ -97,7 +99,7 @@ class _ProfileSetupPageState extends ConsumerState<ProfileSetupPage> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Let\'s set up your profile',
+                  l10n.profileSetupSubtitle,
                   style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                         color: colorScheme.onSurfaceVariant,
                       ),
@@ -132,7 +134,7 @@ class _ProfileSetupPageState extends ConsumerState<ProfileSetupPage> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Tap to add photo',
+                  l10n.tapToAddPhoto,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: colorScheme.onSurfaceVariant,
                       ),
@@ -141,18 +143,18 @@ class _ProfileSetupPageState extends ConsumerState<ProfileSetupPage> {
                 const SizedBox(height: 32),
                 TextFormField(
                   controller: _usernameController,
-                  decoration: const InputDecoration(
-                    labelText: 'Username',
-                    hintText: 'Choose a unique username',
-                    prefixIcon: Icon(Icons.alternate_email),
-                    border: OutlineInputBorder(),
+                  decoration: InputDecoration(
+                    labelText: l10n.labelUsername,
+                    hintText: l10n.hintUsername,
+                    prefixIcon: const Icon(Icons.alternate_email),
+                    border: const OutlineInputBorder(),
                   ),
                   validator: (value) {
                     if (value == null || value.trim().isEmpty) {
-                      return 'Please enter a username';
+                      return l10n.validationUsernameRequired;
                     }
                     if (value.trim().length < 3) {
-                      return 'Username must be at least 3 characters';
+                      return l10n.validationUsernameMinLength;
                     }
                     return null;
                   },
@@ -160,15 +162,15 @@ class _ProfileSetupPageState extends ConsumerState<ProfileSetupPage> {
                 const SizedBox(height: 16),
                 TextFormField(
                   controller: _firstNameController,
-                  decoration: const InputDecoration(
-                    labelText: 'First Name',
-                    hintText: 'Enter your first name',
-                    prefixIcon: Icon(Icons.person_outline),
-                    border: OutlineInputBorder(),
+                  decoration: InputDecoration(
+                    labelText: l10n.labelFirstName,
+                    hintText: l10n.hintFirstName,
+                    prefixIcon: const Icon(Icons.person_outline),
+                    border: const OutlineInputBorder(),
                   ),
                   validator: (value) {
                     if (value == null || value.trim().isEmpty) {
-                      return 'Please enter your first name';
+                      return l10n.validationFirstNameRequired;
                     }
                     return null;
                   },
@@ -176,15 +178,15 @@ class _ProfileSetupPageState extends ConsumerState<ProfileSetupPage> {
                 const SizedBox(height: 16),
                 TextFormField(
                   controller: _lastNameController,
-                  decoration: const InputDecoration(
-                    labelText: 'Last Name',
-                    hintText: 'Enter your last name',
-                    prefixIcon: Icon(Icons.person_outline),
-                    border: OutlineInputBorder(),
+                  decoration: InputDecoration(
+                    labelText: l10n.labelLastName,
+                    hintText: l10n.hintLastName,
+                    prefixIcon: const Icon(Icons.person_outline),
+                    border: const OutlineInputBorder(),
                   ),
                   validator: (value) {
                     if (value == null || value.trim().isEmpty) {
-                      return 'Please enter your last name';
+                      return l10n.validationLastNameRequired;
                     }
                     return null;
                   },
@@ -203,7 +205,7 @@ class _ProfileSetupPageState extends ConsumerState<ProfileSetupPage> {
                               color: colorScheme.onPrimary,
                             ),
                           )
-                        : const Text('Get Started'),
+                        : Text(l10n.getStarted),
                   ),
                 ),
               ],

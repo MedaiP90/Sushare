@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../domain/models/restaurant.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../services/camera_service.dart';
 import '../../../services/menu_ai_service.dart';
 import '../../../services/permission_service.dart';
@@ -56,10 +57,9 @@ class _ScanMenuPageState extends ConsumerState<ScanMenuPage> {
       final aiService = ref.read(menuAiServiceProvider);
       if (!await aiService.hasApiKey()) {
         if (mounted) {
+          final l10n = AppLocalizations.of(context)!;
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Please add your Google Gemini API key in Settings first'),
-            ),
+            SnackBar(content: Text(l10n.scanMenuNoApiKey)),
           );
         }
         return;
@@ -120,6 +120,7 @@ class _ScanMenuPageState extends ConsumerState<ScanMenuPage> {
   Future<void> _saveItems() async {
     if (_parsedItems.isEmpty) return;
 
+    final l10n = AppLocalizations.of(context)!;
     final restaurant =
         await ref.read(restaurantDetailProvider(widget.restaurantId).future);
     if (restaurant == null) return;
@@ -216,13 +217,14 @@ class _ScanMenuPageState extends ConsumerState<ScanMenuPage> {
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Menu updated successfully!')),
+        SnackBar(content: Text(l10n.scanMenuUpdated)),
       );
       _reset();
     }
   }
 
   Future<bool?> _showSaveModeSheet(int existingCount) {
+    final l10n = AppLocalizations.of(context)!;
     return showModalBottomSheet<bool>(
       context: context,
       builder: (ctx) => SafeArea(
@@ -233,13 +235,12 @@ class _ScanMenuPageState extends ConsumerState<ScanMenuPage> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Text(
-                'Save scanned items',
+                l10n.scanMenuSaveTitle,
                 style: Theme.of(context).textTheme.titleLarge,
               ),
               const SizedBox(height: 8),
               Text(
-                'The menu already has $existingCount item(s). '
-                'How would you like to save the new scan?',
+                l10n.scanMenuSaveDescription(existingCount),
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
@@ -248,18 +249,18 @@ class _ScanMenuPageState extends ConsumerState<ScanMenuPage> {
               FilledButton.icon(
                 onPressed: () => Navigator.pop(ctx, false),
                 icon: const Icon(Icons.playlist_add),
-                label: const Text('Append to existing menu'),
+                label: Text(l10n.scanMenuAppend),
               ),
               const SizedBox(height: 10),
               FilledButton.tonalIcon(
                 onPressed: () => Navigator.pop(ctx, true),
                 icon: const Icon(Icons.swap_horiz),
-                label: const Text('Replace entire menu'),
+                label: Text(l10n.scanMenuReplace),
               ),
               const SizedBox(height: 10),
               TextButton(
                 onPressed: () => Navigator.pop(ctx),
-                child: const Text('Cancel'),
+                child: Text(l10n.cancel),
               ),
             ],
           ),
@@ -271,6 +272,7 @@ class _ScanMenuPageState extends ConsumerState<ScanMenuPage> {
   Future<Map<String, _Resolution>?> _showConflictSheet(
     List<_NumberConflict> conflicts,
   ) {
+    final l10n = AppLocalizations.of(context)!;
     final resolutions = <String, _Resolution>{
       for (final c in conflicts) c.incoming.id: _Resolution.keepBoth,
     };
@@ -304,7 +306,7 @@ class _ScanMenuPageState extends ConsumerState<ScanMenuPage> {
                   children: [
                     Expanded(
                       child: Text(
-                        'Number Conflicts',
+                        l10n.scanMenuNumberConflicts,
                         style: Theme.of(context).textTheme.titleLarge,
                       ),
                     ),
@@ -318,7 +320,7 @@ class _ScanMenuPageState extends ConsumerState<ScanMenuPage> {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Text(
-                  '${conflicts.length} item(s) share a number with existing menu items.',
+                  l10n.scanMenuConflictDescription(conflicts.length),
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
@@ -346,14 +348,14 @@ class _ScanMenuPageState extends ConsumerState<ScanMenuPage> {
                     Expanded(
                       child: OutlinedButton(
                         onPressed: () => Navigator.pop(ctx),
-                        child: const Text('Cancel'),
+                        child: Text(l10n.cancel),
                       ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: FilledButton(
                         onPressed: () => Navigator.pop(ctx, resolutions),
-                        child: const Text('Confirm'),
+                        child: Text(l10n.confirm),
                       ),
                     ),
                   ],
@@ -368,18 +370,19 @@ class _ScanMenuPageState extends ConsumerState<ScanMenuPage> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final colorScheme = Theme.of(context).colorScheme;
     final hasContent = _capturedImages.isNotEmpty || _parsedItems.isNotEmpty;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Scan Menu'),
+        title: Text(l10n.scanMenuTitle),
         centerTitle: true,
         actions: [
           if (hasContent)
             IconButton(
               icon: const Icon(Icons.refresh),
-              tooltip: 'Start over',
+              tooltip: l10n.scanMenuStartOver,
               onPressed: _reset,
             ),
         ],
@@ -390,13 +393,12 @@ class _ScanMenuPageState extends ConsumerState<ScanMenuPage> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              'Scan menu pages to add items',
+              l10n.scanMenuHeading,
               style: Theme.of(context).textTheme.titleLarge,
             ),
             const SizedBox(height: 8),
             Text(
-              'Take photos or pick from gallery — multiple pages supported. '
-              'AI will extract items and merge duplicates automatically.',
+              l10n.scanMenuSubtitle,
               style: Theme.of(context).textTheme.bodyMedium
                   ?.copyWith(color: colorScheme.onSurfaceVariant),
             ),
@@ -404,7 +406,7 @@ class _ScanMenuPageState extends ConsumerState<ScanMenuPage> {
 
             if (_capturedImages.isNotEmpty) ...[
               Text(
-                '${_capturedImages.length} page(s) scanned',
+                l10n.scanMenuPagesScanned(_capturedImages.length),
                 style: Theme.of(context).textTheme.labelLarge,
               ),
               const SizedBox(height: 8),
@@ -429,14 +431,14 @@ class _ScanMenuPageState extends ConsumerState<ScanMenuPage> {
             ],
 
             if (_isProcessing)
-              const Card(
+              Card(
                 child: Padding(
-                  padding: EdgeInsets.all(32),
+                  padding: const EdgeInsets.all(32),
                   child: Column(
                     children: [
-                      CircularProgressIndicator(),
-                      SizedBox(height: 16),
-                      Text('Analyzing page…'),
+                      const CircularProgressIndicator(),
+                      const SizedBox(height: 16),
+                      Text(l10n.scanMenuAnalyzing),
                     ],
                   ),
                 ),
@@ -450,7 +452,7 @@ class _ScanMenuPageState extends ConsumerState<ScanMenuPage> {
                       onPressed: _captureMenu,
                       icon: const Icon(Icons.camera_alt),
                       label: Text(
-                          _capturedImages.isEmpty ? 'Take Photo' : 'Add Photo'),
+                          _capturedImages.isEmpty ? l10n.scanMenuTakePhoto : l10n.scanMenuAddPhoto),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -459,7 +461,7 @@ class _ScanMenuPageState extends ConsumerState<ScanMenuPage> {
                       onPressed: _pickImage,
                       icon: const Icon(Icons.photo_library),
                       label: Text(
-                          _capturedImages.isEmpty ? 'Gallery' : 'Add from Gallery'),
+                          _capturedImages.isEmpty ? l10n.scanMenuGallery : l10n.scanMenuAddFromGallery),
                     ),
                   ),
                 ],
@@ -470,7 +472,7 @@ class _ScanMenuPageState extends ConsumerState<ScanMenuPage> {
               const Divider(),
               const SizedBox(height: 8),
               Text(
-                '${_parsedItems.length} item(s) found:',
+                l10n.scanMenuItemsFound(_parsedItems.length),
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               const SizedBox(height: 8),
@@ -495,7 +497,7 @@ class _ScanMenuPageState extends ConsumerState<ScanMenuPage> {
                         : null,
                     trailing: IconButton(
                       icon: const Icon(Icons.close),
-                      tooltip: 'Remove',
+                      tooltip: l10n.scanMenuRemoveItem,
                       onPressed: () => _removeItem(i),
                     ),
                   ),
@@ -505,7 +507,7 @@ class _ScanMenuPageState extends ConsumerState<ScanMenuPage> {
               FilledButton.icon(
                 onPressed: _saveItems,
                 icon: const Icon(Icons.save),
-                label: const Text('Save to Menu'),
+                label: Text(l10n.scanMenuSaveButton),
               ),
             ],
 
@@ -520,8 +522,7 @@ class _ScanMenuPageState extends ConsumerState<ScanMenuPage> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'Requires a Google Gemini API key for AI analysis. '
-                        'Add it in Settings > AI Service.',
+                        l10n.scanMenuApiKeyHint,
                         style: Theme.of(context).textTheme.bodyMedium
                             ?.copyWith(color: colorScheme.onSurfaceVariant),
                       ),
@@ -566,6 +567,8 @@ class _ConflictTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: Column(
@@ -573,23 +576,23 @@ class _ConflictTile extends StatelessWidget {
         children: [
           const Divider(),
           Text(
-            'Number #${conflict.incoming.itemNumber} conflict',
+            l10n.scanMenuNumberConflictLabel(conflict.incoming.itemNumber!),
             style: Theme.of(context).textTheme.labelLarge,
           ),
           const SizedBox(height: 4),
-          _row(context, 'Existing', conflict.existing),
-          _row(context, 'New', conflict.incoming),
+          _row(context, l10n.scanMenuConflictExisting, conflict.existing),
+          _row(context, l10n.scanMenuConflictNew, conflict.incoming),
           const SizedBox(height: 8),
           SegmentedButton<_Resolution>(
             showSelectedIcon: false,
             style: const ButtonStyle(visualDensity: VisualDensity.compact),
-            segments: const [
+            segments: [
               ButtonSegment(
-                  value: _Resolution.keepExisting, label: Text('Keep existing')),
+                  value: _Resolution.keepExisting, label: Text(l10n.scanMenuKeepExisting)),
               ButtonSegment(
-                  value: _Resolution.useNew, label: Text('Use new')),
+                  value: _Resolution.useNew, label: Text(l10n.scanMenuUseNew)),
               ButtonSegment(
-                  value: _Resolution.keepBoth, label: Text('Keep both')),
+                  value: _Resolution.keepBoth, label: Text(l10n.scanMenuKeepBoth)),
             ],
             selected: {resolution},
             onSelectionChanged: (s) => onChanged(s.first),

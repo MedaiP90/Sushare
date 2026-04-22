@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import '../../../domain/repositories/session_repository.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../viewmodels/profile_viewmodel.dart';
 import '../../viewmodels/session_viewmodel.dart';
 
@@ -40,7 +41,6 @@ class _JoinSessionPageState extends ConsumerState<JoinSessionPage> {
       }
 
       final cleanCode = code.trim().toUpperCase();
-      
       final sessionRepo = ref.read(sessionRepositoryProvider);
       final session = await sessionRepo.getSessionById(cleanCode);
 
@@ -65,26 +65,18 @@ class _JoinSessionPageState extends ConsumerState<JoinSessionPage> {
     }
   }
 
-  void _startScanning() {
-    setState(() {
-      _isScanning = true;
-    });
-  }
-
-  void _stopScanning() {
-    setState(() {
-      _isScanning = false;
-    });
-  }
+  void _startScanning() => setState(() => _isScanning = true);
+  void _stopScanning() => setState(() => _isScanning = false);
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final l10n = AppLocalizations.of(context)!;
 
     if (_isScanning) {
       return Scaffold(
         appBar: AppBar(
-          title: const Text('Scan QR Code'),
+          title: Text(l10n.joinTableScanQr),
           leading: IconButton(
             icon: const Icon(Icons.close),
             onPressed: _stopScanning,
@@ -99,8 +91,7 @@ class _JoinSessionPageState extends ConsumerState<JoinSessionPage> {
                   final value = barcode!.rawValue!;
                   _stopScanning();
                   if (value.startsWith('sushare://join/')) {
-                    final code = value.substring('sushare://join/'.length);
-                    _joinByCode(code);
+                    _joinByCode(value.substring('sushare://join/'.length));
                   } else {
                     _joinByCode(value);
                   }
@@ -112,10 +103,7 @@ class _JoinSessionPageState extends ConsumerState<JoinSessionPage> {
                 width: 250,
                 height: 250,
                 decoration: BoxDecoration(
-                  border: Border.all(
-                    color: colorScheme.primary,
-                    width: 2,
-                  ),
+                  border: Border.all(color: colorScheme.primary, width: 2),
                   borderRadius: BorderRadius.circular(16),
                 ),
               ),
@@ -127,7 +115,7 @@ class _JoinSessionPageState extends ConsumerState<JoinSessionPage> {
                   child: Padding(
                     padding: const EdgeInsets.all(16),
                     child: Text(
-                      'Point camera at QR code',
+                      l10n.joinTableScanHint,
                       style: Theme.of(context).textTheme.titleMedium,
                     ),
                   ),
@@ -141,7 +129,7 @@ class _JoinSessionPageState extends ConsumerState<JoinSessionPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Join Table'),
+        title: Text(l10n.joinTableTitle),
         centerTitle: true,
       ),
       body: SingleChildScrollView(
@@ -149,13 +137,10 @@ class _JoinSessionPageState extends ConsumerState<JoinSessionPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(
-              'Join a table',
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
+            Text(l10n.joinTableHeading, style: Theme.of(context).textTheme.headlineMedium),
             const SizedBox(height: 8),
             Text(
-              'Enter the table code or scan the QR code',
+              l10n.joinTableSubtitle,
               style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                     color: colorScheme.onSurfaceVariant,
                   ),
@@ -169,22 +154,16 @@ class _JoinSessionPageState extends ConsumerState<JoinSessionPage> {
                   children: [
                     Row(
                       children: [
-                        Icon(
-                          Icons.qr_code_scanner,
-                          color: colorScheme.primary,
-                        ),
+                        Icon(Icons.qr_code_scanner, color: colorScheme.primary),
                         const SizedBox(width: 8),
-                        Text(
-                          'Scan QR Code',
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
+                        Text(l10n.joinTableScanQr, style: Theme.of(context).textTheme.titleMedium),
                       ],
                     ),
                     const SizedBox(height: 16),
                     FilledButton.tonalIcon(
                       onPressed: _startScanning,
                       icon: const Icon(Icons.qr_code_scanner),
-                      label: const Text('Open Scanner'),
+                      label: Text(l10n.joinTableOpenScanner),
                     ),
                   ],
                 ),
@@ -199,37 +178,26 @@ class _JoinSessionPageState extends ConsumerState<JoinSessionPage> {
                   children: [
                     Row(
                       children: [
-                        Icon(
-                          Icons.keyboard,
-                          color: colorScheme.primary,
-                        ),
+                        Icon(Icons.keyboard, color: colorScheme.primary),
                         const SizedBox(width: 8),
-                        Text(
-                          'Enter Code Manually',
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
+                        Text(l10n.joinTableEnterCode, style: Theme.of(context).textTheme.titleMedium),
                       ],
                     ),
                     const SizedBox(height: 16),
                     TextField(
                       controller: _codeController,
-                      decoration: const InputDecoration(
-                        labelText: 'Table Code',
-                        hintText: 'e.g., ABC12345',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.tag),
+                      decoration: InputDecoration(
+                        labelText: l10n.joinTableCodeLabel,
+                        hintText: l10n.joinTableCodeHint,
+                        border: const OutlineInputBorder(),
+                        prefixIcon: const Icon(Icons.tag),
                       ),
                       textCapitalization: TextCapitalization.characters,
                       maxLength: 8,
                     ),
                     if (_error != null) ...[
                       const SizedBox(height: 8),
-                      Text(
-                        _error!,
-                        style: TextStyle(
-                          color: colorScheme.error,
-                        ),
-                      ),
+                      Text(_error!, style: TextStyle(color: colorScheme.error)),
                     ],
                     const SizedBox(height: 16),
                     FilledButton(
@@ -240,11 +208,9 @@ class _JoinSessionPageState extends ConsumerState<JoinSessionPage> {
                           ? const SizedBox(
                               height: 20,
                               width: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                              ),
+                              child: CircularProgressIndicator(strokeWidth: 2),
                             )
-                          : const Text('Join Table'),
+                          : Text(l10n.joinTableJoin),
                     ),
                   ],
                 ),
@@ -254,7 +220,7 @@ class _JoinSessionPageState extends ConsumerState<JoinSessionPage> {
             Center(
               child: TextButton(
                 onPressed: () => context.go('/sessions/new'),
-                child: const Text('Or start a new table'),
+                child: Text(l10n.joinTableStartNew),
               ),
             ),
           ],
