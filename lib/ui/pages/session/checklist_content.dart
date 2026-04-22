@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../domain/models/order.dart';
+import '../../../domain/models/restaurant.dart';
 import '../../../domain/models/session.dart';
 import '../../viewmodels/session_viewmodel.dart';
 import '../../viewmodels/profile_viewmodel.dart';
+import '../../viewmodels/restaurant_viewmodel.dart';
 
 class ChecklistContent extends ConsumerWidget {
   final String sessionId;
@@ -23,6 +25,7 @@ class ChecklistContent extends ConsumerWidget {
 
         final isHost = user?.id == session.hostUserId;
         final isEditable = session.status != SessionStatus.closed;
+        final restaurant = ref.watch(restaurantDetailProvider(session.restaurantId)).valueOrNull;
 
         if (session.mainOrder == null) {
           return Center(
@@ -99,7 +102,7 @@ class ChecklistContent extends ConsumerWidget {
               const SizedBox(height: 16),
               for (int i = 0; i < allOrders.length; i++) ...[
                 if (i > 0) const SizedBox(height: 24),
-                _buildOrderChecklist(context, ref, isHost && isEditable, allOrders[i], session, arrivedCounts),
+                _buildOrderChecklist(context, ref, isHost && isEditable, allOrders[i], session, arrivedCounts, restaurant),
               ],
               if (!isHost)
                 Padding(
@@ -137,6 +140,15 @@ class ChecklistContent extends ConsumerWidget {
     );
   }
 
+  Future<void> _toggleYummie(WidgetRef ref, Restaurant restaurant, MenuItem item) async {
+    final updatedItem = item.copyWith(isYummie: !item.isYummie);
+    final updatedMenu =
+        restaurant.menu.map((m) => m.id == item.id ? updatedItem : m).toList();
+    await ref.read(restaurantsProvider.notifier).updateRestaurant(
+          restaurant.copyWith(menu: updatedMenu),
+        );
+  }
+
   Future<void> _updateCount(WidgetRef ref, Session session, String key, int newCount) async {
     final updated = Map<String, int>.from(session.arrivedCounts);
     if (newCount <= 0) {
@@ -154,6 +166,7 @@ class ChecklistContent extends ConsumerWidget {
     _OrderWithLabel orderWithLabel,
     Session session,
     Map<String, int> arrivedCounts,
+    Restaurant? restaurant,
   ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -184,19 +197,33 @@ class ChecklistContent extends ConsumerWidget {
               final countKey = '${orderWithLabel.label}:${item.menuItemId}';
               final arrived = arrivedCounts[countKey] ?? 0;
               final total = item.quantity;
+              final menuItem = restaurant?.menu
+                  .where((m) => m.id == item.menuItemId)
+                  .firstOrNull;
+              final isYummie = menuItem?.isYummie ?? false;
               final progress = arrived / total;
 
               return Column(
                 children: [
                   ListTile(
-                    title: Text(
-                      item.name,
-                      style: arrived >= total
-                          ? Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                decoration: TextDecoration.lineThrough,
-                                color: Theme.of(context).colorScheme.outline,
-                              )
-                          : null,
+                    title: Row(
+                      children: [
+                        if (isYummie) ...[
+                          Icon(Icons.restaurant, size: 14, color: Colors.amber[700]),
+                          const SizedBox(width: 4),
+                        ],
+                        Expanded(
+                          child: Text(
+                            item.name,
+                            style: arrived >= total
+                                ? Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                      decoration: TextDecoration.lineThrough,
+                                      color: Theme.of(context).colorScheme.outline,
+                                    )
+                                : null,
+                          ),
+                        ),
+                      ],
                     ),
                     subtitle: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -214,25 +241,38 @@ class ChecklistContent extends ConsumerWidget {
                         ),
                       ],
                     ),
-                    trailing: isHost
-                        ? Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              IconButton(
-                                icon: const Icon(Icons.remove_circle_outline),
-                                onPressed: arrived > 0
-                                    ? () => _updateCount(ref, session, countKey, arrived - 1)
-                                    : null,
-                              ),
-                              IconButton(
-                                icon: const Icon(Icons.add_circle_outline),
-                                onPressed: arrived < total
-                                    ? () => _updateCount(ref, session, countKey, arrived + 1)
-                                    : null,
-                              ),
-                            ],
-                          )
-                        : null,
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: Icon(
+                            Icons.restaurant,
+                            size: 20,
+                            color: isYummie
+                                ? Colors.amber[700]
+                                : Theme.of(context).colorScheme.outlineVariant,
+                          ),
+                          tooltip: isYummie ? 'Remove Yummie' : 'Mark as Yummie',
+                          onPressed: menuItem != null && restaurant != null
+                              ? () => _toggleYummie(ref, restaurant, menuItem)
+                              : null,
+                        ),
+                        if (isHost) ...[
+                          IconButton(
+                            icon: const Icon(Icons.remove_circle_outline),
+                            onPressed: arrived > 0
+                                ? () => _updateCount(ref, session, countKey, arrived - 1)
+                                : null,
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.add_circle_outline),
+                            onPressed: arrived < total
+                                ? () => _updateCount(ref, session, countKey, arrived + 1)
+                                : null,
+                          ),
+                        ],
+                      ],
+                    ),
                   ),
                   if (index < orderWithLabel.order.items.length - 1)
                     Divider(
