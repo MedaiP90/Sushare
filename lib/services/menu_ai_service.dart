@@ -6,8 +6,47 @@ import '../domain/models/restaurant.dart';
 
 class MenuAiService {
   static const _apiKeyKey = 'gemini_api_key';
+  static const _modelKey = 'gemini_model';
+  static const _defaultModel = 'gemini-2.5-flash-lite';
   final _secureStorage = const FlutterSecureStorage();
-  
+
+  Future<String> getModel() async {
+    final model = await _secureStorage.read(key: _modelKey);
+    return model ?? _defaultModel;
+  }
+
+  Future<void> setModel(String model) async {
+    await _secureStorage.write(key: _modelKey, value: model);
+  }
+
+  Future<List<String>> getAvailableModels() async {
+    final apiKey = await getApiKey();
+    if (apiKey == null || apiKey.isEmpty) {
+      throw Exception('No Gemini API key configured');
+    }
+
+    final response = await http.get(
+      Uri.parse(
+          'https://generativelanguage.googleapis.com/v1/models?key=$apiKey'),
+      headers: {'Content-Type': 'application/json'},
+    );
+
+    if (response.statusCode != 200) {
+      final body = jsonDecode(response.body);
+      final message = body['error']?['message'] ?? 'HTTP ${response.statusCode}';
+      throw Exception('Gemini API error: $message');
+    }
+
+    final data = jsonDecode(response.body);
+    final models = data['models'] as List<dynamic>;
+
+    return models
+        .map((m) => m['name'] as String)
+        .where((name) => name.startsWith('models/'))
+        .map((name) => name.replaceFirst('models/', ''))
+        .toList();
+  }
+
   Future<bool> hasApiKey() async {
     final key = await _secureStorage.read(key: _apiKeyKey);
     return key != null && key.isNotEmpty;
@@ -27,6 +66,7 @@ class MenuAiService {
 
   Future<List<MenuItem>> parseMenuImage(File imageFile) async {
     final apiKey = await getApiKey();
+    final model = await getModel();
     if (apiKey == null || apiKey.isEmpty) {
       throw Exception('No Gemini API key configured');
     }
@@ -36,7 +76,7 @@ class MenuAiService {
 
     final response = await http.post(
       Uri.parse(
-          'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=$apiKey'),
+          'https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent?key=$apiKey'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
         'contents': [
@@ -129,13 +169,14 @@ class MenuAiService {
 
   Future<List<MenuItem>> analyzeMenuText(String menuText) async {
     final apiKey = await getApiKey();
+    final model = await getModel();
     if (apiKey == null || apiKey.isEmpty) {
       throw Exception('No Gemini API key configured');
     }
 
     final response = await http.post(
       Uri.parse(
-          'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=$apiKey'),
+          'https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent?key=$apiKey'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
         'contents': [
