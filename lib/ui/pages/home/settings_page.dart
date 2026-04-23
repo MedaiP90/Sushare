@@ -149,9 +149,9 @@ class SettingsPage extends ConsumerWidget {
             leading: const Icon(Icons.model_training),
             title: Text(l10n.settingsAiModel),
             subtitle: ref.watch(_selectedModelProvider).when(
-              data: (model) => Text(model ?? 'gemini-2.0-flash'),
+              data: (model) => Text(model ?? 'gemini-2.5-flash-lite'),
               loading: () => Text(l10n.loading),
-              error: (_, __) => const Text('gemini-2.0-flash'),
+              error: (_, __) => const Text('gemini-2.5-flash-lite'),
             ),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => _showModelSheet(context, ref, l10n),
