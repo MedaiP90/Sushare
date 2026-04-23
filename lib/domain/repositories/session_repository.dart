@@ -33,6 +33,17 @@ class SessionRepository {
     return _sessionFromRow(results.first);
   }
 
+  Future<Session?> getSessionByShortCode(String shortCode) async {
+    final db = await AppDatabase.database;
+    final results = await db.query(
+      'sessions',
+      where: 'UPPER(id) LIKE ?',
+      whereArgs: ['${shortCode.toUpperCase()}%'],
+    );
+    if (results.isEmpty) return null;
+    return _sessionFromRow(results.first);
+  }
+
   Session _sessionFromRow(Map<String, dynamic> row) {
     final participantIdsJson = row['participant_ids_json'] as String;
     final participantIdsList = jsonDecode(participantIdsJson) as List<dynamic>;

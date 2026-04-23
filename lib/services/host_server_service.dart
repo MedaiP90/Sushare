@@ -10,10 +10,15 @@ class HostServerService {
   HttpServer? _server;
   final _clients = <WebSocketChannel>[];
   final _messageController = StreamController<Map<String, dynamic>>.broadcast();
+  Map<String, dynamic>? _sessionData;
+  Map<String, dynamic>? _restaurantData;
 
   int get port => _server?.port ?? 0;
   bool get isRunning => _server != null;
   Stream<Map<String, dynamic>> get messages => _messageController.stream;
+
+  void setSessionData(Map<String, dynamic> data) => _sessionData = data;
+  void setRestaurantData(Map<String, dynamic> data) => _restaurantData = data;
 
   Future<int> start({int preferredPort = 8080}) async {
     if (_server != null) {
@@ -35,7 +40,7 @@ class HostServerService {
         .addMiddleware(_corsMiddleware())
         .addHandler(_router);
 
-    _server!.handler = handler;
+    shelf_io.serveRequests(_server!, handler);
     return port;
   }
 
@@ -47,8 +52,14 @@ class HostServerService {
       if (request.url.path == 'api/session') {
         return _handleSessionApi(request);
       }
+      if (request.url.path == 'api/restaurant') {
+        return _handleRestaurantApi(request);
+      }
       if (request.url.path == 'api/orders') {
         return _handleOrdersApi(request);
+      }
+      if (request.url.path == 'api/participants') {
+        return _handleParticipantsApi(request);
       }
       if (request.url.path.startsWith('api/')) {
         return Response.notFound('Not found');
@@ -97,8 +108,24 @@ class HostServerService {
 
   Future<Response> _handleSessionApi(Request request) async {
     if (request.method == 'GET') {
+      if (_sessionData == null) {
+        return Response.internalServerError(body: 'Session data not ready');
+      }
       return Response.ok(
-        jsonEncode({'status': 'open', 'participants': _clients.length}),
+        jsonEncode(_sessionData),
+        headers: {'Content-Type': 'application/json'},
+      );
+    }
+    return Response.badRequest(body: 'Method not allowed');
+  }
+
+  Future<Response> _handleRestaurantApi(Request request) async {
+    if (request.method == 'GET') {
+      if (_restaurantData == null) {
+        return Response.notFound('Restaurant data not available');
+      }
+      return Response.ok(
+        jsonEncode(_restaurantData),
         headers: {'Content-Type': 'application/json'},
       );
     }
@@ -122,6 +149,35 @@ class HostServerService {
           headers: {'Content-Type': 'application/json'},
         );
       } catch (e) {
+        return Response.badRequest(body: 'Invalid JSON');
+      }
+    }
+    return Response.badRequest(body: 'Method not allowed');
+  }
+
+  Future<Response> _handleParticipantsApi(Request request) async {
+    if (request.method == 'POST') {
+      final body = await request.readAsString();
+      try {
+        final data = jsonDecode(body) as Map<String, dynamic>;
+        final userId = data['userId'] as String?;
+        if (userId == null) return Response.badRequest(body: 'Missing userId');
+
+        // Update cached session data so subsequent GET /api/session includes the new participant
+        if (_sessionData != null) {
+          final participants = List<String>.from(_sessionData!['participantIds'] as List);
+          if (!participants.contains(userId)) {
+            participants.add(userId);
+            _sessionData!['participantIds'] = participants;
+          }
+        }
+
+        _messageController.add({'type': 'participant_joined', 'userId': userId});
+        return Response.ok(
+          jsonEncode({'success': true}),
+          headers: {'Content-Type': 'application/json'},
+        );
+      } catch (_) {
         return Response.badRequest(body: 'Invalid JSON');
       }
     }

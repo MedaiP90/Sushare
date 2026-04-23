@@ -305,6 +305,12 @@ class AppLocalizationsFr extends AppLocalizations {
   String get joinTableScanHint => 'Pointe la caméra sur le code QR';
 
   @override
+  String get joinTableHostLabel => 'Adresse de l\'hôte';
+
+  @override
+  String get joinTableHostHint => 'ex. 192.168.1.100:8080';
+
+  @override
   String get newTableTitle => 'Nouvelle table';
 
   @override

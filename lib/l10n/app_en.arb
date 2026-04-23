@@ -202,6 +202,10 @@
   "@joinTableStartNew": {},
   "joinTableScanHint": "Point camera at QR code",
   "@joinTableScanHint": {},
+  "joinTableHostLabel": "Host address",
+  "@joinTableHostLabel": {},
+  "joinTableHostHint": "e.g., 192.168.1.100:8080",
+  "@joinTableHostHint": {},
 
   "newTableTitle": "New Table",
   "@newTableTitle": {},
