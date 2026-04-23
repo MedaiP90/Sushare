@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:qr_flutter/qr_flutter.dart';
-import '../../../core/providers.dart';
-import '../../../core/utils/network_utils.dart';
 import '../../../domain/models/session.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../viewmodels/session_viewmodel.dart';
@@ -95,9 +92,6 @@ class SessionsPage extends ConsumerWidget {
 
   void _showSessionActions(
       BuildContext context, WidgetRef ref, Session session, AppLocalizations l10n) {
-    final currentUser = ref.read(profileViewModelProvider).value;
-    final isHost = currentUser?.id == session.hostUserId;
-
     showModalBottomSheet(
       context: context,
       builder: (sheetContext) => SafeArea(
@@ -119,15 +113,6 @@ class SessionsPage extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 20),
-              if (isHost && session.status != SessionStatus.closed)
-                ListTile(
-                  leading: const Icon(Icons.share),
-                  title: Text(l10n.sessionActionsShareTable),
-                  onTap: () {
-                    Navigator.pop(sheetContext);
-                    _showShareSheet(context, ref, session.id, l10n);
-                  },
-                ),
               if (session.status != SessionStatus.closed)
                 ListTile(
                   leading: const Icon(Icons.exit_to_app),
@@ -191,79 +176,6 @@ class SessionsPage extends ConsumerWidget {
               ),
               const SizedBox(height: 8),
             ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Future<void> _showShareSheet(
-    BuildContext context,
-    WidgetRef ref,
-    String sessionId,
-    AppLocalizations l10n,
-  ) async {
-    final serverService = ref.read(hostServerServiceProvider);
-    if (!serverService.isRunning) {
-      final session = await ref.read(sessionRepositoryProvider).getSessionById(sessionId);
-      if (session != null) {
-        await serverService.start();
-        serverService.setSession(session);
-        final restaurant = await ref
-            .read(restaurantRepositoryProvider)
-            .getRestaurantById(session.restaurantId);
-        if (restaurant != null) serverService.setRestaurant(restaurant);
-      }
-    }
-    String? hostAddress;
-    if (serverService.isRunning) {
-      final ip = await getLocalIpAddress();
-      if (ip != null) hostAddress = '$ip:${serverService.port}';
-    }
-    final qrData = hostAddress != null
-        ? 'sushare://join/$sessionId?host=$hostAddress'
-        : 'sushare://join/$sessionId';
-
-    if (!context.mounted) return;
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      builder: (context) => Padding(
-        padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-        child: SafeArea(
-          child: SizedBox(
-            width: double.infinity,
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(l10n.shareTableTitle, style: Theme.of(context).textTheme.titleLarge),
-                  const SizedBox(height: 16),
-                  Text(l10n.shareTableQrHint),
-                  const SizedBox(height: 16),
-                  Container(
-                    color: Colors.white,
-                    padding: const EdgeInsets.all(12),
-                    child: QrImageView(data: qrData, size: 200),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(l10n.shareTableCodeHint, style: Theme.of(context).textTheme.bodySmall),
-                  const SizedBox(height: 8),
-                  SelectableText(
-                    sessionId.substring(0, 8).toUpperCase(),
-                    style: Theme.of(context).textTheme.headlineMedium,
-                  ),
-                  if (hostAddress != null) ...[
-                    const SizedBox(height: 8),
-                    Text(l10n.joinTableHostLabel, style: Theme.of(context).textTheme.bodySmall),
-                    const SizedBox(height: 4),
-                    SelectableText(hostAddress, style: Theme.of(context).textTheme.bodyMedium),
-                  ],
-                  const SizedBox(height: 16),
-                ],
-              ),
-            ),
           ),
         ),
       ),
