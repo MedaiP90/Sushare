@@ -31,6 +31,7 @@ class SessionShellPage extends ConsumerStatefulWidget {
 class _SessionShellPageState extends ConsumerState<SessionShellPage> {
   int _currentIndex = 0;
   bool _serverStarted = false;
+  bool _isGuest = false;
   bool _guestConnected = false;
   bool _guestFrozen = false;
   SessionStatus? _lastKnownStatus;
@@ -47,6 +48,18 @@ class _SessionShellPageState extends ConsumerState<SessionShellPage> {
     _clientConnSub?.cancel();
     _reconnectTimer?.cancel();
     ref.read(sessionClientServiceProvider).disconnect();
+    if (_isGuest) {
+      final repo = ref.read(sessionRepositoryProvider);
+      final sessionId = widget.sessionId;
+      () async {
+        try {
+          final s = await repo.getSessionById(sessionId);
+          if (s?.hostAddress != null) {
+            await repo.saveSession(s!.copyWith(hostAddress: null));
+          }
+        } catch (_) {}
+      }();
+    }
     super.dispose();
   }
 
@@ -289,7 +302,8 @@ class _SessionShellPageState extends ConsumerState<SessionShellPage> {
         final existing =
             await subOrderRepo.getSubOrder(subOrder.sessionId, subOrder.userId);
         if (existing != null) {
-          await subOrderRepo.updateSubOrder(subOrder);
+          // Preserve local checklist data; remote strips checklist before sending
+          await subOrderRepo.updateSubOrder(subOrder.copyWith(checklist: existing.checklist));
         } else {
           await subOrderRepo.saveSubOrder(subOrder);
         }
@@ -306,6 +320,7 @@ class _SessionShellPageState extends ConsumerState<SessionShellPage> {
 
   Future<void> _connectAsGuest(Session session, LocalUser user) async {
     if (_guestConnected) return;
+    _isGuest = true;
     final client = ref.read(sessionClientServiceProvider);
 
     _clientConnSub?.cancel();
@@ -363,26 +378,29 @@ class _SessionShellPageState extends ConsumerState<SessionShellPage> {
       case SyncMessageType.initialSync:
         if (msg.data['session'] != null) {
           final session = Session.fromJson(msg.data['session'] as Map<String, dynamic>);
-          // Preserve our local hostAddress
           final withAddr = session.copyWith(hostAddress: currentSession.hostAddress);
           await sessionRepo.saveSession(withAddr);
           _lastKnownStatus = withAddr.status;
-          if (mounted) ref.invalidate(sessionDetailProvider(withAddr.id));
+          if (mounted) {
+            ref.invalidate(sessionDetailProvider(withAddr.id));
+            ref.invalidate(sessionsProvider); // update table list immediately
+          }
         }
         if (msg.data['restaurant'] != null) {
-          final restaurant =
+          final remote =
               Restaurant.fromJson(msg.data['restaurant'] as Map<String, dynamic>);
-          await restaurantRepo.saveRestaurant(restaurant);
-          if (mounted) ref.invalidate(restaurantDetailProvider(restaurant.id));
+          final local = await restaurantRepo.getRestaurantById(remote.id);
+          await restaurantRepo.saveRestaurant(_mergeRestaurant(remote, local));
+          if (mounted) ref.invalidate(restaurantDetailProvider(remote.id));
         }
         final subOrdersJson = msg.data['subOrders'] as List<dynamic>? ?? [];
         for (final raw in subOrdersJson) {
           final so = PersonalSubOrder.fromJson(raw as Map<String, dynamic>);
-          // Don't overwrite our own sub order from the server
           if (so.userId == user?.id) continue;
           final existing = await subOrderRepo.getSubOrder(so.sessionId, so.userId);
           if (existing != null) {
-            await subOrderRepo.updateSubOrder(so);
+            // Preserve local checklist; remote has no checklist data
+            await subOrderRepo.updateSubOrder(so.copyWith(checklist: existing.checklist));
           } else {
             await subOrderRepo.saveSubOrder(so);
           }
@@ -394,7 +412,6 @@ class _SessionShellPageState extends ConsumerState<SessionShellPage> {
         final withAddr = newSession.copyWith(hostAddress: currentSession.hostAddress);
         await sessionRepo.saveSession(withAddr);
 
-        // If order just sent or new round opened, clear own sub order entries
         final prevStatus = _lastKnownStatus;
         _lastKnownStatus = withAddr.status;
 
@@ -415,20 +432,23 @@ class _SessionShellPageState extends ConsumerState<SessionShellPage> {
           }
         }
 
-        if (mounted) ref.invalidate(sessionDetailProvider(withAddr.id));
+        if (mounted) {
+          ref.invalidate(sessionDetailProvider(withAddr.id));
+          ref.invalidate(sessionsProvider);
+        }
 
       case SyncMessageType.restaurantUpdate:
-        final restaurant = Restaurant.fromJson(msg.data);
-        await restaurantRepo.saveRestaurant(restaurant);
-        if (mounted) ref.invalidate(restaurantDetailProvider(restaurant.id));
+        final remote = Restaurant.fromJson(msg.data);
+        final local = await restaurantRepo.getRestaurantById(remote.id);
+        await restaurantRepo.saveRestaurant(_mergeRestaurant(remote, local));
+        if (mounted) ref.invalidate(restaurantDetailProvider(remote.id));
 
       case SyncMessageType.subOrderBroadcast:
         final so = PersonalSubOrder.fromJson(msg.data);
-        // Don't overwrite our own sub order
         if (so.userId == user?.id) return;
         final existing = await subOrderRepo.getSubOrder(so.sessionId, so.userId);
         if (existing != null) {
-          await subOrderRepo.updateSubOrder(so);
+          await subOrderRepo.updateSubOrder(so.copyWith(checklist: existing.checklist));
         } else {
           await subOrderRepo.saveSubOrder(so);
         }
@@ -437,6 +457,19 @@ class _SessionShellPageState extends ConsumerState<SessionShellPage> {
       default:
         break;
     }
+  }
+
+  /// Merges a remote restaurant into local, preserving the user's isYummie flags.
+  Restaurant _mergeRestaurant(Restaurant remote, Restaurant? local) {
+    if (local == null) return remote;
+    final localYummies = {
+      for (final item in local.menu)
+        if (item.isYummie) item.id: true,
+    };
+    final merged = remote.menu
+        .map((item) => item.copyWith(isYummie: localYummies[item.id] ?? item.isYummie))
+        .toList();
+    return remote.copyWith(menu: merged);
   }
 
   // ── Shared helpers ────────────────────────────────────────────────────────

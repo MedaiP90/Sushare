@@ -79,6 +79,8 @@ class Session {
     };
   }
 
+  static const _unset = Object();
+
   Session copyWith({
     String? id,
     String? name,
@@ -91,7 +93,7 @@ class Session {
     Map<String, int>? arrivedCounts,
     DateTime? createdAt,
     DateTime? sentAt,
-    String? hostAddress,
+    Object? hostAddress = _unset,
   }) {
     return Session(
       id: id ?? this.id,
@@ -105,7 +107,7 @@ class Session {
       arrivedCounts: arrivedCounts ?? this.arrivedCounts,
       createdAt: createdAt ?? this.createdAt,
       sentAt: sentAt ?? this.sentAt,
-      hostAddress: hostAddress ?? this.hostAddress,
+      hostAddress: identical(hostAddress, _unset) ? this.hostAddress : hostAddress as String?,
     );
   }
 }

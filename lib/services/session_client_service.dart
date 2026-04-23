@@ -79,7 +79,9 @@ class SessionClientService {
 
   void pushSubOrderUpdate(PersonalSubOrder subOrder) {
     if (!_isConnected) return;
-    _send(SyncMessage(type: SyncMessageType.subOrderUpdate, data: subOrder.toJson()));
+    // Checklist is personal and local-only — never sync it
+    final stripped = subOrder.copyWith(checklist: []);
+    _send(SyncMessage(type: SyncMessageType.subOrderUpdate, data: stripped.toJson()));
   }
 
   void _send(SyncMessage message) {

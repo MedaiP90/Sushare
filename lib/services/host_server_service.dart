@@ -33,7 +33,7 @@ class HostServerService {
   void setRestaurant(Restaurant restaurant) => _restaurant = restaurant;
 
   void upsertSubOrder(PersonalSubOrder subOrder) =>
-      _subOrders[subOrder.userId] = subOrder;
+      _subOrders[subOrder.userId] = subOrder.copyWith(checklist: []);
 
   void clearSubOrders() => _subOrders.clear();
 
@@ -95,13 +95,15 @@ class HostServerService {
         _messageController.add(msg);
       case SyncMessageType.subOrderUpdate:
         final subOrder = PersonalSubOrder.fromJson(msg.data);
-        _subOrders[subOrder.userId] = subOrder;
-        // Forward to all other connected guests
+        // Store without checklist — checklists are personal and local-only
+        final stripped = subOrder.copyWith(checklist: []);
+        _subOrders[stripped.userId] = stripped;
+        // Forward to all other connected guests (already no checklist)
         _broadcastExcept(
-          SyncMessage(type: SyncMessageType.subOrderBroadcast, data: msg.data),
+          SyncMessage(type: SyncMessageType.subOrderBroadcast, data: stripped.toJson()),
           exclude: client.channel,
         );
-        // Notify host app so it can persist to DB
+        // Notify host app so it can persist to DB (original msg, host preserves its own checklist)
         _messageController.add(msg);
       default:
         break;
