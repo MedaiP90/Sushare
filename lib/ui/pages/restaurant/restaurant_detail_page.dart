@@ -56,10 +56,11 @@ class RestaurantDetailPage extends ConsumerWidget {
                             begin: Alignment.topCenter,
                             end: Alignment.bottomCenter,
                             colors: [
-                              Colors.black,
+                              Colors.black.withValues(alpha: 1.0),
                               Colors.black.withValues(alpha: 0.9),
-                              Colors.black.withValues(alpha: 0.7),
-                              Colors.transparent,
+                              Colors.black.withValues(alpha: 0.65),
+                              Colors.black.withValues(alpha: 0.15),
+                              Colors.black.withValues(alpha: 0.0),
                             ],
                           ).createShader(
                               Rect.fromLTRB(0, 0, rect.width, rect.height)),
