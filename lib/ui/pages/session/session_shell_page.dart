@@ -33,7 +33,6 @@ class _SessionShellPageState extends ConsumerState<SessionShellPage> {
   bool _serverStarted = false;
   bool _isGuest = false;
   bool _guestConnected = false;
-  bool _guestFrozen = false;
   SessionStatus? _lastKnownStatus;
 
   StreamSubscription<SyncMessage>? _hostMsgSub;
@@ -84,7 +83,7 @@ class _SessionShellPageState extends ConsumerState<SessionShellPage> {
           WidgetsBinding.instance.addPostFrameCallback((_) => _startHostServer(session));
         }
 
-        if (!isHost && session.hostAddress != null && !_guestConnected && user != null) {
+        if (!isHost && session.hostAddress != null && !_guestConnected && session.status != SessionStatus.closed && user != null) {
           WidgetsBinding.instance
               .addPostFrameCallback((_) => _connectAsGuest(session, user));
         }
@@ -185,7 +184,7 @@ class _SessionShellPageState extends ConsumerState<SessionShellPage> {
                     ),
                   ),
                 ),
-              if (!isHost && _guestFrozen)
+              if (!isHost && !_guestConnected && session.status != SessionStatus.closed)
                 ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: double.infinity),
                   child: Material(
@@ -334,7 +333,6 @@ class _SessionShellPageState extends ConsumerState<SessionShellPage> {
     _clientConnSub?.cancel();
     _clientConnSub = client.connectionStatus.listen((connected) {
       if (!mounted) return;
-      setState(() => _guestFrozen = !connected);
       if (!connected) _scheduleReconnect(session, user);
     });
 
@@ -351,8 +349,7 @@ class _SessionShellPageState extends ConsumerState<SessionShellPage> {
 
     if (mounted) {
       setState(() {
-        _guestConnected = true;
-        _guestFrozen = !connected;
+        _guestConnected = connected;
       });
     }
   }

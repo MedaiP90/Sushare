@@ -312,6 +312,9 @@ class AppLocalizationsEs extends AppLocalizations {
   String get joinTableHostHint => 'p. ej., 192.168.1.100:8080';
 
   @override
+  String get joinTableClosedError => 'Esta mesa está cerrada';
+
+  @override
   String get newTableTitle => 'Nueva mesa';
 
   @override
