@@ -24,7 +24,20 @@ class SushareApp extends ConsumerWidget {
     final userAsync = ref.watch(profileViewModelProvider);
     final router = ref.watch(routerProvider);
     final themeMode = ref.watch(themeModeProvider);
-    final locale = ref.watch(localeProvider);
+    final savedLocale = ref.watch(localeProvider);
+
+    final Locale effectiveLocale;
+    if (savedLocale != null) {
+      effectiveLocale = savedLocale;
+    } else {
+      final systemLocale = WidgetsBinding.instance.platformDispatcher.locale;
+      final supported = AppLocalizations.supportedLocales
+          .map((l) => l.languageCode)
+          .toSet();
+      effectiveLocale = supported.contains(systemLocale.languageCode)
+          ? Locale(systemLocale.languageCode)
+          : const Locale('en');
+    }
 
     return DynamicColorBuilder(
       builder: (ColorScheme? lightDynamic, ColorScheme? darkDynamic) {
@@ -34,7 +47,7 @@ class SushareApp extends ConsumerWidget {
           theme: AppTheme.light(dynamicScheme: lightDynamic),
           darkTheme: AppTheme.dark(dynamicScheme: darkDynamic),
           themeMode: themeMode,
-          locale: locale,
+          locale: effectiveLocale,
           supportedLocales: AppLocalizations.supportedLocales,
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           routerConfig: router,
