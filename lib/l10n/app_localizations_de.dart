@@ -677,6 +677,10 @@ class AppLocalizationsDe extends AppLocalizations {
   String get personalOrderRestaurantNotFound => 'Restaurant nicht gefunden';
 
   @override
+  String get personalOrderSentBanner =>
+      'Bestellung gesendet — warte, bis der Gastgeber eine neue Runde öffnet, bevor du Artikel hinzufügst.';
+
+  @override
   String get scanMenuTitle => 'Speisekarte scannen';
 
   @override

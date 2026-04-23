@@ -1292,6 +1292,12 @@ abstract class AppLocalizations {
   /// **'Restaurant not found'**
   String get personalOrderRestaurantNotFound;
 
+  /// No description provided for @personalOrderSentBanner.
+  ///
+  /// In en, this message translates to:
+  /// **'Order sent — wait for the host to open a new round before adding items.'**
+  String get personalOrderSentBanner;
+
   /// No description provided for @scanMenuTitle.
   ///
   /// In en, this message translates to:

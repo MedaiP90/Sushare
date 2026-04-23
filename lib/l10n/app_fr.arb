@@ -463,6 +463,8 @@
   "@personalOrderLogin": {},
   "personalOrderRestaurantNotFound": "Restaurant introuvable",
   "@personalOrderRestaurantNotFound": {},
+  "personalOrderSentBanner": "Commande envoyée — attends que l'hôte ouvre un nouveau tour avant d'ajouter des articles.",
+  "@personalOrderSentBanner": {},
 
   "scanMenuTitle": "Scanner le menu",
   "@scanMenuTitle": {},

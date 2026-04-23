@@ -463,6 +463,8 @@
   "@personalOrderLogin": {},
   "personalOrderRestaurantNotFound": "Restaurant nicht gefunden",
   "@personalOrderRestaurantNotFound": {},
+  "personalOrderSentBanner": "Bestellung gesendet — warte, bis der Gastgeber eine neue Runde öffnet, bevor du Artikel hinzufügst.",
+  "@personalOrderSentBanner": {},
 
   "scanMenuTitle": "Speisekarte scannen",
   "@scanMenuTitle": {},

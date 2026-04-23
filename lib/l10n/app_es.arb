@@ -463,6 +463,8 @@
   "@personalOrderLogin": {},
   "personalOrderRestaurantNotFound": "Restaurante no encontrado",
   "@personalOrderRestaurantNotFound": {},
+  "personalOrderSentBanner": "Pedido enviado — espera a que el anfitrión abra una nueva ronda antes de añadir artículos.",
+  "@personalOrderSentBanner": {},
 
   "scanMenuTitle": "Escanear menú",
   "@scanMenuTitle": {},

@@ -463,6 +463,8 @@
   "@personalOrderLogin": {},
   "personalOrderRestaurantNotFound": "Restaurant not found",
   "@personalOrderRestaurantNotFound": {},
+  "personalOrderSentBanner": "Order sent — wait for the host to open a new round before adding items.",
+  "@personalOrderSentBanner": {},
 
   "scanMenuTitle": "Scan Menu",
   "@scanMenuTitle": {},
