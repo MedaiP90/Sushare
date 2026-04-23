@@ -6,6 +6,7 @@ import '../../../domain/models/personal_sub_order.dart';
 import '../../../domain/models/order.dart';
 import '../../../domain/models/restaurant.dart';
 import '../../../core/utils/order_aggregator.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../viewmodels/session_viewmodel.dart';
 import '../../viewmodels/profile_viewmodel.dart';
 import '../../viewmodels/restaurant_viewmodel.dart';
@@ -20,11 +21,12 @@ class MergedOrderContent extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final sessionAsync = ref.watch(sessionDetailProvider(sessionId));
     final user = ref.watch(profileViewModelProvider).value;
+    final l10n = AppLocalizations.of(context)!;
 
     return sessionAsync.when(
       data: (session) {
         if (session == null) {
-          return const Center(child: Text('Table not found'));
+          return Center(child: Text(l10n.sessionTableNotFound));
         }
 
         final isHost = user?.id == session.hostUserId;
@@ -67,7 +69,7 @@ class MergedOrderContent extends ConsumerWidget {
                               const SizedBox(width: 8),
                               Expanded(
                                 child: Text(
-                                  'Waiting for all participants to lock their orders',
+                                  l10n.mergedOrderWaiting,
                                   style: TextStyle(
                                     color: Theme.of(context).colorScheme.onErrorContainer,
                                   ),
@@ -100,7 +102,7 @@ class MergedOrderContent extends ConsumerWidget {
                             heroTag: 'openRound',
                             onPressed: () => _showOpenRoundSheet(context, ref, session, activeOrders),
                             icon: const Icon(Icons.add),
-                            label: const Text('Open New Round'),
+                            label: Text(l10n.mergedOrderOpenRound),
                           ),
                         if (session.status == SessionStatus.sent) const SizedBox(height: 12),
                         if (session.status == SessionStatus.open && activeOrders.isNotEmpty)
@@ -111,36 +113,36 @@ class MergedOrderContent extends ConsumerWidget {
                                 _sendOrder(context, ref, session, activeOrders);
                               } else {
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('All participants must lock their orders first'),
-                                  ),
+                                  SnackBar(content: Text(l10n.mergedOrderSendLocked)),
                                 );
                               }
                             },
                             icon: const Icon(Icons.send),
-                            label: const Text('Send Order'),
+                            label: Text(l10n.mergedOrderSend),
                           ),
                       ],
                     ),
             );
           },
           loading: () => const Center(child: CircularProgressIndicator()),
-          error: (error, _) => Center(child: Text('Error: $error')),
+          error: (error, _) => Center(child: Text(l10n.errorMessage(error.toString()))),
         );
       },
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (error, _) => Center(child: Text('Error: $error')),
+      error: (error, _) => Center(child: Text(AppLocalizations.of(context)!.errorMessage(error.toString()))),
     );
   }
 
   Widget _buildParticipantsSection(BuildContext context, List<PersonalSubOrder> subOrders, Session session) {
+    final l10n = AppLocalizations.of(context)!;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
             Text(
-              'Participants',
+              l10n.mergedOrderParticipants,
               style: Theme.of(context).textTheme.titleMedium,
             ),
             const Spacer(),
@@ -195,76 +197,81 @@ class MergedOrderContent extends ConsumerWidget {
   ) {
     showModalBottomSheet(
       context: context,
-      builder: (context) => SafeArea(
-        child: SizedBox(
-          width: double.infinity,
-          child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              CircleAvatar(
-                radius: 40,
-                backgroundImage: picturePath != null ? FileImage(File(picturePath)) : null,
-                backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-                child: picturePath == null
-                    ? Text(
-                        displayName.substring(0, 1).toUpperCase(),
-                        style: Theme.of(context).textTheme.headlineMedium,
-                      )
-                    : null,
-              ),
-              const SizedBox(height: 16),
-              if (fullName != null && fullName.isNotEmpty)
-                Text(
-                  fullName,
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-              const SizedBox(height: 4),
-              Text(
-                '@$displayName',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-              ),
-              const SizedBox(height: 8),
-              Chip(
-                label: Text(hasOrdered ? 'Order added' : 'No order yet'),
-                avatar: Icon(
-                  hasOrdered ? Icons.check_circle : Icons.hourglass_empty,
-                  size: 16,
-                ),
-                backgroundColor: hasOrdered
-                    ? Theme.of(context).colorScheme.primaryContainer
-                    : Theme.of(context).colorScheme.surfaceContainerHighest,
-              ),
-              if (subOrder != null && subOrder.entries.isNotEmpty) ...[
-                const SizedBox(height: 16),
-                const Divider(),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    'Items ordered',
-                    style: Theme.of(context).textTheme.labelLarge,
+      builder: (sheetContext) {
+        final l10n = AppLocalizations.of(sheetContext)!;
+        return SafeArea(
+          child: SizedBox(
+            width: double.infinity,
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircleAvatar(
+                    radius: 40,
+                    backgroundImage: picturePath != null ? FileImage(File(picturePath)) : null,
+                    backgroundColor: Theme.of(sheetContext).colorScheme.primaryContainer,
+                    child: picturePath == null
+                        ? Text(
+                            displayName.substring(0, 1).toUpperCase(),
+                            style: Theme.of(sheetContext).textTheme.headlineMedium,
+                          )
+                        : null,
                   ),
-                ),
-                const SizedBox(height: 8),
-                ...subOrder.entries.map((e) => ListTile(
-                      dense: true,
-                      contentPadding: EdgeInsets.zero,
-                      title: Text(e.name),
-                      trailing: Text('x${e.quantity}'),
-                    )),
-              ],
-            ],
+                  const SizedBox(height: 16),
+                  if (fullName != null && fullName.isNotEmpty)
+                    Text(
+                      fullName,
+                      style: Theme.of(sheetContext).textTheme.titleLarge,
+                    ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '@$displayName',
+                    style: Theme.of(sheetContext).textTheme.titleMedium?.copyWith(
+                          color: Theme.of(sheetContext).colorScheme.onSurfaceVariant,
+                        ),
+                  ),
+                  const SizedBox(height: 8),
+                  Chip(
+                    label: Text(hasOrdered ? l10n.mergedParticipantOrderAdded : l10n.mergedParticipantNoOrder),
+                    avatar: Icon(
+                      hasOrdered ? Icons.check_circle : Icons.hourglass_empty,
+                      size: 16,
+                    ),
+                    backgroundColor: hasOrdered
+                        ? Theme.of(sheetContext).colorScheme.primaryContainer
+                        : Theme.of(sheetContext).colorScheme.surfaceContainerHighest,
+                  ),
+                  if (subOrder != null && subOrder.entries.isNotEmpty) ...[
+                    const SizedBox(height: 16),
+                    const Divider(),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        l10n.mergedParticipantItemsOrdered,
+                        style: Theme.of(sheetContext).textTheme.labelLarge,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    ...subOrder.entries.map((e) => ListTile(
+                          dense: true,
+                          contentPadding: EdgeInsets.zero,
+                          title: Text(e.name),
+                          trailing: Text('x${e.quantity}'),
+                        )),
+                  ],
+                ],
+              ),
+            ),
           ),
-        ),
-        ),
-      ),
+        );
+      },
     );
   }
 
   Widget _buildCurrentRound(BuildContext context, List<PersonalSubOrder> activeOrders, bool allReady, Restaurant? restaurant) {
+    final l10n = AppLocalizations.of(context)!;
+
     if (activeOrders.isEmpty) {
       return Card(
         color: Theme.of(context).colorScheme.surfaceContainerLow,
@@ -275,7 +282,7 @@ class MergedOrderContent extends ConsumerWidget {
               Icon(Icons.receipt_long, color: Theme.of(context).colorScheme.outline),
               const SizedBox(width: 8),
               Text(
-                'Current Order — empty',
+                l10n.mergedOrderCurrentEmpty,
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: Theme.of(context).colorScheme.outline,
                     ),
@@ -286,11 +293,12 @@ class MergedOrderContent extends ConsumerWidget {
       );
     }
     if (!allReady) return const SizedBox.shrink();
-    return _buildAggregatedOrder(context, activeOrders, 'Current Order', restaurant);
+    return _buildAggregatedOrder(context, activeOrders, l10n.mergedOrderCurrentOrder, restaurant);
   }
 
   Widget _buildAggregatedOrder(BuildContext context, List<PersonalSubOrder> subOrders, String label, Restaurant? restaurant) {
     final aggregated = aggregateSubOrders(subOrders, label);
+    final l10n = AppLocalizations.of(context)!;
 
     return Card(
       color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.3),
@@ -310,7 +318,7 @@ class MergedOrderContent extends ConsumerWidget {
             if (aggregated.items.isEmpty)
               Padding(
                 padding: const EdgeInsets.all(8),
-                child: Text('No items yet', style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).colorScheme.outline)),
+                child: Text(l10n.mergedOrderNoItems, style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).colorScheme.outline)),
               )
             else
               ...aggregated.items.map((item) {
@@ -321,7 +329,7 @@ class MergedOrderContent extends ConsumerWidget {
                       ? CircleAvatar(radius: 14, backgroundColor: Theme.of(context).colorScheme.primaryContainer, child: Text('${menuItem!.itemNumber}', style: Theme.of(context).textTheme.labelSmall))
                       : null,
                   title: Text(item.name),
-                  subtitle: Text('By ${item.contributorIds.length} participant(s)'),
+                  subtitle: Text(l10n.mergedOrderBy(item.contributorIds.length)),
                   trailing: Text('x${item.quantity}', style: Theme.of(context).textTheme.titleLarge),
                 );
               }),
@@ -332,6 +340,8 @@ class MergedOrderContent extends ConsumerWidget {
   }
 
   Widget _buildOrderSection(BuildContext context, String label, Order order, Restaurant? restaurant) {
+    final l10n = AppLocalizations.of(context)!;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -341,7 +351,7 @@ class MergedOrderContent extends ConsumerWidget {
               child: Text(label, style: Theme.of(context).textTheme.titleMedium?.copyWith(color: Theme.of(context).colorScheme.primary)),
             ),
             Chip(
-              label: Text('${order.items.length} items'),
+              label: Text(l10n.mergedOrderItemsCount(order.items.length)),
               backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
             ),
           ],
@@ -366,7 +376,7 @@ class MergedOrderContent extends ConsumerWidget {
                         Expanded(child: Text(item.name)),
                       ],
                     ),
-                    subtitle: Text('By ${item.contributorIds.length} participant(s)'),
+                    subtitle: Text(l10n.mergedOrderBy(item.contributorIds.length)),
                     trailing: Text('x${item.quantity}', style: Theme.of(context).textTheme.titleMedium),
                   ),
                   if (index < order.items.length - 1) const Divider(height: 1),
@@ -385,6 +395,7 @@ class MergedOrderContent extends ConsumerWidget {
     Session session,
     List<PersonalSubOrder> subOrders,
   ) async {
+    final l10n = AppLocalizations.of(context)!;
     final label = session.mainOrder == null ? 'Order 1' : 'Order ${session.additionalOrders.length + 2}';
     final aggregated = aggregateSubOrders(subOrders, label);
 
@@ -415,7 +426,7 @@ class MergedOrderContent extends ConsumerWidget {
 
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('$label sent! Participants can no longer edit.')),
+        SnackBar(content: Text(l10n.mergedOrderSent(label))),
       );
     }
   }
@@ -430,44 +441,44 @@ class MergedOrderContent extends ConsumerWidget {
 
     showModalBottomSheet(
       context: context,
-      builder: (context) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                'Open Round $roundNumber',
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-              const SizedBox(height: 12),
-              const Text(
-                'This will allow participants to add items to a new order. '
-                'Current orders will be locked.',
-              ),
-              const SizedBox(height: 24),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text('Cancel'),
-                  ),
-                  const SizedBox(width: 8),
-                  FilledButton(
-                    onPressed: () async {
-                      Navigator.pop(context);
-                      await _createRound(context, ref, session, roundNumber);
-                    },
-                    child: const Text('Open Round'),
-                  ),
-                ],
-              ),
-            ],
+      builder: (sheetContext) {
+        final l10n = AppLocalizations.of(sheetContext)!;
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  l10n.mergedOrderOpenRoundTitle(roundNumber),
+                  style: Theme.of(sheetContext).textTheme.titleLarge,
+                ),
+                const SizedBox(height: 12),
+                Text(l10n.mergedOrderOpenRoundDescription),
+                const SizedBox(height: 24),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(sheetContext),
+                      child: Text(l10n.cancel),
+                    ),
+                    const SizedBox(width: 8),
+                    FilledButton(
+                      onPressed: () async {
+                        Navigator.pop(sheetContext);
+                        await _createRound(context, ref, session, roundNumber);
+                      },
+                      child: Text(l10n.mergedOrderOpenRoundButton),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
@@ -477,6 +488,7 @@ class MergedOrderContent extends ConsumerWidget {
     Session session,
     int roundNumber,
   ) async {
+    final l10n = AppLocalizations.of(context)!;
     final updated = session.copyWith(
       status: SessionStatus.open,
     );
@@ -498,7 +510,7 @@ class MergedOrderContent extends ConsumerWidget {
 
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Round $roundNumber opened! Participants can add new items.')),
+        SnackBar(content: Text(l10n.mergedOrderRoundOpened(roundNumber))),
       );
     }
   }

@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import '../../../domain/models/restaurant.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../viewmodels/restaurant_viewmodel.dart';
 import '../../viewmodels/saved_order_viewmodel.dart';
 import '../restaurant/restaurant_detail_page.dart';
@@ -15,10 +16,11 @@ class RestaurantsPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final restaurantsAsync = ref.watch(restaurantsProvider);
+    final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Restaurants'),
+        title: Text(l10n.restaurantsTitle),
         centerTitle: true,
       ),
       body: restaurantsAsync.when(
@@ -34,22 +36,19 @@ class RestaurantsPage extends ConsumerWidget {
                     color: Theme.of(context).colorScheme.outline,
                   ),
                   const SizedBox(height: 16),
-                  Text(
-                    'No restaurants yet',
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
+                  Text(l10n.restaurantsEmpty, style: Theme.of(context).textTheme.titleLarge),
                   const SizedBox(height: 8),
                   Text(
-                    'Add your first restaurant to get started',
+                    l10n.restaurantsEmptySubtitle,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           color: Theme.of(context).colorScheme.outline,
                         ),
                   ),
                   const SizedBox(height: 24),
                   FilledButton.icon(
-                    onPressed: () => _showAddRestaurantSheet(context, ref),
+                    onPressed: () => _showAddRestaurantSheet(context, ref, l10n),
                     icon: const Icon(Icons.add),
-                    label: const Text('Add Restaurant'),
+                    label: Text(l10n.restaurantsAdd),
                   ),
                 ],
               ),
@@ -61,7 +60,8 @@ class RestaurantsPage extends ConsumerWidget {
             itemCount: restaurants.length,
             itemBuilder: (context, index) {
               final restaurant = restaurants[index];
-              final templatesAsync = ref.watch(savedOrdersForRestaurantProvider(restaurant.id));
+              final templatesAsync =
+                  ref.watch(savedOrdersForRestaurantProvider(restaurant.id));
               final templateCount = templatesAsync.valueOrNull?.length ?? 0;
               return Card(
                 margin: const EdgeInsets.only(bottom: 16),
@@ -69,7 +69,7 @@ class RestaurantsPage extends ConsumerWidget {
                 child: InkWell(
                   onTap: () => context.push('/restaurants/${restaurant.id}'),
                   onLongPress: () =>
-                      _showRestaurantActions(context, ref, restaurant),
+                      _showRestaurantActions(context, ref, restaurant, l10n),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -101,10 +101,7 @@ class RestaurantsPage extends ConsumerWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              restaurant.name,
-                              style: Theme.of(context).textTheme.titleLarge,
-                            ),
+                            Text(restaurant.name, style: Theme.of(context).textTheme.titleLarge),
                             if (restaurant.address != null) ...[
                               const SizedBox(height: 4),
                               Row(
@@ -132,12 +129,12 @@ class RestaurantsPage extends ConsumerWidget {
                               runSpacing: 4,
                               children: [
                                 Chip(
-                                  label: Text('${restaurant.menu.length} dishes'),
+                                  label: Text(l10n.restaurantDishes(restaurant.menu.length)),
                                   visualDensity: VisualDensity.compact,
                                 ),
                                 if (templateCount > 0)
                                   Chip(
-                                    label: Text('$templateCount templates'),
+                                    label: Text(l10n.restaurantTemplatesCount(templateCount)),
                                     visualDensity: VisualDensity.compact,
                                   ),
                               ],
@@ -159,26 +156,26 @@ class RestaurantsPage extends ConsumerWidget {
             children: [
               const Icon(Icons.error_outline, size: 48),
               const SizedBox(height: 16),
-              Text('Error: $error'),
+              Text(l10n.errorMessage(error.toString())),
               const SizedBox(height: 16),
               FilledButton(
                 onPressed: () => ref.invalidate(restaurantsProvider),
-                child: const Text('Retry'),
+                child: Text(l10n.retry),
               ),
             ],
           ),
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showAddRestaurantSheet(context, ref),
+        onPressed: () => _showAddRestaurantSheet(context, ref, l10n),
         icon: const Icon(Icons.add),
-        label: const Text('Add Restaurant'),
+        label: Text(l10n.restaurantsAdd),
       ),
     );
   }
 
   void _showRestaurantActions(
-      BuildContext context, WidgetRef ref, Restaurant restaurant) {
+      BuildContext context, WidgetRef ref, Restaurant restaurant, AppLocalizations l10n) {
     showModalBottomSheet(
       context: context,
       builder: (sheetContext) => SafeArea(
@@ -200,7 +197,7 @@ class RestaurantsPage extends ConsumerWidget {
             const SizedBox(height: 20),
             ListTile(
               leading: const Icon(Icons.edit_outlined),
-              title: const Text('Edit'),
+              title: Text(l10n.edit),
               onTap: () {
                 Navigator.pop(sheetContext);
                 showModalBottomSheet(
@@ -215,9 +212,7 @@ class RestaurantsPage extends ConsumerWidget {
                         address: address,
                         coverImagePath: coverImagePath,
                       );
-                      await ref
-                          .read(restaurantsProvider.notifier)
-                          .updateRestaurant(updated);
+                      await ref.read(restaurantsProvider.notifier).updateRestaurant(updated);
                       if (editContext.mounted) Navigator.pop(editContext);
                     },
                   ),
@@ -227,37 +222,34 @@ class RestaurantsPage extends ConsumerWidget {
             ListTile(
               leading: Icon(Icons.delete_outline,
                   color: Theme.of(sheetContext).colorScheme.error),
-              title: Text('Delete',
-                  style: TextStyle(
-                      color: Theme.of(sheetContext).colorScheme.error)),
+              title: Text(
+                l10n.delete,
+                style: TextStyle(color: Theme.of(sheetContext).colorScheme.error),
+              ),
               onTap: () async {
                 Navigator.pop(sheetContext);
                 final confirm = await showDialog<bool>(
                   context: context,
                   builder: (dialogContext) => AlertDialog(
-                    title: const Text('Delete Restaurant'),
-                    content: Text(
-                        'Are you sure you want to delete "${restaurant.name}"?'),
+                    title: Text(l10n.restaurantDeleteTitle),
+                    content: Text(l10n.restaurantDeleteMessage(restaurant.name)),
                     actions: [
                       TextButton(
                         onPressed: () => Navigator.pop(dialogContext, false),
-                        child: const Text('Cancel'),
+                        child: Text(l10n.cancel),
                       ),
                       FilledButton(
                         onPressed: () => Navigator.pop(dialogContext, true),
                         style: FilledButton.styleFrom(
-                          backgroundColor:
-                              Theme.of(dialogContext).colorScheme.error,
+                          backgroundColor: Theme.of(dialogContext).colorScheme.error,
                         ),
-                        child: const Text('Delete'),
+                        child: Text(l10n.delete),
                       ),
                     ],
                   ),
                 );
                 if (confirm == true && context.mounted) {
-                  await ref
-                      .read(restaurantsProvider.notifier)
-                      .deleteRestaurant(restaurant.id);
+                  await ref.read(restaurantsProvider.notifier).deleteRestaurant(restaurant.id);
                 }
               },
             ),
@@ -268,7 +260,7 @@ class RestaurantsPage extends ConsumerWidget {
     );
   }
 
-  void _showAddRestaurantSheet(BuildContext context, WidgetRef ref) {
+  void _showAddRestaurantSheet(BuildContext context, WidgetRef ref, AppLocalizations l10n) {
     final nameController = TextEditingController();
     final addressController = TextEditingController();
 
@@ -329,6 +321,7 @@ class _AddRestaurantSheetState extends State<_AddRestaurantSheet> {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final viewInsets = MediaQuery.viewInsetsOf(context);
+    final l10n = AppLocalizations.of(context)!;
 
     return Padding(
       padding: EdgeInsets.only(bottom: viewInsets.bottom),
@@ -349,10 +342,7 @@ class _AddRestaurantSheetState extends State<_AddRestaurantSheet> {
                 ),
               ),
             ),
-            Text(
-              'Add Restaurant',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
+            Text(l10n.restaurantAddTitle, style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 20),
             GestureDetector(
               onTap: _pickImage,
@@ -368,10 +358,9 @@ class _AddRestaurantSheetState extends State<_AddRestaurantSheet> {
                     : Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.add_photo_alternate_outlined,
-                              size: 40, color: scheme.outline),
+                          Icon(Icons.add_photo_alternate_outlined, size: 40, color: scheme.outline),
                           const SizedBox(height: 8),
-                          Text('Add Cover Photo',
+                          Text(l10n.restaurantAddCoverPhoto,
                               style: TextStyle(color: scheme.outline)),
                         ],
                       ),
@@ -381,17 +370,17 @@ class _AddRestaurantSheetState extends State<_AddRestaurantSheet> {
             TextField(
               controller: widget.nameController,
               textCapitalization: TextCapitalization.words,
-              decoration: const InputDecoration(
-                labelText: 'Restaurant Name',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: l10n.restaurantNameLabel,
+                border: const OutlineInputBorder(),
               ),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: widget.addressController,
-              decoration: const InputDecoration(
-                labelText: 'Address (optional)',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: l10n.restaurantAddressLabel,
+                border: const OutlineInputBorder(),
               ),
             ),
             const SizedBox(height: 24),
@@ -400,14 +389,14 @@ class _AddRestaurantSheetState extends State<_AddRestaurantSheet> {
                 Expanded(
                   child: OutlinedButton(
                     onPressed: () => Navigator.pop(context),
-                    child: const Text('Cancel'),
+                    child: Text(l10n.cancel),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: FilledButton(
                     onPressed: () => widget.onAdd(_coverImagePath),
-                    child: const Text('Add'),
+                    child: Text(l10n.add),
                   ),
                 ),
               ],

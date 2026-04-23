@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../viewmodels/profile_viewmodel.dart';
 import '../../../services/menu_ai_service.dart';
 
@@ -74,24 +75,25 @@ class SettingsPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
     final userAsync = ref.watch(profileViewModelProvider);
     final themeMode = ref.watch(themeModeProvider);
     final locale = ref.watch(localeProvider);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Settings'),
+        title: Text(l10n.settingsTitle),
         centerTitle: true,
       ),
       body: ListView(
         children: [
-          const _SectionHeader(title: 'Profile'),
+          _SectionHeader(title: l10n.settingsSectionProfile),
           userAsync.when(
             data: (user) {
               if (user == null) {
-                return const ListTile(
-                  title: Text('No profile'),
-                  subtitle: Text('Create a profile to get started'),
+                return ListTile(
+                  title: Text(l10n.settingsNoProfile),
+                  subtitle: Text(l10n.settingsNoProfileSubtitle),
                 );
               }
               return ListTile(
@@ -116,96 +118,96 @@ class SettingsPage extends ConsumerWidget {
               );
             },
             loading: () => const Center(child: CircularProgressIndicator()),
-            error: (e, _) => ListTile(title: Text('Error: $e')),
+            error: (e, _) => ListTile(title: Text(l10n.errorMessage(e.toString()))),
           ),
           const Divider(),
-          const _SectionHeader(title: 'Appearance'),
+          _SectionHeader(title: l10n.settingsSectionAppearance),
           ListTile(
             leading: const Icon(Icons.brightness_6),
-            title: const Text('Theme'),
-            subtitle: Text(_getThemeModeText(themeMode)),
+            title: Text(l10n.settingsTheme),
+            subtitle: Text(_getThemeModeText(l10n, themeMode)),
             trailing: const Icon(Icons.chevron_right),
-            onTap: () => _showThemeSheet(context, ref),
+            onTap: () => _showThemeSheet(context, ref, l10n),
           ),
           ListTile(
             leading: const Icon(Icons.language),
-            title: const Text('Language'),
-            subtitle: Text(_getLocaleText(locale)),
+            title: Text(l10n.settingsLanguage),
+            subtitle: Text(_getLocaleText(l10n, locale)),
             trailing: const Icon(Icons.chevron_right),
-            onTap: () => _showLanguageSheet(context, ref),
+            onTap: () => _showLanguageSheet(context, ref, l10n),
           ),
           const Divider(),
-          const _SectionHeader(title: 'AI Service'),
+          _SectionHeader(title: l10n.settingsSectionAiService),
           ListTile(
             leading: const Icon(Icons.psychology),
-            title: const Text('Google Gemini API Key'),
-            subtitle: const Text('For menu scanning'),
+            title: Text(l10n.settingsGeminiApiKey),
+            subtitle: Text(l10n.settingsGeminiApiKeySubtitle),
             trailing: const Icon(Icons.chevron_right),
-            onTap: () => _showApiKeySheet(context),
+            onTap: () => _showApiKeySheet(context, l10n),
           ),
           ListTile(
             leading: const Icon(Icons.model_training),
-            title: const Text('AI Model'),
+            title: Text(l10n.settingsAiModel),
             subtitle: ref.watch(_selectedModelProvider).when(
               data: (model) => Text(model ?? 'gemini-2.0-flash'),
-              loading: () => const Text('Loading...'),
+              loading: () => Text(l10n.loading),
               error: (_, __) => const Text('gemini-2.0-flash'),
             ),
             trailing: const Icon(Icons.chevron_right),
-            onTap: () => _showModelSheet(context, ref),
+            onTap: () => _showModelSheet(context, ref, l10n),
           ),
           const Divider(),
-          const _SectionHeader(title: 'About'),
-          const ListTile(
-            leading: Icon(Icons.info_outline),
-            title: Text('App Version'),
-            subtitle: Text('1.0.0'),
+          _SectionHeader(title: l10n.settingsSectionAbout),
+          ListTile(
+            leading: const Icon(Icons.info_outline),
+            title: Text(l10n.settingsAppVersion),
+            subtitle: const Text('1.0.0'),
           ),
         ],
       ),
     );
   }
 
-  String _getThemeModeText(ThemeMode mode) {
+  String _getThemeModeText(AppLocalizations l10n, ThemeMode mode) {
     switch (mode) {
       case ThemeMode.system:
-        return 'System default';
+        return l10n.settingsThemeSystem;
       case ThemeMode.light:
-        return 'Light';
+        return l10n.settingsThemeLight;
       case ThemeMode.dark:
-        return 'Dark';
+        return l10n.settingsThemeDark;
     }
   }
 
-  String _getLocaleText(Locale locale) {
+  String _getLocaleText(AppLocalizations l10n, Locale locale) {
     switch (locale.languageCode) {
       case 'en':
-        return 'English';
+        return l10n.settingsLangEnglish;
       case 'it':
-        return 'Italian';
+        return l10n.settingsLangItalian;
       case 'es':
-        return 'Spanish';
+        return l10n.settingsLangSpanish;
       case 'fr':
-        return 'French';
+        return l10n.settingsLangFrench;
       case 'de':
-        return 'German';
+        return l10n.settingsLangGerman;
       default:
-        return 'English';
+        return l10n.settingsLangEnglish;
     }
   }
 
-  void _showThemeSheet(BuildContext context, WidgetRef ref) {
+  void _showThemeSheet(BuildContext context, WidgetRef ref, AppLocalizations l10n) {
     final currentMode = ref.read(themeModeProvider);
 
     showModalBottomSheet(
       context: context,
       builder: (context) => _PickerSheet(
-        title: 'Theme',
+        title: l10n.settingsTheme,
         children: ThemeMode.values.map((mode) {
           final label = switch (mode) {
-            ThemeMode.system => 'System default',
-            ThemeMode.light => 'Light',
-            ThemeMode.dark => 'Dark',
+            ThemeMode.system => l10n.settingsThemeSystem,
+            ThemeMode.light => l10n.settingsThemeLight,
+            ThemeMode.dark => l10n.settingsThemeDark,
           };
           return RadioListTile<ThemeMode>(
             title: Text(label),
@@ -221,20 +223,20 @@ class SettingsPage extends ConsumerWidget {
     );
   }
 
-  void _showLanguageSheet(BuildContext context, WidgetRef ref) {
+  void _showLanguageSheet(BuildContext context, WidgetRef ref, AppLocalizations l10n) {
     final currentLocale = ref.read(localeProvider);
-    const options = [
-      ('en', 'English'),
-      ('it', 'Italian'),
-      ('es', 'Spanish'),
-      ('fr', 'French'),
-      ('de', 'German'),
+    final options = [
+      ('en', l10n.settingsLangEnglish),
+      ('it', l10n.settingsLangItalian),
+      ('es', l10n.settingsLangSpanish),
+      ('fr', l10n.settingsLangFrench),
+      ('de', l10n.settingsLangGerman),
     ];
 
     showModalBottomSheet(
       context: context,
       builder: (context) => _PickerSheet(
-        title: 'Language',
+        title: l10n.settingsLanguage,
         children: options.map(((String code, String label) opt) {
           return _LanguageOption(
             locale: Locale(opt.$1),
@@ -262,7 +264,7 @@ class SettingsPage extends ConsumerWidget {
     );
   }
 
-  void _showApiKeySheet(BuildContext context) {
+  void _showApiKeySheet(BuildContext context, AppLocalizations l10n) {
     final controller = TextEditingController();
     final menuAiService = MenuAiService();
 
@@ -281,14 +283,14 @@ class SettingsPage extends ConsumerWidget {
     );
   }
 
-  void _showModelSheet(BuildContext context, WidgetRef ref) async {
+  void _showModelSheet(BuildContext context, WidgetRef ref, AppLocalizations l10n) async {
     final menuAiService = MenuAiService();
     final hasKey = await menuAiService.hasApiKey();
 
     if (!hasKey) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please set your API key first')),
+          SnackBar(content: Text(l10n.settingsApiKeySetFirst)),
         );
       }
       return;
@@ -448,6 +450,7 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final viewInsets = MediaQuery.viewInsetsOf(context);
+    final l10n = AppLocalizations.of(context)!;
 
     return Padding(
       padding: EdgeInsets.only(bottom: viewInsets.bottom),
@@ -468,7 +471,7 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
                 ),
               ),
             ),
-            Text('Edit Profile', style: Theme.of(context).textTheme.titleLarge),
+            Text(l10n.settingsEditProfile, style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 24),
             Center(
               child: GestureDetector(
@@ -496,8 +499,7 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
                       child: CircleAvatar(
                         radius: 16,
                         backgroundColor: scheme.primaryContainer,
-                        child: Icon(Icons.edit, size: 16,
-                            color: scheme.onPrimaryContainer),
+                        child: Icon(Icons.edit, size: 16, color: scheme.onPrimaryContainer),
                       ),
                     ),
                   ],
@@ -507,27 +509,27 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
             const SizedBox(height: 24),
             TextField(
               controller: _usernameController,
-              decoration: const InputDecoration(
-                labelText: 'Username',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: l10n.labelUsername,
+                border: const OutlineInputBorder(),
               ),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: _firstNameController,
               textCapitalization: TextCapitalization.words,
-              decoration: const InputDecoration(
-                labelText: 'First Name',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: l10n.labelFirstName,
+                border: const OutlineInputBorder(),
               ),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: _lastNameController,
               textCapitalization: TextCapitalization.words,
-              decoration: const InputDecoration(
-                labelText: 'Last Name',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: l10n.labelLastName,
+                border: const OutlineInputBorder(),
               ),
             ),
             const SizedBox(height: 24),
@@ -536,7 +538,7 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
                 Expanded(
                   child: OutlinedButton(
                     onPressed: () => Navigator.pop(context),
-                    child: const Text('Cancel'),
+                    child: Text(l10n.cancel),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -554,11 +556,11 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
                       if (context.mounted) {
                         Navigator.pop(context);
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Profile updated!')),
+                          SnackBar(content: Text(l10n.settingsProfileUpdated)),
                         );
                       }
                     },
-                    child: const Text('Save'),
+                    child: Text(l10n.save),
                   ),
                 ),
               ],
@@ -583,6 +585,7 @@ class _ApiKeySheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final viewInsets = MediaQuery.viewInsetsOf(context);
+    final l10n = AppLocalizations.of(context)!;
 
     return Padding(
       padding: EdgeInsets.only(bottom: viewInsets.bottom),
@@ -603,23 +606,19 @@ class _ApiKeySheet extends StatelessWidget {
                 ),
               ),
             ),
-            Text('Google Gemini API Key',
-                style: Theme.of(context).textTheme.titleLarge),
+            Text(l10n.settingsGeminiApiKey, style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 8),
             Text(
-              'Enter your Google Gemini API key for menu scanning functionality.',
-              style: Theme.of(context)
-                  .textTheme
-                  .bodySmall
-                  ?.copyWith(color: scheme.outline),
+              l10n.settingsApiKeyDescription,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: scheme.outline),
             ),
             const SizedBox(height: 20),
             TextField(
               controller: controller,
               obscureText: true,
-              decoration: const InputDecoration(
-                labelText: 'API Key',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: l10n.settingsApiKeyLabel,
+                border: const OutlineInputBorder(),
               ),
             ),
             const SizedBox(height: 24),
@@ -630,12 +629,12 @@ class _ApiKeySheet extends StatelessWidget {
                     await menuAiService.deleteApiKey();
                     if (context.mounted) Navigator.pop(context);
                   },
-                  child: const Text('Clear'),
+                  child: Text(l10n.clear),
                 ),
                 const Spacer(),
                 OutlinedButton(
                   onPressed: () => Navigator.pop(context),
-                  child: const Text('Cancel'),
+                  child: Text(l10n.cancel),
                 ),
                 const SizedBox(width: 12),
                 FilledButton(
@@ -645,7 +644,7 @@ class _ApiKeySheet extends StatelessWidget {
                     }
                     if (context.mounted) Navigator.pop(context);
                   },
-                  child: const Text('Save'),
+                  child: Text(l10n.save),
                 ),
               ],
             ),
@@ -686,6 +685,7 @@ class _ModelPickerSheetState extends State<_ModelPickerSheet> {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final l10n = AppLocalizations.of(context)!;
     final models = widget.availableModels.isEmpty
         ? [widget.currentModel]
         : widget.availableModels;
@@ -711,8 +711,7 @@ class _ModelPickerSheetState extends State<_ModelPickerSheet> {
               padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
               child: Row(
                 children: [
-                  Text('AI Model',
-                      style: Theme.of(context).textTheme.titleLarge),
+                  Text(l10n.settingsAiModel, style: Theme.of(context).textTheme.titleLarge),
                   const Spacer(),
                   if (_isLoading)
                     const SizedBox(
@@ -727,25 +726,25 @@ class _ModelPickerSheetState extends State<_ModelPickerSheet> {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24),
                 child: Text(
-                  'Could not fetch models from API. Using default.',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: scheme.outline,
-                      ),
+                  l10n.settingsApiKeyFetchError,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: scheme.outline),
                 ),
               ),
             const SizedBox(height: 8),
             ListView(
               shrinkWrap: true,
-              children: models.map((model) => RadioListTile<String>(
-                  title: Text(model, overflow: TextOverflow.ellipsis),
-                  value: model,
-                  groupValue: _selectedModel,
-                  onChanged: widget.availableModels.isEmpty
-                      ? null
-                      : (value) {
-                          setState(() => _selectedModel = value!);
-                        },
-              )).toList(),
+              children: models
+                  .map((model) => RadioListTile<String>(
+                        title: Text(model, overflow: TextOverflow.ellipsis),
+                        value: model,
+                        groupValue: _selectedModel,
+                        onChanged: widget.availableModels.isEmpty
+                            ? null
+                            : (value) {
+                                setState(() => _selectedModel = value!);
+                              },
+                      ))
+                  .toList(),
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
@@ -753,12 +752,11 @@ class _ModelPickerSheetState extends State<_ModelPickerSheet> {
                 children: [
                   OutlinedButton(
                     onPressed: () => Navigator.pop(context),
-                    child: const Text('Cancel'),
+                    child: Text(l10n.cancel),
                   ),
                   const Spacer(),
                   FilledButton(
-                    onPressed: _isLoading ||
-                            _selectedModel == widget.currentModel
+                    onPressed: _isLoading || _selectedModel == widget.currentModel
                         ? null
                         : () async {
                             setState(() => _isLoading = true);
@@ -766,7 +764,7 @@ class _ModelPickerSheetState extends State<_ModelPickerSheet> {
                             widget.onModelSelected();
                             if (context.mounted) Navigator.pop(context);
                           },
-                    child: const Text('Save'),
+                    child: Text(l10n.save),
                   ),
                 ],
               ),

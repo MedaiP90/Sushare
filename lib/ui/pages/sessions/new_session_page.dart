@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../viewmodels/session_viewmodel.dart';
 import '../../viewmodels/restaurant_viewmodel.dart';
 import '../../viewmodels/profile_viewmodel.dart';
@@ -33,7 +34,7 @@ class _NewSessionPageState extends ConsumerState<NewSessionPage> {
       final user = ref.read(profileViewModelProvider).value;
       if (user == null) throw Exception('No user logged in');
 
-      String restaurantId = _selectedRestaurantId ?? await _autoCreateRestaurant();
+      final restaurantId = _selectedRestaurantId ?? await _autoCreateRestaurant();
 
       final sessionId = await ref.read(sessionsProvider.notifier).createSession(
             name: _nameController.text.trim(),
@@ -49,8 +50,9 @@ class _NewSessionPageState extends ConsumerState<NewSessionPage> {
       }
     } catch (e) {
       if (mounted) {
+        final l10n = AppLocalizations.of(context)!;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error creating table: $e')),
+          SnackBar(content: Text(l10n.newTableError(e.toString()))),
         );
       }
     } finally {
@@ -65,20 +67,18 @@ class _NewSessionPageState extends ConsumerState<NewSessionPage> {
     final name =
         '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')} '
         '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
-    return ref.read(restaurantsProvider.notifier).addRestaurant(
-          name: name,
-          menu: [],
-        );
+    return ref.read(restaurantsProvider.notifier).addRestaurant(name: name, menu: []);
   }
 
   @override
   Widget build(BuildContext context) {
     final restaurantsAsync = ref.watch(restaurantsProvider);
     final colorScheme = Theme.of(context).colorScheme;
+    final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('New Table'),
+        title: Text(l10n.newTableTitle),
         centerTitle: true,
       ),
       body: SingleChildScrollView(
@@ -88,13 +88,10 @@ class _NewSessionPageState extends ConsumerState<NewSessionPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(
-                'Start a new ordering table',
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
+              Text(l10n.newTableHeading, style: Theme.of(context).textTheme.titleLarge),
               const SizedBox(height: 8),
               Text(
-                'Create a table and invite others to join',
+                l10n.newTableSubtitle,
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: colorScheme.onSurfaceVariant,
                     ),
@@ -102,24 +99,21 @@ class _NewSessionPageState extends ConsumerState<NewSessionPage> {
               const SizedBox(height: 32),
               TextFormField(
                 controller: _nameController,
-                decoration: const InputDecoration(
-                  labelText: 'Table Name',
-                  hintText: 'e.g., Friday dinner',
-                  prefixIcon: Icon(Icons.groups),
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: l10n.newTableNameLabel,
+                  hintText: l10n.newTableNameHint,
+                  prefixIcon: const Icon(Icons.groups),
+                  border: const OutlineInputBorder(),
                 ),
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
-                    return 'Please enter a table name';
+                    return l10n.newTableNameRequired;
                   }
                   return null;
                 },
               ),
               const SizedBox(height: 24),
-              Text(
-                'Select Restaurant (optional)',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
+              Text(l10n.newTableSelectRestaurant, style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 12),
               restaurantsAsync.when(
                 data: (restaurants) {
@@ -131,10 +125,10 @@ class _NewSessionPageState extends ConsumerState<NewSessionPage> {
                           children: [
                             const Icon(Icons.restaurant_outlined, size: 48),
                             const SizedBox(height: 8),
-                            const Text('No restaurants saved yet'),
+                            Text(l10n.newTableNoRestaurants),
                             const SizedBox(height: 4),
                             Text(
-                              'A restaurant will be created automatically when you start the table.',
+                              l10n.newTableNoRestaurantsSubtitle,
                               textAlign: TextAlign.center,
                               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                                     color: colorScheme.onSurfaceVariant,
@@ -143,7 +137,7 @@ class _NewSessionPageState extends ConsumerState<NewSessionPage> {
                             const SizedBox(height: 8),
                             TextButton(
                               onPressed: () => context.go('/home/restaurants'),
-                              child: const Text('Add a restaurant'),
+                              child: Text(l10n.newTableAddRestaurant),
                             ),
                           ],
                         ),
@@ -155,42 +149,26 @@ class _NewSessionPageState extends ConsumerState<NewSessionPage> {
                     children: restaurants.map((restaurant) {
                       final isSelected = _selectedRestaurantId == restaurant.id;
                       return Card(
-                        color: isSelected
-                            ? colorScheme.primaryContainer
-                            : null,
+                        color: isSelected ? colorScheme.primaryContainer : null,
                         child: ListTile(
                           leading: Icon(
-                            isSelected
-                                ? Icons.check_circle
-                                : Icons.restaurant,
-                            color: isSelected
-                                ? colorScheme.primary
-                                : null,
+                            isSelected ? Icons.check_circle : Icons.restaurant,
+                            color: isSelected ? colorScheme.primary : null,
                           ),
                           title: Text(restaurant.name),
-                          subtitle: restaurant.address != null
-                              ? Text(restaurant.address!)
-                              : null,
+                          subtitle: restaurant.address != null ? Text(restaurant.address!) : null,
                           trailing: Text(
-                            '${restaurant.menu.length} items',
+                            l10n.newTableMenuItems(restaurant.menu.length),
                             style: Theme.of(context).textTheme.bodySmall,
                           ),
-                          onTap: () {
-                            setState(() {
-                              _selectedRestaurantId = restaurant.id;
-                            });
-                          },
+                          onTap: () => setState(() => _selectedRestaurantId = restaurant.id),
                         ),
                       );
                     }).toList(),
                   );
                 },
-                loading: () => const Center(
-                  child: CircularProgressIndicator(),
-                ),
-                error: (error, _) => Center(
-                  child: Text('Error: $error'),
-                ),
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (error, _) => Center(child: Text(l10n.errorMessage(error.toString()))),
               ),
               const SizedBox(height: 32),
               FilledButton(
@@ -206,7 +184,7 @@ class _NewSessionPageState extends ConsumerState<NewSessionPage> {
                             color: colorScheme.onPrimary,
                           ),
                         )
-                      : const Text('Start Table'),
+                      : Text(l10n.newTableStart),
                 ),
               ),
             ],
