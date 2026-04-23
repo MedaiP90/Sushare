@@ -83,6 +83,8 @@ class _PersonalOrderContentState extends ConsumerState<PersonalOrderContent> {
 
             final totalItems = _quantities.values.fold(0, (a, b) => a + b);
             final isEditable = session.status != SessionStatus.closed;
+            final canAddDishes = session.status == SessionStatus.open;
+            final isSent = session.status == SessionStatus.sent;
             final templates = templatesAsync.valueOrNull ?? [];
 
             final String userName = user.username;
@@ -90,32 +92,45 @@ class _PersonalOrderContentState extends ConsumerState<PersonalOrderContent> {
             final String? userProfilePicturePath = user.profilePicturePath;
 
             return Scaffold(
-              body: orderedItems.isEmpty
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.add_shopping_cart,
-                            size: 64,
-                            color: Theme.of(context).colorScheme.outline,
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            l10n.personalOrderEmpty,
-                            style: Theme.of(context).textTheme.titleMedium,
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            l10n.personalOrderEmptyHint,
-                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                                ),
-                          ),
-                        ],
+              body: Column(
+                children: [
+                  if (isSent)
+                    MaterialBanner(
+                      padding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
+                      content: Text(l10n.personalOrderSentBanner),
+                      leading: Icon(
+                        Icons.info_outline,
+                        color: Theme.of(context).colorScheme.primary,
                       ),
-                    )
-                  : ListView(
+                      actions: [const SizedBox.shrink()],
+                    ),
+                  Expanded(
+                    child: orderedItems.isEmpty
+                        ? Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.add_shopping_cart,
+                                  size: 64,
+                                  color: Theme.of(context).colorScheme.outline,
+                                ),
+                                const SizedBox(height: 16),
+                                Text(
+                                  l10n.personalOrderEmpty,
+                                  style: Theme.of(context).textTheme.titleMedium,
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  l10n.personalOrderEmptyHint,
+                                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                      ),
+                                ),
+                              ],
+                            ),
+                          )
+                        : ListView(
                       padding: const EdgeInsets.all(16),
                       children: [
                         Row(
@@ -207,6 +222,9 @@ class _PersonalOrderContentState extends ConsumerState<PersonalOrderContent> {
                             )),
                       ],
                     ),
+                  ),
+                ],
+              ),
               floatingActionButton: isEditable
                   ? Row(
                       mainAxisSize: MainAxisSize.min,
@@ -215,27 +233,33 @@ class _PersonalOrderContentState extends ConsumerState<PersonalOrderContent> {
                         if (templates.isNotEmpty)
                           FloatingActionButton(
                             heroTag: 'fab_use_template',
-                            onPressed: () => _showUseTemplateSheet(
-                                context, ref, templates, restaurant, user.id,
-                                userName, userFullName, userProfilePicturePath),
+                            onPressed: canAddDishes
+                                ? () => _showUseTemplateSheet(
+                                    context, ref, templates, restaurant, user.id,
+                                    userName, userFullName, userProfilePicturePath)
+                                : null,
                             tooltip: l10n.personalOrderUseTemplate,
                             child: const Icon(Icons.bookmarks_outlined),
                           ),
                         const SizedBox(width: 12),
                         FloatingActionButton(
                           heroTag: 'fab_menu',
-                          onPressed: () => _showAddFromMenuSheet(
-                              context, restaurant, user.id, userName,
-                              userFullName, userProfilePicturePath),
+                          onPressed: canAddDishes
+                              ? () => _showAddFromMenuSheet(
+                                  context, restaurant, user.id, userName,
+                                  userFullName, userProfilePicturePath)
+                              : null,
                           tooltip: l10n.personalOrderFromMenu,
                           child: const Icon(Icons.restaurant_menu),
                         ),
                         const SizedBox(width: 12),
                         FloatingActionButton.extended(
                           heroTag: 'fab_custom_dish',
-                          onPressed: () => _showAddCustomDishSheet(
-                              context, restaurant, user.id, userName,
-                              userFullName, userProfilePicturePath),
+                          onPressed: canAddDishes
+                              ? () => _showAddCustomDishSheet(
+                                  context, restaurant, user.id, userName,
+                                  userFullName, userProfilePicturePath)
+                              : null,
                           tooltip: l10n.personalOrderCustomDish,
                           icon: const Icon(Icons.add),
                           label: Text(l10n.personalOrderCustomDish),

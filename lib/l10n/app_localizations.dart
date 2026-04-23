@@ -656,6 +656,18 @@ abstract class AppLocalizations {
   /// **'Point camera at QR code'**
   String get joinTableScanHint;
 
+  /// No description provided for @joinTableHostLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Host address'**
+  String get joinTableHostLabel;
+
+  /// No description provided for @joinTableHostHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g., 192.168.1.100:8080'**
+  String get joinTableHostHint;
+
   /// No description provided for @newTableTitle.
   ///
   /// In en, this message translates to:
@@ -1291,6 +1303,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Restaurant not found'**
   String get personalOrderRestaurantNotFound;
+
+  /// No description provided for @personalOrderSentBanner.
+  ///
+  /// In en, this message translates to:
+  /// **'Order sent — wait for the host to open a new round before adding items.'**
+  String get personalOrderSentBanner;
 
   /// No description provided for @scanMenuTitle.
   ///

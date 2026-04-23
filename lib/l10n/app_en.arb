@@ -202,6 +202,10 @@
   "@joinTableStartNew": {},
   "joinTableScanHint": "Point camera at QR code",
   "@joinTableScanHint": {},
+  "joinTableHostLabel": "Host address",
+  "@joinTableHostLabel": {},
+  "joinTableHostHint": "e.g., 192.168.1.100:8080",
+  "@joinTableHostHint": {},
 
   "newTableTitle": "New Table",
   "@newTableTitle": {},
@@ -463,6 +467,8 @@
   "@personalOrderLogin": {},
   "personalOrderRestaurantNotFound": "Restaurant not found",
   "@personalOrderRestaurantNotFound": {},
+  "personalOrderSentBanner": "Order sent — wait for the host to open a new round before adding items.",
+  "@personalOrderSentBanner": {},
 
   "scanMenuTitle": "Scan Menu",
   "@scanMenuTitle": {},

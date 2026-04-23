@@ -1,10 +1,15 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:http/http.dart' as http;
 import 'package:mobile_scanner/mobile_scanner.dart';
+import '../../../domain/models/restaurant.dart';
+import '../../../domain/models/session.dart';
 import '../../../domain/repositories/session_repository.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../viewmodels/profile_viewmodel.dart';
+import '../../viewmodels/restaurant_viewmodel.dart';
 import '../../viewmodels/session_viewmodel.dart';
 
 class JoinSessionPage extends ConsumerStatefulWidget {
@@ -16,6 +21,7 @@ class JoinSessionPage extends ConsumerStatefulWidget {
 
 class _JoinSessionPageState extends ConsumerState<JoinSessionPage> {
   final _codeController = TextEditingController();
+  final _hostController = TextEditingController();
   bool _isScanning = false;
   bool _isConnecting = false;
   String? _error;
@@ -23,11 +29,22 @@ class _JoinSessionPageState extends ConsumerState<JoinSessionPage> {
   @override
   void dispose() {
     _codeController.dispose();
+    _hostController.dispose();
     super.dispose();
   }
 
-  Future<void> _joinByCode(String code) async {
-    if (code.isEmpty) return;
+  /// Returns the canonical session ID (as stored in DB) on success.
+  Future<String> _resolveAndJoin(String rawId, String host, String userId) async {
+    final sessionRepo = ref.read(sessionRepositoryProvider);
+    if (host.isNotEmpty) {
+      return _joinViaNetwork(rawId, host, sessionRepo, userId);
+    } else {
+      return _joinViaLocalDb(rawId, sessionRepo);
+    }
+  }
+
+  Future<void> _joinSession(String sessionId, {String? hostAddress}) async {
+    if (sessionId.isEmpty) return;
 
     setState(() {
       _isConnecting = true;
@@ -36,32 +53,108 @@ class _JoinSessionPageState extends ConsumerState<JoinSessionPage> {
 
     try {
       final user = ref.read(profileViewModelProvider).value;
-      if (user == null) {
-        throw Exception('Please log in first');
-      }
+      if (user == null) throw Exception('Please log in first');
 
-      final cleanCode = code.trim().toUpperCase();
+      final rawId = sessionId.trim();
+      final host = hostAddress ?? _hostController.text.trim();
+
+      // canonicalId is the exact ID as stored in the DB (may differ in case from rawId)
+      final canonicalId = await _resolveAndJoin(rawId, host, user.id);
+
       final sessionRepo = ref.read(sessionRepositoryProvider);
-      final session = await sessionRepo.getSessionById(cleanCode);
+      await sessionRepo.addParticipant(canonicalId, user.id);
 
-      if (session == null) {
-        throw Exception('Table not found');
-      }
-
-      if (session.status.name == 'closed') {
-        throw Exception('This table is closed');
-      }
-
-      await sessionRepo.addParticipant(cleanCode, user.id);
-
-      if (mounted) {
-        context.go('/sessions/$cleanCode');
-      }
+      if (mounted) context.go('/sessions/$canonicalId');
     } catch (e) {
       setState(() {
-        _error = e.toString();
+        _error = e.toString().replaceFirst('Exception: ', '');
         _isConnecting = false;
       });
+    }
+  }
+
+  /// Fetches session + restaurant from the host device over HTTP.
+  /// Returns the canonical session ID from the server.
+  Future<String> _joinViaNetwork(
+    String sessionId,
+    String host,
+    SessionRepository sessionRepo,
+    String userId,
+  ) async {
+    final baseUrl = 'http://$host';
+
+    final sessionRes = await http
+        .get(Uri.parse('$baseUrl/api/session'))
+        .timeout(const Duration(seconds: 10));
+    if (sessionRes.statusCode != 200) {
+      throw Exception('Could not reach host — check the address and try again');
+    }
+
+    final sessionJson = jsonDecode(sessionRes.body) as Map<String, dynamic>;
+    final session = Session.fromJson(sessionJson);
+
+    // Accept both full UUID and 8-char short code (case-insensitive prefix match)
+    if (!session.id.toUpperCase().startsWith(sessionId.toUpperCase())) {
+      throw Exception('Session ID mismatch');
+    }
+    if (session.status == SessionStatus.closed) {
+      throw Exception('This table is closed');
+    }
+
+    await sessionRepo.saveSession(session);
+
+    final restaurantRes = await http
+        .get(Uri.parse('$baseUrl/api/restaurant'))
+        .timeout(const Duration(seconds: 10));
+    if (restaurantRes.statusCode == 200) {
+      final restaurantJson = jsonDecode(restaurantRes.body) as Map<String, dynamic>;
+      final restaurant = Restaurant.fromJson(restaurantJson);
+      final restaurantRepo = ref.read(restaurantRepositoryProvider);
+      await restaurantRepo.saveRestaurant(restaurant);
+    }
+
+    // Notify host so they can add this user to their local participant list
+    try {
+      await http.post(
+        Uri.parse('$baseUrl/api/participants'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'userId': userId}),
+      ).timeout(const Duration(seconds: 5));
+    } catch (_) {}
+
+    return session.id;
+  }
+
+  /// Falls back to local DB — works when both devices already have the session
+  /// (e.g. re-joining a session created on this device).
+  Future<String> _joinViaLocalDb(
+    String sessionId,
+    SessionRepository sessionRepo,
+  ) async {
+    // Try exact match first, then short-code prefix match
+    Session? session = await sessionRepo.getSessionById(sessionId);
+    session ??= await sessionRepo.getSessionByShortCode(sessionId);
+
+    if (session == null) {
+      throw Exception('Table not found — scan the QR code or enter the host address');
+    }
+    if (session.status == SessionStatus.closed) {
+      throw Exception('This table is closed');
+    }
+    return session.id;
+  }
+
+  void _handleQrDetected(String value) {
+    _stopScanning();
+    final uri = Uri.tryParse(value);
+    if (uri != null && uri.scheme == 'sushare' && uri.host == 'join') {
+      final sessionId = uri.pathSegments.isNotEmpty ? uri.pathSegments.first : '';
+      final host = uri.queryParameters['host'];
+      _joinSession(sessionId, hostAddress: host);
+    } else if (value.startsWith('sushare://join/')) {
+      _joinSession(value.substring('sushare://join/'.length));
+    } else {
+      _joinSession(value);
     }
   }
 
@@ -88,13 +181,7 @@ class _JoinSessionPageState extends ConsumerState<JoinSessionPage> {
               onDetect: (capture) {
                 final barcode = capture.barcodes.firstOrNull;
                 if (barcode?.rawValue != null) {
-                  final value = barcode!.rawValue!;
-                  _stopScanning();
-                  if (value.startsWith('sushare://join/')) {
-                    _joinByCode(value.substring('sushare://join/'.length));
-                  } else {
-                    _joinByCode(value);
-                  }
+                  _handleQrDetected(barcode!.rawValue!);
                 }
               },
             ),
@@ -195,6 +282,17 @@ class _JoinSessionPageState extends ConsumerState<JoinSessionPage> {
                       textCapitalization: TextCapitalization.characters,
                       maxLength: 8,
                     ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: _hostController,
+                      decoration: InputDecoration(
+                        labelText: l10n.joinTableHostLabel,
+                        hintText: l10n.joinTableHostHint,
+                        border: const OutlineInputBorder(),
+                        prefixIcon: const Icon(Icons.router_outlined),
+                      ),
+                      keyboardType: TextInputType.url,
+                    ),
                     if (_error != null) ...[
                       const SizedBox(height: 8),
                       Text(_error!, style: TextStyle(color: colorScheme.error)),
@@ -203,7 +301,7 @@ class _JoinSessionPageState extends ConsumerState<JoinSessionPage> {
                     FilledButton(
                       onPressed: _isConnecting
                           ? null
-                          : () => _joinByCode(_codeController.text),
+                          : () => _joinSession(_codeController.text),
                       child: _isConnecting
                           ? const SizedBox(
                               height: 20,

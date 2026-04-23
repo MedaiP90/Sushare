@@ -7,6 +7,7 @@ import 'package:path_provider/path_provider.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../services/permission_service.dart';
 import '../../viewmodels/profile_viewmodel.dart';
+import '../home/settings_page.dart';
 
 class ProfileSetupPage extends ConsumerStatefulWidget {
   const ProfileSetupPage({super.key});
@@ -21,6 +22,7 @@ class _ProfileSetupPageState extends ConsumerState<ProfileSetupPage> {
   final _firstNameController = TextEditingController();
   final _lastNameController = TextEditingController();
   String? _profilePicturePath;
+  Locale? _selectedLocale;
   bool _isLoading = false;
 
   @override
@@ -58,6 +60,7 @@ class _ProfileSetupPageState extends ConsumerState<ProfileSetupPage> {
             lastName: _lastNameController.text.trim(),
             profilePicturePath: _profilePicturePath,
           );
+      await ref.read(localeProvider.notifier).setLocale(_selectedLocale);
       if (mounted) {
         context.go('/home/sessions');
       }
@@ -190,6 +193,42 @@ class _ProfileSetupPageState extends ConsumerState<ProfileSetupPage> {
                     }
                     return null;
                   },
+                ),
+                const SizedBox(height: 16),
+                DropdownButtonFormField<Locale?>(
+                  value: _selectedLocale,
+                  decoration: InputDecoration(
+                    labelText: l10n.settingsLanguage,
+                    prefixIcon: const Icon(Icons.language),
+                    border: const OutlineInputBorder(),
+                  ),
+                  items: [
+                    DropdownMenuItem(
+                      value: null,
+                      child: Text(l10n.settingsThemeSystem),
+                    ),
+                    DropdownMenuItem(
+                      value: const Locale('en'),
+                      child: Text(l10n.settingsLangEnglish),
+                    ),
+                    DropdownMenuItem(
+                      value: const Locale('it'),
+                      child: Text(l10n.settingsLangItalian),
+                    ),
+                    DropdownMenuItem(
+                      value: const Locale('es'),
+                      child: Text(l10n.settingsLangSpanish),
+                    ),
+                    DropdownMenuItem(
+                      value: const Locale('fr'),
+                      child: Text(l10n.settingsLangFrench),
+                    ),
+                    DropdownMenuItem(
+                      value: const Locale('de'),
+                      child: Text(l10n.settingsLangGerman),
+                    ),
+                  ],
+                  onChanged: (value) => setState(() => _selectedLocale = value),
                 ),
                 const SizedBox(height: 32),
                 FilledButton(
