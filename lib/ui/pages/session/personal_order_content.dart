@@ -5,6 +5,7 @@ import '../../../domain/models/restaurant.dart';
 import '../../../domain/models/personal_sub_order.dart';
 import '../../../domain/models/saved_order.dart';
 import '../../../domain/models/session.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../viewmodels/session_viewmodel.dart';
 import '../../viewmodels/restaurant_viewmodel.dart';
 import '../../viewmodels/profile_viewmodel.dart';
@@ -25,18 +26,19 @@ class _PersonalOrderContentState extends ConsumerState<PersonalOrderContent> {
   DateTime? _lastLoadedAt;
 
   @override
-  Widget build(BuildContext context, ) {
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final sessionAsync = ref.watch(sessionDetailProvider(widget.sessionId));
     final user = ref.watch(profileViewModelProvider).value;
 
     if (user == null) {
-      return const Center(child: Text('Please log in first'));
+      return Center(child: Text(l10n.personalOrderLogin));
     }
 
     return sessionAsync.when(
       data: (session) {
         if (session == null) {
-          return const Center(child: Text('Table not found'));
+          return Center(child: Text(l10n.sessionTableNotFound));
         }
 
         final restaurantAsync = ref.watch(restaurantDetailProvider(session.restaurantId));
@@ -47,7 +49,7 @@ class _PersonalOrderContentState extends ConsumerState<PersonalOrderContent> {
         return restaurantAsync.when(
           data: (restaurant) {
             if (restaurant == null) {
-              return const Center(child: Text('Restaurant not found'));
+              return Center(child: Text(l10n.personalOrderRestaurantNotFound));
             }
 
             personalOrderAsync.whenData((order) {
@@ -100,12 +102,12 @@ class _PersonalOrderContentState extends ConsumerState<PersonalOrderContent> {
                           ),
                           const SizedBox(height: 16),
                           Text(
-                            'Your order is empty',
+                            l10n.personalOrderEmpty,
                             style: Theme.of(context).textTheme.titleMedium,
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            'Tap the button below to add dishes',
+                            l10n.personalOrderEmptyHint,
                             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                                 ),
@@ -119,7 +121,7 @@ class _PersonalOrderContentState extends ConsumerState<PersonalOrderContent> {
                         Row(
                           children: [
                             Text(
-                              'Your Order ($totalItems items)',
+                              l10n.personalOrderTitle(totalItems),
                               style: Theme.of(context).textTheme.titleMedium,
                             ),
                             const Spacer(),
@@ -128,7 +130,7 @@ class _PersonalOrderContentState extends ConsumerState<PersonalOrderContent> {
                                 onPressed: () => _saveAsTemplate(
                                     context, ref, restaurant, userName),
                                 icon: const Icon(Icons.bookmark_add_outlined, size: 18),
-                                label: const Text('Save'),
+                                label: Text(l10n.personalOrderSaveButton),
                               ),
                           ],
                         ),
@@ -216,7 +218,7 @@ class _PersonalOrderContentState extends ConsumerState<PersonalOrderContent> {
                             onPressed: () => _showUseTemplateSheet(
                                 context, ref, templates, restaurant, user.id,
                                 userName, userFullName, userProfilePicturePath),
-                            tooltip: 'Use template',
+                            tooltip: l10n.personalOrderUseTemplate,
                             child: const Icon(Icons.bookmarks_outlined),
                           ),
                         const SizedBox(width: 12),
@@ -225,7 +227,7 @@ class _PersonalOrderContentState extends ConsumerState<PersonalOrderContent> {
                           onPressed: () => _showAddFromMenuSheet(
                               context, restaurant, user.id, userName,
                               userFullName, userProfilePicturePath),
-                          tooltip: 'From menu',
+                          tooltip: l10n.personalOrderFromMenu,
                           child: const Icon(Icons.restaurant_menu),
                         ),
                         const SizedBox(width: 12),
@@ -234,9 +236,9 @@ class _PersonalOrderContentState extends ConsumerState<PersonalOrderContent> {
                           onPressed: () => _showAddCustomDishSheet(
                               context, restaurant, user.id, userName,
                               userFullName, userProfilePicturePath),
-                          tooltip: 'Custom dish',
+                          tooltip: l10n.personalOrderCustomDish,
                           icon: const Icon(Icons.add),
-                          label: const Text('Custom dish'),
+                          label: Text(l10n.personalOrderCustomDish),
                         ),
                       ],
                     )
@@ -244,11 +246,11 @@ class _PersonalOrderContentState extends ConsumerState<PersonalOrderContent> {
             );
           },
           loading: () => const Center(child: CircularProgressIndicator()),
-          error: (error, _) => Center(child: Text('Error: $error')),
+          error: (error, _) => Center(child: Text(l10n.errorMessage(error.toString()))),
         );
       },
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (error, _) => Center(child: Text('Error: $error')),
+      error: (error, _) => Center(child: Text(AppLocalizations.of(context)!.errorMessage(error.toString()))),
     );
   }
 
@@ -264,114 +266,117 @@ class _PersonalOrderContentState extends ConsumerState<PersonalOrderContent> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setSheetState) => DraggableScrollableSheet(
-          initialChildSize: 0.7,
-          minChildSize: 0.5,
-          maxChildSize: 0.95,
-          expand: false,
-          builder: (context, scrollController) {
-            final currentRestaurant =
-                ref.read(restaurantDetailProvider(restaurant.id)).valueOrNull ?? restaurant;
-            final sortedMenu = List<MenuItem>.from(currentRestaurant.menu)
-              ..sort((a, b) {
-                if (a.isYummie && !b.isYummie) return -1;
-                if (!a.isYummie && b.isYummie) return 1;
-                return (a.itemNumber ?? 0).compareTo(b.itemNumber ?? 0);
-              });
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (sheetContext, setSheetState) {
+          final l10n = AppLocalizations.of(sheetContext)!;
+          return DraggableScrollableSheet(
+            initialChildSize: 0.7,
+            minChildSize: 0.5,
+            maxChildSize: 0.95,
+            expand: false,
+            builder: (sheetContext, scrollController) {
+              final currentRestaurant =
+                  ref.read(restaurantDetailProvider(restaurant.id)).valueOrNull ?? restaurant;
+              final sortedMenu = List<MenuItem>.from(currentRestaurant.menu)
+                ..sort((a, b) {
+                  if (a.isYummie && !b.isYummie) return -1;
+                  if (!a.isYummie && b.isYummie) return 1;
+                  return (a.itemNumber ?? 0).compareTo(b.itemNumber ?? 0);
+                });
 
-            return Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Row(
-                    children: [
-                      Text(
-                        'Add from Menu',
-                        style: Theme.of(context).textTheme.titleLarge,
-                      ),
-                      const Spacer(),
-                      IconButton(
-                        onPressed: () => Navigator.pop(context),
-                        icon: const Icon(Icons.close),
-                      ),
-                    ],
-                  ),
-                ),
-                const Divider(),
-                Expanded(
-                  child: ListView.builder(
-                    controller: scrollController,
-                    itemCount: sortedMenu.length,
-                    itemBuilder: (context, index) {
-                      final item = sortedMenu[index];
-                      final isSelected = selectedIds.contains(item.id);
-
-                      return CheckboxListTile(
-                        value: isSelected,
-                        onChanged: (checked) {
-                          setSheetState(() {
-                            if (checked == true) {
-                              selectedIds.add(item.id);
-                            } else {
-                              selectedIds.remove(item.id);
-                            }
-                          });
-                        },
-                        secondary: CircleAvatar(
-                          backgroundColor:
-                              Theme.of(context).colorScheme.primaryContainer,
-                          child: Text('${item.itemNumber ?? '-'}'),
-                        ),
-                        title: Row(
-                          children: [
-                            if (item.isYummie) ...[
-                              const Icon(Icons.restaurant, size: 14),
-                              const SizedBox(width: 4),
-                            ],
-                            Expanded(child: Text(item.name)),
-                          ],
-                        ),
-                        subtitle: item.description != null
-                            ? Text(item.description!)
-                            : null,
-                      );
-                    },
-                  ),
-                ),
-                SafeArea(
-                  child: Padding(
+              return Column(
+                children: [
+                  Padding(
                     padding: const EdgeInsets.all(16),
-                    child: FilledButton(
-                      onPressed: selectedIds.isNotEmpty
-                          ? () async {
-                              Navigator.pop(context);
-                              setState(() {
-                                for (final id in selectedIds) {
-                                  _quantities[id] = (_quantities[id] ?? 0) + 1;
-                                }
-                              });
-                              final r = ref
-                                      .read(restaurantDetailProvider(restaurant.id))
-                                      .valueOrNull ??
-                                  restaurant;
-                              await _saveOrder(context, userId, r.menu,
-                                  userName: userName,
-                                  userFullName: userFullName,
-                                  userProfilePicturePath: userProfilePicturePath);
-                            }
-                          : null,
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Text('Add ${selectedIds.length} items'),
+                    child: Row(
+                      children: [
+                        Text(
+                          l10n.personalOrderAddFromMenu,
+                          style: Theme.of(sheetContext).textTheme.titleLarge,
+                        ),
+                        const Spacer(),
+                        IconButton(
+                          onPressed: () => Navigator.pop(sheetContext),
+                          icon: const Icon(Icons.close),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Divider(),
+                  Expanded(
+                    child: ListView.builder(
+                      controller: scrollController,
+                      itemCount: sortedMenu.length,
+                      itemBuilder: (sheetContext, index) {
+                        final item = sortedMenu[index];
+                        final isSelected = selectedIds.contains(item.id);
+
+                        return CheckboxListTile(
+                          value: isSelected,
+                          onChanged: (checked) {
+                            setSheetState(() {
+                              if (checked == true) {
+                                selectedIds.add(item.id);
+                              } else {
+                                selectedIds.remove(item.id);
+                              }
+                            });
+                          },
+                          secondary: CircleAvatar(
+                            backgroundColor:
+                                Theme.of(sheetContext).colorScheme.primaryContainer,
+                            child: Text('${item.itemNumber ?? '-'}'),
+                          ),
+                          title: Row(
+                            children: [
+                              if (item.isYummie) ...[
+                                const Icon(Icons.restaurant, size: 14),
+                                const SizedBox(width: 4),
+                              ],
+                              Expanded(child: Text(item.name)),
+                            ],
+                          ),
+                          subtitle: item.description != null
+                              ? Text(item.description!)
+                              : null,
+                        );
+                      },
+                    ),
+                  ),
+                  SafeArea(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: FilledButton(
+                        onPressed: selectedIds.isNotEmpty
+                            ? () async {
+                                Navigator.pop(sheetContext);
+                                setState(() {
+                                  for (final id in selectedIds) {
+                                    _quantities[id] = (_quantities[id] ?? 0) + 1;
+                                  }
+                                });
+                                final r = ref
+                                        .read(restaurantDetailProvider(restaurant.id))
+                                        .valueOrNull ??
+                                    restaurant;
+                                await _saveOrder(context, userId, r.menu,
+                                    userName: userName,
+                                    userFullName: userFullName,
+                                    userProfilePicturePath: userProfilePicturePath);
+                              }
+                            : null,
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Text(l10n.personalOrderAddItemsButton(selectedIds.length)),
+                        ),
                       ),
                     ),
                   ),
-                ),
-              ],
-            );
-          },
-        ),
+                ],
+              );
+            },
+          );
+        },
       ),
     );
   }
@@ -385,80 +390,84 @@ class _PersonalOrderContentState extends ConsumerState<PersonalOrderContent> {
     final result = await showModalBottomSheet<Map<String, String>>(
       context: context,
       isScrollControlled: true,
-      builder: (context) => Padding(
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.of(context).viewInsets.bottom,
-          left: 24,
-          right: 24,
-          top: 24,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                Text(
-                  'Add Custom Dish',
-                  style: Theme.of(context).textTheme.titleLarge,
+      builder: (sheetContext) {
+        final l10n = AppLocalizations.of(sheetContext)!;
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(sheetContext).viewInsets.bottom,
+            left: 24,
+            right: 24,
+            top: 24,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  Text(
+                    l10n.personalOrderAddCustomDishTitle,
+                    style: Theme.of(sheetContext).textTheme.titleLarge,
+                  ),
+                  const Spacer(),
+                  IconButton(
+                    onPressed: () => Navigator.pop(sheetContext),
+                    icon: const Icon(Icons.close),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: nameController,
+                decoration: InputDecoration(
+                  labelText: l10n.personalOrderCustomDishName,
+                  border: const OutlineInputBorder(),
                 ),
-                const Spacer(),
-                IconButton(
-                  onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.close),
+                autofocus: true,
+                textCapitalization: TextCapitalization.words,
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: descController,
+                decoration: InputDecoration(
+                  labelText: l10n.personalOrderCustomDishDesc,
+                  border: const OutlineInputBorder(),
                 ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: nameController,
-              decoration: const InputDecoration(
-                labelText: 'Dish name',
-                border: OutlineInputBorder(),
+                maxLines: 2,
               ),
-              autofocus: true,
-              textCapitalization: TextCapitalization.words,
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: descController,
-              decoration: const InputDecoration(
-                labelText: 'Description (optional)',
-                border: OutlineInputBorder(),
+              const SizedBox(height: 12),
+              TextField(
+                controller: numberController,
+                decoration: InputDecoration(
+                  labelText: l10n.personalOrderCustomDishNumber,
+                  border: const OutlineInputBorder(),
+                ),
+                keyboardType: TextInputType.number,
               ),
-              maxLines: 2,
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: numberController,
-              decoration: const InputDecoration(
-                labelText: 'Menu number (optional)',
-                border: OutlineInputBorder(),
+              const SizedBox(height: 24),
+              FilledButton(
+                onPressed: () {
+                  if (nameController.text.trim().isEmpty) return;
+                  Navigator.pop(sheetContext, {
+                    'name': nameController.text.trim(),
+                    'description': descController.text.trim(),
+                    'number': numberController.text.trim(),
+                  });
+                },
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Text(l10n.add),
+                ),
               ),
-              keyboardType: TextInputType.number,
-            ),
-            const SizedBox(height: 24),
-            FilledButton(
-              onPressed: () {
-                if (nameController.text.trim().isEmpty) return;
-                Navigator.pop(context, {
-                  'name': nameController.text.trim(),
-                  'description': descController.text.trim(),
-                  'number': numberController.text.trim(),
-                });
-              },
-              child: const Padding(
-                padding: EdgeInsets.all(16),
-                child: Text('Add'),
-              ),
-            ),
-            const SizedBox(height: 16),
-          ],
-        ),
-      ),
+              const SizedBox(height: 16),
+            ],
+          ),
+        );
+      },
     );
 
     if (result != null && mounted) {
+      final l10n = AppLocalizations.of(context)!;
       final dishId = const Uuid().v4();
       final currentRestaurantForNum =
           ref.read(restaurantDetailProvider(restaurant.id)).valueOrNull ?? restaurant;
@@ -513,7 +522,7 @@ class _PersonalOrderContentState extends ConsumerState<PersonalOrderContent> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Added "${newItem.name}" to order')),
+          SnackBar(content: Text(l10n.personalOrderCustomDishAdded(newItem.name))),
         );
       }
     }
@@ -548,8 +557,9 @@ class _PersonalOrderContentState extends ConsumerState<PersonalOrderContent> {
     ref.invalidate(sessionDetailProvider(widget.sessionId));
 
     if (!silent && context.mounted) {
+      final l10n = AppLocalizations.of(context)!;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Order saved with ${entries.length} items')),
+        SnackBar(content: Text(l10n.personalOrderSaved(entries.length))),
       );
     }
   }
@@ -558,28 +568,29 @@ class _PersonalOrderContentState extends ConsumerState<PersonalOrderContent> {
       BuildContext context, WidgetRef ref, Restaurant restaurant, String suggestedName) async {
     if (_quantities.isEmpty) return;
 
+    final l10n = AppLocalizations.of(context)!;
     final nameController = TextEditingController();
     final label = await showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Save as Template'),
+        title: Text(l10n.personalOrderSaveAsTemplate),
         content: TextField(
           controller: nameController,
           autofocus: true,
           textCapitalization: TextCapitalization.sentences,
-          decoration: const InputDecoration(
-            labelText: 'Template name',
-            border: OutlineInputBorder(),
+          decoration: InputDecoration(
+            labelText: l10n.personalOrderTemplateNameLabel,
+            border: const OutlineInputBorder(),
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
+            child: Text(l10n.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, nameController.text.trim()),
-            child: const Text('Save'),
+            child: Text(l10n.save),
           ),
         ],
       ),
@@ -603,7 +614,7 @@ class _PersonalOrderContentState extends ConsumerState<PersonalOrderContent> {
 
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Template "$label" saved')),
+        SnackBar(content: Text(l10n.personalOrderTemplateSaved(label))),
       );
     }
   }
@@ -625,53 +636,56 @@ class _PersonalOrderContentState extends ConsumerState<PersonalOrderContent> {
         minChildSize: 0.3,
         maxChildSize: 0.85,
         expand: false,
-        builder: (ctx, scrollController) => Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
-              child: Row(
-                children: [
-                  Text(
-                    'Choose a Template',
-                    style: Theme.of(ctx).textTheme.titleLarge,
-                  ),
-                  const Spacer(),
-                  IconButton(
-                    onPressed: () => Navigator.pop(ctx),
-                    icon: const Icon(Icons.close),
-                  ),
-                ],
+        builder: (ctx, scrollController) {
+          final l10n = AppLocalizations.of(ctx)!;
+          return Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
+                child: Row(
+                  children: [
+                    Text(
+                      l10n.personalOrderChooseTemplate,
+                      style: Theme.of(ctx).textTheme.titleLarge,
+                    ),
+                    const Spacer(),
+                    IconButton(
+                      onPressed: () => Navigator.pop(ctx),
+                      icon: const Icon(Icons.close),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            const Divider(height: 1),
-            Expanded(
-              child: ListView.builder(
-                controller: scrollController,
-                itemCount: templates.length,
-                itemBuilder: (ctx, index) {
-                  final t = templates[index];
-                  return _ExpandableTemplateTile(
-                    template: t,
-                    restaurant: restaurant,
-                    onApply: () async {
-                      Navigator.pop(sheetContext);
-                      setState(() {
-                        for (final entry in t.entries) {
-                          _quantities[entry.menuItemId] =
-                              (_quantities[entry.menuItemId] ?? 0) + 1;
-                        }
-                      });
-                      await _saveOrder(context, userId, restaurant.menu,
-                          userName: userName,
-                          userFullName: userFullName,
-                          userProfilePicturePath: userProfilePicturePath);
-                    },
-                  );
-                },
+              const Divider(height: 1),
+              Expanded(
+                child: ListView.builder(
+                  controller: scrollController,
+                  itemCount: templates.length,
+                  itemBuilder: (ctx, index) {
+                    final t = templates[index];
+                    return _ExpandableTemplateTile(
+                      template: t,
+                      restaurant: restaurant,
+                      onApply: () async {
+                        Navigator.pop(sheetContext);
+                        setState(() {
+                          for (final entry in t.entries) {
+                            _quantities[entry.menuItemId] =
+                                (_quantities[entry.menuItemId] ?? 0) + 1;
+                          }
+                        });
+                        await _saveOrder(context, userId, restaurant.menu,
+                            userName: userName,
+                            userFullName: userFullName,
+                            userProfilePicturePath: userProfilePicturePath);
+                      },
+                    );
+                  },
+                ),
               ),
-            ),
-          ],
-        ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -697,12 +711,14 @@ class _ExpandableTemplateTileState extends State<_ExpandableTemplateTile> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+
     return Column(
       children: [
         ListTile(
           leading: const Icon(Icons.bookmarks_outlined),
           title: Text(widget.template.label),
-          subtitle: Text('${widget.template.entries.length} items'),
+          subtitle: Text(l10n.checklistItemsCount(widget.template.entries.length)),
           trailing: Row(
             mainAxisSize: MainAxisSize.min,
             children: [

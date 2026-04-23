@@ -162,7 +162,7 @@ class MenuAiService {
         description: (v['description'] as String?)?.trim().isEmpty ?? true
             ? null
             : (v['description'] as String).trim(),
-        itemNumber: v['itemNumber'] as int? ?? entry.key + 1,
+        itemNumber: v['itemNumber'] as int?,
       );
     }).toList();
   }

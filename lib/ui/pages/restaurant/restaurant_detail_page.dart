@@ -8,6 +8,7 @@ import 'package:uuid/uuid.dart';
 import '../../../domain/models/restaurant.dart';
 import '../../../domain/models/saved_order.dart';
 import '../../../domain/models/personal_sub_order.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../viewmodels/restaurant_viewmodel.dart';
 import '../../viewmodels/saved_order_viewmodel.dart';
 
@@ -20,13 +21,14 @@ class RestaurantDetailPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final restaurantAsync = ref.watch(restaurantDetailProvider(restaurantId));
     final templatesAsync = ref.watch(savedOrdersForRestaurantProvider(restaurantId));
+    final l10n = AppLocalizations.of(context)!;
 
     return restaurantAsync.when(
       data: (restaurant) {
         if (restaurant == null) {
           return Scaffold(
             appBar: AppBar(),
-            body: const Center(child: Text('Restaurant not found')),
+            body: Center(child: Text(l10n.restaurantNotFound)),
           );
         }
 
@@ -89,33 +91,34 @@ class RestaurantDetailPage extends ConsumerWidget {
                         final confirm = await showDialog<bool>(
                           context: context,
                           builder: (context) => AlertDialog(
-                            title: const Text('Delete Restaurant'),
-                            content: Text(
-                                'Are you sure you want to delete "${restaurant.name}"?'),
+                            title: Text(l10n.restaurantDeleteTitle),
+                            content: Text(l10n.restaurantDeleteMessage(restaurant.name)),
                             actions: [
                               TextButton(
                                 onPressed: () => Navigator.pop(context, false),
-                                child: const Text('Cancel'),
+                                child: Text(l10n.cancel),
                               ),
                               FilledButton(
                                 onPressed: () => Navigator.pop(context, true),
                                 style: FilledButton.styleFrom(
                                   backgroundColor: Theme.of(context).colorScheme.error,
                                 ),
-                                child: const Text('Delete'),
+                                child: Text(l10n.delete),
                               ),
                             ],
                           ),
                         );
                         if (confirm == true && context.mounted) {
-                          await ref.read(restaurantsProvider.notifier).deleteRestaurant(restaurantId);
+                          await ref
+                              .read(restaurantsProvider.notifier)
+                              .deleteRestaurant(restaurantId);
                           if (context.mounted) context.pop();
                         }
                       }
                     },
                     itemBuilder: (context) => [
-                      const PopupMenuItem(value: 'edit', child: Text('Edit')),
-                      const PopupMenuItem(value: 'delete', child: Text('Delete')),
+                      PopupMenuItem(value: 'edit', child: Text(l10n.edit)),
+                      PopupMenuItem(value: 'delete', child: Text(l10n.delete)),
                     ],
                   ),
                 ],
@@ -137,20 +140,19 @@ class RestaurantDetailPage extends ConsumerWidget {
                     ),
                   ),
                 ),
-              // ── Templates section ──────────────────────────────────────────
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
                   child: Row(
                     children: [
-                      Text('Order Templates',
+                      Text(l10n.restaurantOrderTemplates,
                           style: Theme.of(context).textTheme.titleLarge),
                       const Spacer(),
                       FilledButton.tonalIcon(
                         onPressed: () =>
                             _showAddTemplateSheet(context, ref, restaurant),
                         icon: const Icon(Icons.add),
-                        label: const Text('Add'),
+                        label: Text(l10n.add),
                       ),
                     ],
                   ),
@@ -162,7 +164,7 @@ class RestaurantDetailPage extends ConsumerWidget {
                   child: templatesAsync.when(
                     data: (templates) => templates.isEmpty
                         ? Text(
-                            'No templates yet. Add one here or save from a personal order.',
+                            l10n.restaurantTemplatesEmpty,
                             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                                   color: Theme.of(context).colorScheme.outline,
                                 ),
@@ -173,8 +175,10 @@ class RestaurantDetailPage extends ConsumerWidget {
                             children: templates
                                 .map((t) => _TemplateChip(
                                       label: '${t.label} (${t.entries.length})',
-                                      onTap: () => _editTemplate(ref, restaurant, t),
-                                      onDelete: () => _deleteTemplate(context, ref, t),
+                                      onTap: () =>
+                                          _editTemplate(ref, restaurant, t, l10n),
+                                      onDelete: () =>
+                                          _deleteTemplate(context, ref, t, l10n),
                                     ))
                                 .toList(),
                           ),
@@ -183,18 +187,19 @@ class RestaurantDetailPage extends ConsumerWidget {
                   ),
                 ),
               ),
-              // ── Menu section ───────────────────────────────────────────────
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
                   child: Row(
                     children: [
-                      Text('Menu', style: Theme.of(context).textTheme.titleLarge),
+                      Text(l10n.restaurantMenuSection,
+                          style: Theme.of(context).textTheme.titleLarge),
                       const Spacer(),
                       FilledButton.tonalIcon(
-                        onPressed: () => context.push('/scan-menu/$restaurantId'),
+                        onPressed: () =>
+                            context.push('/scan-menu/$restaurantId'),
                         icon: const Icon(Icons.document_scanner),
-                        label: const Text('Scan'),
+                        label: Text(l10n.restaurantScanButton),
                       ),
                     ],
                   ),
@@ -222,9 +227,7 @@ class RestaurantDetailPage extends ConsumerWidget {
                           Expanded(child: Text(item.name)),
                         ],
                       ),
-                      subtitle: item.description != null
-                          ? Text(item.description!)
-                          : null,
+                      subtitle: item.description != null ? Text(item.description!) : null,
                       trailing: PopupMenuButton<String>(
                         onSelected: (value) {
                           if (value == 'edit') {
@@ -236,12 +239,14 @@ class RestaurantDetailPage extends ConsumerWidget {
                           }
                         },
                         itemBuilder: (context) => [
-                          const PopupMenuItem(value: 'edit', child: Text('Edit')),
+                          PopupMenuItem(value: 'edit', child: Text(l10n.edit)),
                           PopupMenuItem(
                             value: 'yummie',
-                            child: Text(item.isYummie ? 'Remove Yummie' : 'Mark as Yummie'),
+                            child: Text(item.isYummie
+                                ? l10n.restaurantMenuRemoveYummie
+                                : l10n.restaurantMenuMarkYummie),
                           ),
-                          const PopupMenuItem(value: 'delete', child: Text('Delete')),
+                          PopupMenuItem(value: 'delete', child: Text(l10n.delete)),
                         ],
                       ),
                     );
@@ -264,7 +269,7 @@ class RestaurantDetailPage extends ConsumerWidget {
       ),
       error: (error, stack) => Scaffold(
         appBar: AppBar(),
-        body: Center(child: Text('Error: $error')),
+        body: Center(child: Text(AppLocalizations.of(context)!.errorMessage(error.toString()))),
       ),
     );
   }
@@ -278,33 +283,37 @@ class RestaurantDetailPage extends ConsumerWidget {
         );
   }
 
-  Future<void> _deleteTemplate(BuildContext context, WidgetRef ref, SavedOrder template) async {
+  Future<void> _deleteTemplate(BuildContext context, WidgetRef ref,
+      SavedOrder template, AppLocalizations l10n) async {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete Template'),
-        content: Text('Are you sure you want to delete "${template.label}"?'),
+        title: Text(l10n.restaurantTemplateDeleteTitle),
+        content: Text(l10n.restaurantTemplateDeleteMessage(template.label)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+            child: Text(l10n.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
             style: FilledButton.styleFrom(
               backgroundColor: Theme.of(context).colorScheme.error,
             ),
-            child: const Text('Delete'),
+            child: Text(l10n.delete),
           ),
         ],
       ),
     );
     if (confirm == true) {
-      await ref.read(savedOrderActionsProvider).deleteTemplate(template.id, template.restaurantId);
+      await ref
+          .read(savedOrderActionsProvider)
+          .deleteTemplate(template.id, template.restaurantId);
     }
   }
 
-  void _editTemplate(WidgetRef ref, Restaurant restaurant, SavedOrder template) {
+  void _editTemplate(WidgetRef ref, Restaurant restaurant, SavedOrder template,
+      AppLocalizations l10n) {
     showModalBottomSheet(
       context: ref.context,
       isScrollControlled: true,
@@ -316,11 +325,7 @@ class RestaurantDetailPage extends ConsumerWidget {
           if (label.isEmpty || selectedIds.isEmpty) return;
           final entries = selectedIds.map((id) {
             final item = restaurant.menu.where((m) => m.id == id).firstOrNull;
-            return SubOrderEntry(
-              menuItemId: id,
-              name: item?.name ?? id,
-              quantity: 1,
-            );
+            return SubOrderEntry(menuItemId: id, name: item?.name ?? id, quantity: 1);
           }).toList();
           await ref.read(savedOrderActionsProvider).saveTemplate(
                 restaurantId: restaurant.id,
@@ -330,25 +335,27 @@ class RestaurantDetailPage extends ConsumerWidget {
           final confirmDelete = await showDialog<bool>(
             context: sheetContext,
             builder: (ctx) => AlertDialog(
-              title: const Text('Replace Template'),
-              content: const Text('Do you also want to delete the old version?'),
+              title: Text(l10n.restaurantTemplateReplaceTitle),
+              content: Text(l10n.restaurantTemplateReplaceMessage),
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(ctx, false),
-                  child: const Text('Keep'),
+                  child: Text(l10n.keep),
                 ),
                 FilledButton(
                   onPressed: () => Navigator.pop(ctx, true),
                   style: FilledButton.styleFrom(
                     backgroundColor: Theme.of(ctx).colorScheme.error,
                   ),
-                  child: const Text('Delete'),
+                  child: Text(l10n.delete),
                 ),
               ],
             ),
           );
           if (confirmDelete == true) {
-            await ref.read(savedOrderActionsProvider).deleteTemplate(template.id, template.restaurantId);
+            await ref
+                .read(savedOrderActionsProvider)
+                .deleteTemplate(template.id, template.restaurantId);
           }
           if (sheetContext.mounted) Navigator.pop(sheetContext);
         },
@@ -393,8 +400,7 @@ class RestaurantDetailPage extends ConsumerWidget {
             description: description,
             itemNumber: itemNumber,
           );
-          final updated =
-              restaurant.copyWith(menu: [...restaurant.menu, newItem]);
+          final updated = restaurant.copyWith(menu: [...restaurant.menu, newItem]);
           await ref.read(restaurantsProvider.notifier).updateRestaurant(updated);
           ref.invalidate(restaurantDetailProvider(restaurantId));
           if (context.mounted) Navigator.pop(context);
@@ -433,8 +439,7 @@ class RestaurantDetailPage extends ConsumerWidget {
   }
 
   void _deleteMenuItem(WidgetRef ref, Restaurant restaurant, MenuItem item) {
-    final updatedMenu =
-        restaurant.menu.where((i) => i.id != item.id).toList();
+    final updatedMenu = restaurant.menu.where((i) => i.id != item.id).toList();
     ref.read(restaurantsProvider.notifier).updateRestaurant(
           restaurant.copyWith(menu: updatedMenu),
         );
@@ -453,11 +458,7 @@ class RestaurantDetailPage extends ConsumerWidget {
           if (label.isEmpty || selectedIds.isEmpty) return;
           final entries = selectedIds.map((id) {
             final item = restaurant.menu.where((m) => m.id == id).firstOrNull;
-            return SubOrderEntry(
-              menuItemId: id,
-              name: item?.name ?? id,
-              quantity: 1,
-            );
+            return SubOrderEntry(menuItemId: id, name: item?.name ?? id, quantity: 1);
           }).toList();
           await ref.read(savedOrderActionsProvider).saveTemplate(
                 restaurantId: restaurant.id,
@@ -513,6 +514,7 @@ class _AddTemplateSheetState extends State<_AddTemplateSheet> {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final l10n = AppLocalizations.of(context)!;
     final sortedMenu = List<MenuItem>.from(widget.restaurant.menu)
       ..sort((a, b) {
         if (a.isYummie && !b.isYummie) return -1;
@@ -535,8 +537,8 @@ class _AddTemplateSheetState extends State<_AddTemplateSheet> {
                 _DragHandle(scheme: scheme),
                 Text(
                   widget.editingTemplate != null
-                      ? 'Edit Order Template'
-                      : 'New Order Template',
+                      ? l10n.restaurantTemplateEditTitle
+                      : l10n.restaurantTemplateNewTitle,
                   style: Theme.of(context).textTheme.titleLarge,
                 ),
                 const SizedBox(height: 16),
@@ -544,14 +546,14 @@ class _AddTemplateSheetState extends State<_AddTemplateSheet> {
                   controller: _nameController,
                   autofocus: true,
                   textCapitalization: TextCapitalization.sentences,
-                  decoration: const InputDecoration(
-                    labelText: 'Template name',
-                    border: OutlineInputBorder(),
+                  decoration: InputDecoration(
+                    labelText: l10n.restaurantTemplateNameLabel,
+                    border: const OutlineInputBorder(),
                   ),
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Select dishes to include:',
+                  l10n.restaurantTemplateSelectDishes,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: scheme.onSurfaceVariant,
                       ),
@@ -606,7 +608,7 @@ class _AddTemplateSheetState extends State<_AddTemplateSheet> {
                     : null,
                 child: Padding(
                   padding: const EdgeInsets.all(4),
-                  child: Text('Save template (${_selectedIds.length} items)'),
+                  child: Text(l10n.restaurantTemplateSave(_selectedIds.length)),
                 ),
               ),
             ),
@@ -667,6 +669,7 @@ class _EditRestaurantSheetState extends State<EditRestaurantSheet> {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final viewInsets = MediaQuery.viewInsetsOf(context);
+    final l10n = AppLocalizations.of(context)!;
 
     return Padding(
       padding: EdgeInsets.only(bottom: viewInsets.bottom),
@@ -677,8 +680,7 @@ class _EditRestaurantSheetState extends State<EditRestaurantSheet> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             _DragHandle(scheme: scheme),
-            Text('Edit Restaurant',
-                style: Theme.of(context).textTheme.titleLarge),
+            Text(l10n.restaurantEditTitle, style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 20),
             GestureDetector(
               onTap: _pickImage,
@@ -701,7 +703,7 @@ class _EditRestaurantSheetState extends State<EditRestaurantSheet> {
                           Icon(Icons.add_photo_alternate_outlined,
                               size: 40, color: scheme.outline),
                           const SizedBox(height: 8),
-                          Text('Add Cover Photo',
+                          Text(l10n.restaurantAddCoverPhoto,
                               style: TextStyle(color: scheme.outline)),
                         ],
                       ),
@@ -711,8 +713,7 @@ class _EditRestaurantSheetState extends State<EditRestaurantSheet> {
                       child: CircleAvatar(
                         radius: 16,
                         backgroundColor: scheme.primaryContainer,
-                        child: Icon(Icons.edit,
-                            size: 16, color: scheme.onPrimaryContainer),
+                        child: Icon(Icons.edit, size: 16, color: scheme.onPrimaryContainer),
                       ),
                     ),
                   ],
@@ -723,17 +724,17 @@ class _EditRestaurantSheetState extends State<EditRestaurantSheet> {
             TextField(
               controller: _nameController,
               textCapitalization: TextCapitalization.words,
-              decoration: const InputDecoration(
-                labelText: 'Restaurant Name',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: l10n.restaurantNameLabel,
+                border: const OutlineInputBorder(),
               ),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: _addressController,
-              decoration: const InputDecoration(
-                labelText: 'Address (optional)',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: l10n.restaurantAddressLabel,
+                border: const OutlineInputBorder(),
               ),
             ),
             const SizedBox(height: 24),
@@ -742,7 +743,7 @@ class _EditRestaurantSheetState extends State<EditRestaurantSheet> {
                 Expanded(
                   child: OutlinedButton(
                     onPressed: () => Navigator.pop(context),
-                    child: const Text('Cancel'),
+                    child: Text(l10n.cancel),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -755,7 +756,7 @@ class _EditRestaurantSheetState extends State<EditRestaurantSheet> {
                           : _addressController.text.trim(),
                       _coverImagePath,
                     ),
-                    child: const Text('Save'),
+                    child: Text(l10n.save),
                   ),
                 ),
               ],
@@ -767,7 +768,7 @@ class _EditRestaurantSheetState extends State<EditRestaurantSheet> {
   }
 }
 
-// ── Menu Item Sheet (add & edit) ──────────────────────────────────────────────
+// ── Menu Item Sheet ───────────────────────────────────────────────────────────
 
 class _MenuItemSheet extends StatefulWidget {
   final String? initialName;
@@ -819,6 +820,7 @@ class _MenuItemSheetState extends State<_MenuItemSheet> {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final viewInsets = MediaQuery.viewInsetsOf(context);
+    final l10n = AppLocalizations.of(context)!;
 
     return Padding(
       padding: EdgeInsets.only(bottom: viewInsets.bottom),
@@ -830,34 +832,34 @@ class _MenuItemSheetState extends State<_MenuItemSheet> {
           children: [
             _DragHandle(scheme: scheme),
             Text(
-              widget.isEditing ? 'Edit Menu Item' : 'Add Menu Item',
+              widget.isEditing ? l10n.restaurantMenuItemEditTitle : l10n.restaurantMenuItemAddTitle,
               style: Theme.of(context).textTheme.titleLarge,
             ),
             const SizedBox(height: 20),
             TextField(
               controller: _nameController,
               textCapitalization: TextCapitalization.words,
-              decoration: const InputDecoration(
-                labelText: 'Item Name',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: l10n.restaurantMenuItemNameLabel,
+                border: const OutlineInputBorder(),
               ),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: _descriptionController,
               maxLines: 2,
-              decoration: const InputDecoration(
-                labelText: 'Description (optional)',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: l10n.restaurantMenuItemDescLabel,
+                border: const OutlineInputBorder(),
               ),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: _numberController,
               keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                labelText: 'Item Number',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: l10n.restaurantMenuItemNumberLabel,
+                border: const OutlineInputBorder(),
               ),
             ),
             const SizedBox(height: 24),
@@ -866,7 +868,7 @@ class _MenuItemSheetState extends State<_MenuItemSheet> {
                 Expanded(
                   child: OutlinedButton(
                     onPressed: () => Navigator.pop(context),
-                    child: const Text('Cancel'),
+                    child: Text(l10n.cancel),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -882,7 +884,7 @@ class _MenuItemSheetState extends State<_MenuItemSheet> {
                         int.tryParse(_numberController.text),
                       );
                     },
-                    child: Text(widget.isEditing ? 'Save' : 'Add'),
+                    child: Text(widget.isEditing ? l10n.save : l10n.add),
                   ),
                 ),
               ],
@@ -901,11 +903,7 @@ class _TemplateChip extends StatelessWidget {
   final VoidCallback onTap;
   final VoidCallback onDelete;
 
-  const _TemplateChip({
-    required this.label,
-    required this.onTap,
-    required this.onDelete,
-  });
+  const _TemplateChip({required this.label, required this.onTap, required this.onDelete});
 
   @override
   Widget build(BuildContext context) {
@@ -924,10 +922,7 @@ class _TemplateChip extends StatelessWidget {
               const SizedBox(width: 6),
               Text(label, style: Theme.of(context).textTheme.labelLarge),
               const SizedBox(width: 4),
-              InkWell(
-                onTap: onDelete,
-                child: const Icon(Icons.close, size: 16),
-              ),
+              InkWell(onTap: onDelete, child: const Icon(Icons.close, size: 16)),
             ],
           ),
         ),

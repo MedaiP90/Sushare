@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../domain/models/order.dart';
 import '../../../domain/models/restaurant.dart';
 import '../../../domain/models/session.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../viewmodels/session_viewmodel.dart';
 import '../../viewmodels/profile_viewmodel.dart';
 import '../../viewmodels/restaurant_viewmodel.dart';
@@ -16,11 +17,12 @@ class ChecklistContent extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final sessionAsync = ref.watch(sessionDetailProvider(sessionId));
     final user = ref.watch(profileViewModelProvider).value;
+    final l10n = AppLocalizations.of(context)!;
 
     return sessionAsync.when(
       data: (session) {
         if (session == null) {
-          return const Center(child: Text('Table not found'));
+          return Center(child: Text(l10n.sessionTableNotFound));
         }
 
         final isHost = user?.id == session.hostUserId;
@@ -39,12 +41,12 @@ class ChecklistContent extends ConsumerWidget {
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  'No order to track',
+                  l10n.checklistNoOrder,
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'The order hasn\'t been sent yet',
+                  l10n.checklistNoOrderHint,
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
@@ -78,13 +80,13 @@ class ChecklistContent extends ConsumerWidget {
                 children: [
                   Expanded(
                     child: Text(
-                      'Checklist',
+                      l10n.checklistTitle,
                       style: Theme.of(context).textTheme.titleLarge,
                     ),
                   ),
                   if (allArrived)
                     Chip(
-                      label: const Text('Complete'),
+                      label: Text(l10n.checklistComplete),
                       avatar: const Icon(Icons.check_circle, size: 16),
                       backgroundColor: Theme.of(context).colorScheme.primaryContainer,
                     ),
@@ -92,9 +94,7 @@ class ChecklistContent extends ConsumerWidget {
               ),
               const SizedBox(height: 8),
               Text(
-                isHost
-                    ? 'Track what has arrived from all orders'
-                    : 'Track what has arrived from your dishes',
+                isHost ? l10n.checklistHostSubtitle : l10n.checklistGuestSubtitle,
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
@@ -120,7 +120,7 @@ class ChecklistContent extends ConsumerWidget {
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
-                              'Only the host can update arrival status',
+                              l10n.checklistHostOnly,
                               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                                     color: Theme.of(context).colorScheme.onSecondaryContainer,
                                   ),
@@ -136,7 +136,7 @@ class ChecklistContent extends ConsumerWidget {
         );
       },
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (error, _) => Center(child: Text('Error: $error')),
+      error: (error, _) => Center(child: Text(AppLocalizations.of(context)!.errorMessage(error.toString()))),
     );
   }
 
@@ -168,6 +168,8 @@ class ChecklistContent extends ConsumerWidget {
     Map<String, int> arrivedCounts,
     Restaurant? restaurant,
   ) {
+    final l10n = AppLocalizations.of(context)!;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -182,7 +184,7 @@ class ChecklistContent extends ConsumerWidget {
               ),
             ),
             Chip(
-              label: Text('${orderWithLabel.order.items.length} items'),
+              label: Text(l10n.checklistItemsCount(orderWithLabel.order.items.length)),
               backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
             ),
           ],
@@ -246,7 +248,7 @@ class ChecklistContent extends ConsumerWidget {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          '$arrived of $total arrived',
+                          l10n.checklistArrivedOf(arrived, total),
                           style: Theme.of(context).textTheme.bodySmall,
                         ),
                       ],
@@ -262,7 +264,7 @@ class ChecklistContent extends ConsumerWidget {
                                 ? Theme.of(context).colorScheme.primary
                                 : Theme.of(context).colorScheme.outlineVariant,
                           ),
-                          tooltip: isYummie ? 'Remove Yummie' : 'Mark as Yummie',
+                          tooltip: isYummie ? l10n.restaurantMenuRemoveYummie : l10n.restaurantMenuMarkYummie,
                           onPressed: menuItem != null && restaurant != null
                               ? () => _toggleYummie(ref, restaurant, menuItem)
                               : null,
