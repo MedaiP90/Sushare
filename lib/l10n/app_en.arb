@@ -335,6 +335,8 @@
   "@sessionDeleteMessage2": {},
   "sessionClosedBanner": "This table has been left — no further changes can be made",
   "@sessionClosedBanner": {},
+  "sessionUnreachableBanner": "Session temporarily unreachable — waiting for the host to reconnect",
+  "@sessionUnreachableBanner": {},
   "sessionTabMyOrder": "My Order",
   "@sessionTabMyOrder": {},
   "sessionTabGroup": "Group",

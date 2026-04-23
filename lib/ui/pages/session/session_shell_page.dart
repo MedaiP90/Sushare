@@ -1,14 +1,20 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import '../../../core/providers.dart';
 import '../../../core/utils/network_utils.dart';
+import '../../../domain/models/local_user.dart';
 import '../../../domain/models/session.dart';
+import '../../../domain/models/personal_sub_order.dart';
+import '../../../domain/models/restaurant.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../../services/sync_message.dart';
 import '../../viewmodels/session_viewmodel.dart';
 import '../../viewmodels/profile_viewmodel.dart';
 import '../../viewmodels/restaurant_viewmodel.dart';
+import '../../viewmodels/personal_order_viewmodel.dart';
 import 'personal_order_content.dart';
 import 'merged_order_content.dart';
 import 'checklist_content.dart';
@@ -25,6 +31,24 @@ class SessionShellPage extends ConsumerStatefulWidget {
 class _SessionShellPageState extends ConsumerState<SessionShellPage> {
   int _currentIndex = 0;
   bool _serverStarted = false;
+  bool _guestConnected = false;
+  bool _guestFrozen = false;
+  SessionStatus? _lastKnownStatus;
+
+  StreamSubscription<SyncMessage>? _hostMsgSub;
+  StreamSubscription<SyncMessage>? _clientMsgSub;
+  StreamSubscription<bool>? _clientConnSub;
+  Timer? _reconnectTimer;
+
+  @override
+  void dispose() {
+    _hostMsgSub?.cancel();
+    _clientMsgSub?.cancel();
+    _clientConnSub?.cancel();
+    _reconnectTimer?.cancel();
+    ref.read(sessionClientServiceProvider).disconnect();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -47,11 +71,25 @@ class _SessionShellPageState extends ConsumerState<SessionShellPage> {
           WidgetsBinding.instance.addPostFrameCallback((_) => _startHostServer(session));
         }
 
-        final tabs = [
-          PersonalOrderContent(sessionId: widget.sessionId),
-          MergedOrderContent(sessionId: widget.sessionId),
-          ChecklistContent(sessionId: widget.sessionId),
-        ];
+        if (!isHost && session.hostAddress != null && !_guestConnected && user != null) {
+          WidgetsBinding.instance
+              .addPostFrameCallback((_) => _connectAsGuest(session, user));
+        }
+
+        // Host: 3 tabs. Guest: 2 tabs (no Group view).
+        final tabs = isHost
+            ? [
+                PersonalOrderContent(sessionId: widget.sessionId),
+                MergedOrderContent(sessionId: widget.sessionId),
+                ChecklistContent(sessionId: widget.sessionId),
+              ]
+            : [
+                PersonalOrderContent(sessionId: widget.sessionId),
+                ChecklistContent(sessionId: widget.sessionId),
+              ];
+
+        // Clamp index when switching between host/guest roles
+        final safeIndex = _currentIndex.clamp(0, tabs.length - 1);
 
         return Scaffold(
           appBar: AppBar(
@@ -116,11 +154,8 @@ class _SessionShellPageState extends ConsumerState<SessionShellPage> {
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                     child: Row(
                       children: [
-                        Icon(
-                          Icons.lock_outline,
-                          size: 16,
-                          color: Theme.of(context).colorScheme.onSecondaryContainer,
-                        ),
+                        Icon(Icons.lock_outline, size: 16,
+                            color: Theme.of(context).colorScheme.onSecondaryContainer),
                         const SizedBox(width: 8),
                         Text(
                           l10n.sessionClosedBanner,
@@ -132,65 +167,279 @@ class _SessionShellPageState extends ConsumerState<SessionShellPage> {
                     ),
                   ),
                 ),
-              Expanded(child: tabs[_currentIndex]),
+              if (!isHost && _guestFrozen)
+                Material(
+                  color: Theme.of(context).colorScheme.errorContainer,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    child: Row(
+                      children: [
+                        Icon(Icons.wifi_off, size: 16,
+                            color: Theme.of(context).colorScheme.onErrorContainer),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            l10n.sessionUnreachableBanner,
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  color: Theme.of(context).colorScheme.onErrorContainer,
+                                ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              Expanded(child: tabs[safeIndex]),
             ],
           ),
           bottomNavigationBar: NavigationBar(
-            selectedIndex: _currentIndex,
+            selectedIndex: safeIndex,
             onDestinationSelected: (index) => setState(() => _currentIndex = index),
-            destinations: [
-              NavigationDestination(
-                icon: const Icon(Icons.person_outline),
-                selectedIcon: const Icon(Icons.person),
-                label: l10n.sessionTabMyOrder,
-              ),
-              NavigationDestination(
-                icon: const Icon(Icons.groups_outlined),
-                selectedIcon: const Icon(Icons.groups),
-                label: l10n.sessionTabGroup,
-              ),
-              NavigationDestination(
-                icon: const Icon(Icons.checklist_outlined),
-                selectedIcon: const Icon(Icons.checklist),
-                label: l10n.sessionTabChecklist,
-              ),
-            ],
+            destinations: isHost
+                ? [
+                    NavigationDestination(
+                      icon: const Icon(Icons.person_outline),
+                      selectedIcon: const Icon(Icons.person),
+                      label: l10n.sessionTabMyOrder,
+                    ),
+                    NavigationDestination(
+                      icon: const Icon(Icons.groups_outlined),
+                      selectedIcon: const Icon(Icons.groups),
+                      label: l10n.sessionTabGroup,
+                    ),
+                    NavigationDestination(
+                      icon: const Icon(Icons.checklist_outlined),
+                      selectedIcon: const Icon(Icons.checklist),
+                      label: l10n.sessionTabChecklist,
+                    ),
+                  ]
+                : [
+                    NavigationDestination(
+                      icon: const Icon(Icons.person_outline),
+                      selectedIcon: const Icon(Icons.person),
+                      label: l10n.sessionTabMyOrder,
+                    ),
+                    NavigationDestination(
+                      icon: const Icon(Icons.checklist_outlined),
+                      selectedIcon: const Icon(Icons.checklist),
+                      label: l10n.sessionTabChecklist,
+                    ),
+                  ],
           ),
         );
       },
-      loading: () => Scaffold(appBar: AppBar(), body: const Center(child: CircularProgressIndicator())),
+      loading: () => Scaffold(
+          appBar: AppBar(), body: const Center(child: CircularProgressIndicator())),
       error: (error, _) => Scaffold(
         appBar: AppBar(),
-        body: Center(child: Text(AppLocalizations.of(context)!.errorMessage(error.toString()))),
+        body: Center(
+            child: Text(AppLocalizations.of(context)!.errorMessage(error.toString()))),
       ),
     );
   }
 
+  // ── Host ─────────────────────────────────────────────────────────────────
+
   Future<void> _startHostServer(Session session) async {
     if (_serverStarted) return;
-    final serverService = ref.read(hostServerServiceProvider);
+    final server = ref.read(hostServerServiceProvider);
     try {
-      await serverService.start();
-      serverService.setSessionData(session.toJson());
+      await server.start();
+      server.setSession(session);
+      _lastKnownStatus = session.status;
+
       final restaurantRepo = ref.read(restaurantRepositoryProvider);
       final restaurant = await restaurantRepo.getRestaurantById(session.restaurantId);
-      if (restaurant != null) {
-        serverService.setRestaurantData(restaurant.toJson());
+      if (restaurant != null) server.setRestaurant(restaurant);
+
+      // Seed server memory with existing sub orders
+      final subOrderRepo = ref.read(personalSubOrderRepositoryProvider);
+      final existingSubOrders = await subOrderRepo.getSubOrdersForSession(session.id);
+      for (final so in existingSubOrders) {
+        server.upsertSubOrder(so);
       }
-      serverService.messages.listen((msg) {
-        if (!mounted) return;
-        if (msg['type'] == 'participant_joined') {
-          final userId = msg['userId'] as String?;
-          if (userId != null) {
-            ref.read(sessionRepositoryProvider).addParticipant(widget.sessionId, userId).then((_) {
-              if (mounted) ref.invalidate(sessionDetailProvider(widget.sessionId));
-            });
-          }
-        }
-      });
+
+      _hostMsgSub = server.messages.listen(_handleHostMessage);
+
       if (mounted) setState(() => _serverStarted = true);
     } catch (_) {}
   }
+
+  Future<void> _handleHostMessage(SyncMessage msg) async {
+    if (!mounted) return;
+
+    switch (msg.type) {
+      case SyncMessageType.userInfo:
+        final userId = msg.data['userId'] as String?;
+        if (userId == null) return;
+        final sessionRepo = ref.read(sessionRepositoryProvider);
+        await sessionRepo.addParticipant(widget.sessionId, userId);
+        if (mounted) ref.invalidate(sessionDetailProvider(widget.sessionId));
+
+        // Broadcast updated session to all guests
+        final updatedSession =
+            await sessionRepo.getSessionById(widget.sessionId);
+        if (updatedSession != null) {
+          ref.read(hostServerServiceProvider).setSession(updatedSession);
+        }
+
+      case SyncMessageType.subOrderUpdate:
+        final subOrder = PersonalSubOrder.fromJson(msg.data);
+        final subOrderRepo = ref.read(personalSubOrderRepositoryProvider);
+        final existing =
+            await subOrderRepo.getSubOrder(subOrder.sessionId, subOrder.userId);
+        if (existing != null) {
+          await subOrderRepo.updateSubOrder(subOrder);
+        } else {
+          await subOrderRepo.saveSubOrder(subOrder);
+        }
+        if (mounted) {
+          ref.invalidate(subOrdersForSessionProvider(subOrder.sessionId));
+        }
+
+      default:
+        break;
+    }
+  }
+
+  // ── Guest ─────────────────────────────────────────────────────────────────
+
+  Future<void> _connectAsGuest(Session session, LocalUser user) async {
+    if (_guestConnected) return;
+    final client = ref.read(sessionClientServiceProvider);
+
+    _clientConnSub?.cancel();
+    _clientConnSub = client.connectionStatus.listen((connected) {
+      if (!mounted) return;
+      setState(() => _guestFrozen = !connected);
+      if (!connected) _scheduleReconnect(session, user);
+    });
+
+    _clientMsgSub?.cancel();
+    _clientMsgSub = client.messages.listen((msg) => _handleGuestMessage(msg, session));
+
+    final connected = await client.connect(
+      hostAddress: session.hostAddress!,
+      userId: user.id,
+      userName: user.username,
+      userFullName: '${user.firstName} ${user.lastName}'.trim(),
+      userProfilePicturePath: user.profilePicturePath,
+    );
+
+    if (mounted) {
+      setState(() {
+        _guestConnected = true;
+        _guestFrozen = !connected;
+      });
+    }
+  }
+
+  void _scheduleReconnect(Session session, LocalUser user) {
+    _reconnectTimer?.cancel();
+    _reconnectTimer = Timer(const Duration(seconds: 5), () async {
+      if (!mounted) return;
+      final client = ref.read(sessionClientServiceProvider);
+      if (!client.isConnected) {
+        await client.connect(
+          hostAddress: session.hostAddress!,
+          userId: user.id,
+          userName: user.username,
+          userFullName: '${user.firstName} ${user.lastName}'.trim(),
+          userProfilePicturePath: user.profilePicturePath,
+        );
+      }
+    });
+  }
+
+  Future<void> _handleGuestMessage(SyncMessage msg, Session currentSession) async {
+    if (!mounted) return;
+
+    final sessionRepo = ref.read(sessionRepositoryProvider);
+    final restaurantRepo = ref.read(restaurantRepositoryProvider);
+    final subOrderRepo = ref.read(personalSubOrderRepositoryProvider);
+    final LocalUser? user = ref.read(profileViewModelProvider).value;
+
+    switch (msg.type) {
+      case SyncMessageType.initialSync:
+        if (msg.data['session'] != null) {
+          final session = Session.fromJson(msg.data['session'] as Map<String, dynamic>);
+          // Preserve our local hostAddress
+          final withAddr = session.copyWith(hostAddress: currentSession.hostAddress);
+          await sessionRepo.saveSession(withAddr);
+          _lastKnownStatus = withAddr.status;
+          if (mounted) ref.invalidate(sessionDetailProvider(withAddr.id));
+        }
+        if (msg.data['restaurant'] != null) {
+          final restaurant =
+              Restaurant.fromJson(msg.data['restaurant'] as Map<String, dynamic>);
+          await restaurantRepo.saveRestaurant(restaurant);
+          if (mounted) ref.invalidate(restaurantDetailProvider(restaurant.id));
+        }
+        final subOrdersJson = msg.data['subOrders'] as List<dynamic>? ?? [];
+        for (final raw in subOrdersJson) {
+          final so = PersonalSubOrder.fromJson(raw as Map<String, dynamic>);
+          // Don't overwrite our own sub order from the server
+          if (so.userId == user?.id) continue;
+          final existing = await subOrderRepo.getSubOrder(so.sessionId, so.userId);
+          if (existing != null) {
+            await subOrderRepo.updateSubOrder(so);
+          } else {
+            await subOrderRepo.saveSubOrder(so);
+          }
+        }
+        if (mounted) ref.invalidate(subOrdersForSessionProvider(currentSession.id));
+
+      case SyncMessageType.sessionUpdate:
+        final newSession = Session.fromJson(msg.data);
+        final withAddr = newSession.copyWith(hostAddress: currentSession.hostAddress);
+        await sessionRepo.saveSession(withAddr);
+
+        // If order just sent or new round opened, clear own sub order entries
+        final prevStatus = _lastKnownStatus;
+        _lastKnownStatus = withAddr.status;
+
+        if (user != null) {
+          final needsClear = (withAddr.status == SessionStatus.sent &&
+                  prevStatus != SessionStatus.sent) ||
+              (withAddr.status == SessionStatus.open &&
+                  prevStatus == SessionStatus.sent);
+          if (needsClear) {
+            final mine = await subOrderRepo.getSubOrder(currentSession.id, user.id);
+            if (mine != null) {
+              await subOrderRepo.updateSubOrder(
+                  mine.copyWith(entries: [], updatedAt: DateTime.now()));
+              if (mounted) {
+                ref.invalidate(personalOrderProvider('${currentSession.id}:${user.id}'));
+              }
+            }
+          }
+        }
+
+        if (mounted) ref.invalidate(sessionDetailProvider(withAddr.id));
+
+      case SyncMessageType.restaurantUpdate:
+        final restaurant = Restaurant.fromJson(msg.data);
+        await restaurantRepo.saveRestaurant(restaurant);
+        if (mounted) ref.invalidate(restaurantDetailProvider(restaurant.id));
+
+      case SyncMessageType.subOrderBroadcast:
+        final so = PersonalSubOrder.fromJson(msg.data);
+        // Don't overwrite our own sub order
+        if (so.userId == user?.id) return;
+        final existing = await subOrderRepo.getSubOrder(so.sessionId, so.userId);
+        if (existing != null) {
+          await subOrderRepo.updateSubOrder(so);
+        } else {
+          await subOrderRepo.saveSubOrder(so);
+        }
+        if (mounted) ref.invalidate(subOrdersForSessionProvider(so.sessionId));
+
+      default:
+        break;
+    }
+  }
+
+  // ── Shared helpers ────────────────────────────────────────────────────────
 
   Future<bool?> _showConfirmSheet(
     BuildContext context,
@@ -214,8 +463,7 @@ class _SessionShellPageState extends ConsumerState<SessionShellPage> {
             onPressed: () => Navigator.pop(context, true),
             style: isDestructive
                 ? FilledButton.styleFrom(
-                    backgroundColor: Theme.of(context).colorScheme.error,
-                  )
+                    backgroundColor: Theme.of(context).colorScheme.error)
                 : null,
             child: Text(confirmText),
           ),
@@ -249,7 +497,8 @@ class _SessionShellPageState extends ConsumerState<SessionShellPage> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(l10n.shareTableTitle, style: Theme.of(context).textTheme.titleLarge),
+                  Text(l10n.shareTableTitle,
+                      style: Theme.of(context).textTheme.titleLarge),
                   const SizedBox(height: 16),
                   Text(l10n.shareTableQrHint),
                   const SizedBox(height: 16),
@@ -259,7 +508,8 @@ class _SessionShellPageState extends ConsumerState<SessionShellPage> {
                     child: QrImageView(data: qrData, size: 200),
                   ),
                   const SizedBox(height: 16),
-                  Text(l10n.shareTableCodeHint, style: Theme.of(context).textTheme.bodySmall),
+                  Text(l10n.shareTableCodeHint,
+                      style: Theme.of(context).textTheme.bodySmall),
                   const SizedBox(height: 8),
                   SelectableText(
                     widget.sessionId.substring(0, 8).toUpperCase(),
@@ -267,9 +517,11 @@ class _SessionShellPageState extends ConsumerState<SessionShellPage> {
                   ),
                   if (hostAddress != null) ...[
                     const SizedBox(height: 8),
-                    Text(l10n.joinTableHostLabel, style: Theme.of(context).textTheme.bodySmall),
+                    Text(l10n.joinTableHostLabel,
+                        style: Theme.of(context).textTheme.bodySmall),
                     const SizedBox(height: 4),
-                    SelectableText(hostAddress, style: Theme.of(context).textTheme.bodyMedium),
+                    SelectableText(hostAddress,
+                        style: Theme.of(context).textTheme.bodyMedium),
                   ],
                   const SizedBox(height: 16),
                 ],

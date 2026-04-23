@@ -56,21 +56,32 @@ class ChecklistContent extends ConsumerWidget {
           );
         }
 
+        // Guests only see items they personally ordered (contributorIds contains their userId)
+        final userId = user?.id;
+        Order _filterForUser(Order order) {
+          if (isHost || userId == null) return order;
+          final filtered = order.items
+              .where((item) => item.contributorIds.contains(userId))
+              .toList();
+          return order.copyWith(items: filtered);
+        }
+
         final allOrders = <_OrderWithLabel>[];
         if (session.mainOrder != null) {
-          allOrders.add(_OrderWithLabel(session.mainOrder!, 'Order 1'));
+          allOrders.add(_OrderWithLabel(_filterForUser(session.mainOrder!), 'Order 1'));
         }
         for (int i = 0; i < session.additionalOrders.length; i++) {
-          allOrders.add(_OrderWithLabel(session.additionalOrders[i], 'Order ${i + 2}'));
+          allOrders.add(_OrderWithLabel(_filterForUser(session.additionalOrders[i]), 'Order ${i + 2}'));
         }
 
         final arrivedCounts = session.arrivedCounts;
 
-        final allArrived = allOrders.every((o) =>
-            o.order.items.every((item) {
-              final arrived = arrivedCounts['${o.label}:${item.menuItemId}'] ?? 0;
-              return arrived >= item.quantity;
-            }));
+        final anyItems = allOrders.any((o) => o.order.items.isNotEmpty);
+        final allArrived = anyItems &&
+            allOrders.every((o) => o.order.items.every((item) {
+                  final arrived = arrivedCounts['${o.label}:${item.menuItemId}'] ?? 0;
+                  return arrived >= item.quantity;
+                }));
 
         return Scaffold(
           body: ListView(
@@ -104,33 +115,6 @@ class ChecklistContent extends ConsumerWidget {
                 if (i > 0) const SizedBox(height: 24),
                 _buildOrderChecklist(context, ref, isHost && isEditable, allOrders[i], session, arrivedCounts, restaurant),
               ],
-              if (!isHost)
-                Padding(
-                  padding: const EdgeInsets.only(top: 24),
-                  child: Card(
-                    color: Theme.of(context).colorScheme.secondaryContainer,
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.info_outline,
-                            color: Theme.of(context).colorScheme.onSecondaryContainer,
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              l10n.checklistHostOnly,
-                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                    color: Theme.of(context).colorScheme.onSecondaryContainer,
-                                  ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
             ],
           ),
         );

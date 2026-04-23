@@ -504,6 +504,10 @@ class AppLocalizationsFr extends AppLocalizations {
       'Cette table a été quittée — aucune modification ne peut être apportée';
 
   @override
+  String get sessionUnreachableBanner =>
+      'Session temporairement injoignable — en attente de reconnexion de l\'hôte';
+
+  @override
   String get sessionTabMyOrder => 'Ma commande';
 
   @override

@@ -101,7 +101,8 @@ class _JoinSessionPageState extends ConsumerState<JoinSessionPage> {
       throw Exception('This table is closed');
     }
 
-    await sessionRepo.saveSession(session);
+    // Save session with host address so it can auto-reconnect later
+    await sessionRepo.saveSession(session.copyWith(hostAddress: host));
 
     final restaurantRes = await http
         .get(Uri.parse('$baseUrl/api/restaurant'))
@@ -112,15 +113,6 @@ class _JoinSessionPageState extends ConsumerState<JoinSessionPage> {
       final restaurantRepo = ref.read(restaurantRepositoryProvider);
       await restaurantRepo.saveRestaurant(restaurant);
     }
-
-    // Notify host so they can add this user to their local participant list
-    try {
-      await http.post(
-        Uri.parse('$baseUrl/api/participants'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'userId': userId}),
-      ).timeout(const Duration(seconds: 5));
-    } catch (_) {}
 
     return session.id;
   }

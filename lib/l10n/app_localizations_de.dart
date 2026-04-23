@@ -500,6 +500,10 @@ class AppLocalizationsDe extends AppLocalizations {
       'Dieser Tisch wurde verlassen — es können keine weiteren Änderungen vorgenommen werden';
 
   @override
+  String get sessionUnreachableBanner =>
+      'Sitzung vorübergehend nicht erreichbar — warte auf Wiederverbindung des Hosts';
+
+  @override
   String get sessionTabMyOrder => 'Meine Bestellung';
 
   @override

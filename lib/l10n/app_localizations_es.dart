@@ -502,6 +502,10 @@ class AppLocalizationsEs extends AppLocalizations {
       'Esta mesa ha sido abandonada — no se pueden hacer más cambios';
 
   @override
+  String get sessionUnreachableBanner =>
+      'Sesión temporalmente inalcanzable — esperando que el anfitrión se reconecte';
+
+  @override
   String get sessionTabMyOrder => 'Mi pedido';
 
   @override
