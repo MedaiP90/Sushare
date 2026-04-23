@@ -169,9 +169,14 @@ class _ScanMenuPageState extends ConsumerState<ScanMenuPage> {
       );
       if (nameIdx != -1) {
         final existing = updatedMenu[nameIdx];
+        final newItemNumber = existing.itemNumber != null && incoming.itemNumber != null
+            ? (existing.itemNumber! < incoming.itemNumber!
+                ? existing.itemNumber
+                : incoming.itemNumber)
+            : (existing.itemNumber ?? incoming.itemNumber);
         updatedMenu[nameIdx] = existing.copyWith(
           description: incoming.description ?? existing.description,
-          itemNumber: incoming.itemNumber ?? existing.itemNumber,
+          itemNumber: newItemNumber,
         );
         continue;
       }
