@@ -37,12 +37,12 @@ class ThemeModeNotifier extends StateNotifier<ThemeMode> {
   }
 }
 
-final localeProvider = StateNotifierProvider<LocaleNotifier, Locale>((ref) {
+final localeProvider = StateNotifierProvider<LocaleNotifier, Locale?>((ref) {
   return LocaleNotifier();
 });
 
-class LocaleNotifier extends StateNotifier<Locale> {
-  LocaleNotifier() : super(const Locale('en')) {
+class LocaleNotifier extends StateNotifier<Locale?> {
+  LocaleNotifier() : super(null) {
     _loadLocale();
   }
 
@@ -56,10 +56,14 @@ class LocaleNotifier extends StateNotifier<Locale> {
     }
   }
 
-  Future<void> setLocale(Locale locale) async {
+  Future<void> setLocale(Locale? locale) async {
     state = locale;
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_key, locale.languageCode);
+    if (locale == null) {
+      await prefs.remove(_key);
+    } else {
+      await prefs.setString(_key, locale.languageCode);
+    }
   }
 }
 
@@ -179,7 +183,8 @@ class SettingsPage extends ConsumerWidget {
     }
   }
 
-  String _getLocaleText(AppLocalizations l10n, Locale locale) {
+  String _getLocaleText(AppLocalizations l10n, Locale? locale) {
+    if (locale == null) return l10n.settingsThemeSystem;
     switch (locale.languageCode) {
       case 'en':
         return l10n.settingsLangEnglish;
@@ -192,7 +197,7 @@ class SettingsPage extends ConsumerWidget {
       case 'de':
         return l10n.settingsLangGerman;
       default:
-        return l10n.settingsLangEnglish;
+        return l10n.settingsThemeSystem;
     }
   }
 
@@ -226,6 +231,7 @@ class SettingsPage extends ConsumerWidget {
   void _showLanguageSheet(BuildContext context, WidgetRef ref, AppLocalizations l10n) {
     final currentLocale = ref.read(localeProvider);
     final options = [
+      (null as String?, l10n.settingsThemeSystem),
       ('en', l10n.settingsLangEnglish),
       ('it', l10n.settingsLangItalian),
       ('es', l10n.settingsLangSpanish),
@@ -237,13 +243,14 @@ class SettingsPage extends ConsumerWidget {
       context: context,
       builder: (context) => _PickerSheet(
         title: l10n.settingsLanguage,
-        children: options.map(((String code, String label) opt) {
+        children: options.map(((String? code, String label) opt) {
+          final locale = opt.$1 != null ? Locale(opt.$1!) : null;
           return _LanguageOption(
-            locale: Locale(opt.$1),
+            locale: locale,
             label: opt.$2,
             currentLocale: currentLocale,
             onTap: () {
-              ref.read(localeProvider.notifier).setLocale(Locale(opt.$1));
+              ref.read(localeProvider.notifier).setLocale(locale);
               Navigator.pop(context);
             },
           );
@@ -337,9 +344,9 @@ class _SectionHeader extends StatelessWidget {
 }
 
 class _LanguageOption extends StatelessWidget {
-  final Locale locale;
+  final Locale? locale;
   final String label;
-  final Locale currentLocale;
+  final Locale? currentLocale;
   final VoidCallback onTap;
 
   const _LanguageOption({
@@ -351,7 +358,7 @@ class _LanguageOption extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isSelected = locale.languageCode == currentLocale.languageCode;
+    final isSelected = locale?.languageCode == currentLocale?.languageCode;
 
     return ListTile(
       title: Text(label),

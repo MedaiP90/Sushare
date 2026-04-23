@@ -12,767 +12,784 @@ class AppLocalizationsDe extends AppLocalizations {
   String get appTitle => 'Sushare';
 
   @override
-  String get cancel => 'Cancel';
+  String get cancel => 'Abbrechen';
 
   @override
-  String get save => 'Save';
+  String get save => 'Speichern';
 
   @override
-  String get delete => 'Delete';
+  String get delete => 'Löschen';
 
   @override
-  String get edit => 'Edit';
+  String get edit => 'Bearbeiten';
 
   @override
-  String get add => 'Add';
+  String get add => 'Hinzufügen';
 
   @override
-  String get confirm => 'Confirm';
+  String get confirm => 'Bestätigen';
 
   @override
-  String get retry => 'Retry';
+  String get retry => 'Erneut versuchen';
 
   @override
-  String get keep => 'Keep';
+  String get keep => 'Behalten';
 
   @override
-  String get clear => 'Clear';
+  String get clear => 'Leeren';
 
   @override
-  String get loading => 'Loading...';
+  String get loading => 'Wird geladen...';
 
   @override
   String errorMessage(String message) {
-    return 'Error: $message';
+    return 'Fehler: $message';
   }
 
   @override
-  String get navTables => 'Tables';
+  String get navTables => 'Tische';
 
   @override
   String get navRestaurants => 'Restaurants';
 
   @override
-  String get navSettings => 'Settings';
+  String get navSettings => 'Einstellungen';
 
   @override
-  String get welcomeTitle => 'Welcome to Sushare';
+  String get welcomeTitle => 'Willkommen bei Sushare';
 
   @override
-  String get profileSetupSubtitle => 'Let\'s set up your profile';
+  String get profileSetupSubtitle => 'Lass uns dein Profil einrichten';
 
   @override
-  String get tapToAddPhoto => 'Tap to add photo';
+  String get tapToAddPhoto => 'Tippen, um ein Foto hinzuzufügen';
 
   @override
-  String get labelUsername => 'Username';
+  String get labelUsername => 'Benutzername';
 
   @override
-  String get hintUsername => 'Choose a unique username';
+  String get hintUsername => 'Wähle einen eindeutigen Benutzernamen';
 
   @override
-  String get validationUsernameRequired => 'Please enter a username';
+  String get validationUsernameRequired => 'Bitte gib einen Benutzernamen ein';
 
   @override
   String get validationUsernameMinLength =>
-      'Username must be at least 3 characters';
+      'Der Benutzername muss mindestens 3 Zeichen lang sein';
 
   @override
-  String get labelFirstName => 'First Name';
+  String get labelFirstName => 'Vorname';
 
   @override
-  String get hintFirstName => 'Enter your first name';
+  String get hintFirstName => 'Gib deinen Vornamen ein';
 
   @override
-  String get validationFirstNameRequired => 'Please enter your first name';
+  String get validationFirstNameRequired => 'Bitte gib deinen Vornamen ein';
 
   @override
-  String get labelLastName => 'Last Name';
+  String get labelLastName => 'Nachname';
 
   @override
-  String get hintLastName => 'Enter your last name';
+  String get hintLastName => 'Gib deinen Nachnamen ein';
 
   @override
-  String get validationLastNameRequired => 'Please enter your last name';
+  String get validationLastNameRequired => 'Bitte gib deinen Nachnamen ein';
 
   @override
-  String get getStarted => 'Get Started';
+  String get getStarted => 'Loslegen';
 
   @override
   String errorSavingProfile(String error) {
-    return 'Error saving profile: $error';
+    return 'Fehler beim Speichern des Profils: $error';
   }
 
   @override
-  String get settingsTitle => 'Settings';
+  String get settingsTitle => 'Einstellungen';
 
   @override
-  String get settingsSectionProfile => 'Profile';
+  String get settingsSectionProfile => 'Profil';
 
   @override
-  String get settingsSectionAppearance => 'Appearance';
+  String get settingsSectionAppearance => 'Erscheinungsbild';
 
   @override
-  String get settingsSectionAiService => 'AI Service';
+  String get settingsSectionAiService => 'KI-Dienst';
 
   @override
-  String get settingsSectionAbout => 'About';
+  String get settingsSectionAbout => 'Über';
 
   @override
-  String get settingsNoProfile => 'No profile';
+  String get settingsNoProfile => 'Kein Profil';
 
   @override
-  String get settingsNoProfileSubtitle => 'Create a profile to get started';
+  String get settingsNoProfileSubtitle => 'Erstelle ein Profil, um loszulegen';
 
   @override
-  String get settingsTheme => 'Theme';
+  String get settingsTheme => 'Design';
 
   @override
-  String get settingsLanguage => 'Language';
+  String get settingsLanguage => 'Sprache';
 
   @override
-  String get settingsGeminiApiKey => 'Google Gemini API Key';
+  String get settingsGeminiApiKey => 'Google Gemini API-Schlüssel';
 
   @override
-  String get settingsGeminiApiKeySubtitle => 'For menu scanning';
+  String get settingsGeminiApiKeySubtitle => 'Für das Scannen von Speisekarten';
 
   @override
-  String get settingsAiModel => 'AI Model';
+  String get settingsAiModel => 'KI-Modell';
 
   @override
-  String get settingsAppVersion => 'App Version';
+  String get settingsAppVersion => 'App-Version';
 
   @override
-  String get settingsThemeSystem => 'System default';
+  String get settingsThemeSystem => 'Systemstandard';
 
   @override
-  String get settingsThemeLight => 'Light';
+  String get settingsThemeLight => 'Hell';
 
   @override
-  String get settingsThemeDark => 'Dark';
+  String get settingsThemeDark => 'Dunkel';
 
   @override
-  String get settingsLangEnglish => 'English';
+  String get settingsLangEnglish => 'Englisch';
 
   @override
-  String get settingsLangItalian => 'Italian';
+  String get settingsLangItalian => 'Italienisch';
 
   @override
-  String get settingsLangSpanish => 'Spanish';
+  String get settingsLangSpanish => 'Spanisch';
 
   @override
-  String get settingsLangFrench => 'French';
+  String get settingsLangFrench => 'Französisch';
 
   @override
-  String get settingsLangGerman => 'German';
+  String get settingsLangGerman => 'Deutsch';
 
   @override
-  String get settingsApiKeySetFirst => 'Please set your API key first';
+  String get settingsApiKeySetFirst =>
+      'Bitte zuerst den API-Schlüssel festlegen';
 
   @override
   String get settingsApiKeyFetchError =>
-      'Could not fetch models from API. Using default.';
+      'Modelle konnten nicht von der API abgerufen werden. Standardwert wird verwendet.';
 
   @override
-  String get settingsEditProfile => 'Edit Profile';
+  String get settingsEditProfile => 'Profil bearbeiten';
 
   @override
-  String get settingsProfileUpdated => 'Profile updated!';
+  String get settingsProfileUpdated => 'Profil aktualisiert!';
 
   @override
   String get settingsApiKeyDescription =>
-      'Enter your Google Gemini API key for menu scanning functionality.';
+      'Gib deinen Google Gemini API-Schlüssel für die Speisekarten-Scan-Funktion ein.';
 
   @override
-  String get settingsApiKeyLabel => 'API Key';
+  String get settingsApiKeyLabel => 'API-Schlüssel';
 
   @override
-  String get sessionsTitle => 'Tables';
+  String get sessionsTitle => 'Tische';
 
   @override
-  String get sessionsEmpty => 'No tables yet';
+  String get sessionsEmpty => 'Noch keine Tische';
 
   @override
   String get sessionsEmptySubtitle =>
-      'Start a new table to order together, or join one from a friend.';
+      'Starte einen neuen Tisch, um gemeinsam zu bestellen, oder tritt einem Freund bei.';
 
   @override
-  String get sessionsNewTable => 'New Table';
+  String get sessionsNewTable => 'Neuer Tisch';
 
   @override
-  String get sessionsJoinTable => 'Join a Table';
+  String get sessionsJoinTable => 'Tisch beitreten';
 
   @override
-  String get sessionsJoinTooltip => 'Join table';
+  String get sessionsJoinTooltip => 'Tisch beitreten';
 
   @override
-  String get sessionStatusOpen => 'Open';
+  String get sessionStatusOpen => 'Offen';
 
   @override
-  String get sessionStatusSent => 'Order sent';
+  String get sessionStatusSent => 'Bestellung gesendet';
 
   @override
-  String get sessionStatusClosed => 'Closed';
+  String get sessionStatusClosed => 'Geschlossen';
 
   @override
-  String get sessionCardHost => 'Host';
+  String get sessionCardHost => 'Gastgeber';
 
   @override
-  String get sessionCardUnknownRestaurant => 'Unknown restaurant';
+  String get sessionCardUnknownRestaurant => 'Unbekanntes Restaurant';
 
   @override
-  String get sessionTimeJustNow => 'Just now';
+  String get sessionTimeJustNow => 'Gerade eben';
 
   @override
   String sessionTimeMinutesAgo(int count) {
-    return '${count}m ago';
+    return 'Vor $count Min.';
   }
 
   @override
   String sessionTimeHoursAgo(int count) {
-    return '${count}h ago';
+    return 'Vor $count Std.';
   }
 
   @override
   String sessionTimeDaysAgo(int count) {
-    return '${count}d ago';
+    return 'Vor $count Tag(en)';
   }
 
   @override
-  String get sessionActionsShareTable => 'Share table';
+  String get sessionActionsShareTable => 'Tisch teilen';
 
   @override
-  String get sessionActionsLeaveTable => 'Leave the table';
+  String get sessionActionsLeaveTable => 'Tisch verlassen';
 
   @override
-  String get sessionLeaveTitle => 'Leave the table';
+  String get sessionLeaveTitle => 'Tisch verlassen';
 
   @override
   String get sessionLeaveMessage =>
-      'The table will be frozen. No one will be able to join or make changes.';
+      'Der Tisch wird eingefroren. Niemand kann mehr beitreten oder Änderungen vornehmen.';
 
   @override
-  String get sessionDeleteTitle => 'Delete Table';
+  String get sessionDeleteTitle => 'Tisch löschen';
 
   @override
   String sessionDeleteMessage(String name) {
-    return 'Are you sure you want to delete \"$name\"?';
+    return 'Möchtest du \"$name\" wirklich löschen?';
   }
 
   @override
-  String get shareTableTitle => 'Share Table';
+  String get shareTableTitle => 'Tisch teilen';
 
   @override
-  String get shareTableQrHint => 'Let others join by scanning this QR code:';
+  String get shareTableQrHint =>
+      'Andere können beitreten, indem sie diesen QR-Code scannen:';
 
   @override
-  String get shareTableCodeHint => 'Or enter this code:';
+  String get shareTableCodeHint => 'Oder diesen Code eingeben:';
 
   @override
-  String get joinTableTitle => 'Join Table';
+  String get joinTableTitle => 'Tisch beitreten';
 
   @override
-  String get joinTableHeading => 'Join a table';
+  String get joinTableHeading => 'Einem Tisch beitreten';
 
   @override
-  String get joinTableSubtitle => 'Enter the table code or scan the QR code';
+  String get joinTableSubtitle => 'Tischcode eingeben oder QR-Code scannen';
 
   @override
-  String get joinTableScanQr => 'Scan QR Code';
+  String get joinTableScanQr => 'QR-Code scannen';
 
   @override
-  String get joinTableOpenScanner => 'Open Scanner';
+  String get joinTableOpenScanner => 'Scanner öffnen';
 
   @override
-  String get joinTableEnterCode => 'Enter Code Manually';
+  String get joinTableEnterCode => 'Code manuell eingeben';
 
   @override
-  String get joinTableCodeLabel => 'Table Code';
+  String get joinTableCodeLabel => 'Tischcode';
 
   @override
-  String get joinTableCodeHint => 'e.g., ABC12345';
+  String get joinTableCodeHint => 'z.B. ABC12345';
 
   @override
-  String get joinTableJoin => 'Join Table';
+  String get joinTableJoin => 'Tisch beitreten';
 
   @override
-  String get joinTableStartNew => 'Or start a new table';
+  String get joinTableStartNew => 'Oder neuen Tisch starten';
 
   @override
-  String get joinTableScanHint => 'Point camera at QR code';
+  String get joinTableScanHint => 'Kamera auf QR-Code richten';
 
   @override
-  String get newTableTitle => 'New Table';
+  String get joinTableHostLabel => 'Host-Adresse';
 
   @override
-  String get newTableHeading => 'Start a new ordering table';
+  String get joinTableHostHint => 'z.B. 192.168.1.100:8080';
 
   @override
-  String get newTableSubtitle => 'Create a table and invite others to join';
+  String get newTableTitle => 'Neuer Tisch';
 
   @override
-  String get newTableNameLabel => 'Table Name';
+  String get newTableHeading => 'Neuen Bestelltisch starten';
 
   @override
-  String get newTableNameHint => 'e.g., Friday dinner';
+  String get newTableSubtitle =>
+      'Tisch erstellen und andere einladen, beizutreten';
 
   @override
-  String get newTableNameRequired => 'Please enter a table name';
+  String get newTableNameLabel => 'Tischname';
 
   @override
-  String get newTableSelectRestaurant => 'Select Restaurant (optional)';
+  String get newTableNameHint => 'z.B. Freitagabend-Essen';
 
   @override
-  String get newTableNoRestaurants => 'No restaurants saved yet';
+  String get newTableNameRequired => 'Bitte gib einen Tischnamen ein';
+
+  @override
+  String get newTableSelectRestaurant => 'Restaurant auswählen (optional)';
+
+  @override
+  String get newTableNoRestaurants => 'Noch keine Restaurants gespeichert';
 
   @override
   String get newTableNoRestaurantsSubtitle =>
-      'A restaurant will be created automatically when you start the table.';
+      'Ein Restaurant wird automatisch erstellt, wenn du den Tisch startest.';
 
   @override
-  String get newTableAddRestaurant => 'Add a restaurant';
+  String get newTableAddRestaurant => 'Restaurant hinzufügen';
 
   @override
   String newTableMenuItems(int count) {
-    return '$count items';
+    return '$count Artikel';
   }
 
   @override
-  String get newTableStart => 'Start Table';
+  String get newTableStart => 'Tisch starten';
 
   @override
   String newTableError(String error) {
-    return 'Error creating table: $error';
+    return 'Fehler beim Erstellen des Tisches: $error';
   }
 
   @override
   String get restaurantsTitle => 'Restaurants';
 
   @override
-  String get restaurantsEmpty => 'No restaurants yet';
+  String get restaurantsEmpty => 'Noch keine Restaurants';
 
   @override
   String get restaurantsEmptySubtitle =>
-      'Add your first restaurant to get started';
+      'Füge dein erstes Restaurant hinzu, um loszulegen';
 
   @override
-  String get restaurantsAdd => 'Add Restaurant';
+  String get restaurantsAdd => 'Restaurant hinzufügen';
 
   @override
   String restaurantDishes(int count) {
-    return '$count dishes';
+    return '$count Gerichte';
   }
 
   @override
   String restaurantTemplatesCount(int count) {
-    return '$count templates';
+    return '$count Vorlagen';
   }
 
   @override
-  String get restaurantDeleteTitle => 'Delete Restaurant';
+  String get restaurantDeleteTitle => 'Restaurant löschen';
 
   @override
   String restaurantDeleteMessage(String name) {
-    return 'Are you sure you want to delete \"$name\"?';
+    return 'Möchtest du \"$name\" wirklich löschen?';
   }
 
   @override
-  String get restaurantAddCoverPhoto => 'Add Cover Photo';
+  String get restaurantAddCoverPhoto => 'Titelbild hinzufügen';
 
   @override
-  String get restaurantAddTitle => 'Add Restaurant';
+  String get restaurantAddTitle => 'Restaurant hinzufügen';
 
   @override
-  String get restaurantNameLabel => 'Restaurant Name';
+  String get restaurantNameLabel => 'Restaurantname';
 
   @override
-  String get restaurantAddressLabel => 'Address (optional)';
+  String get restaurantAddressLabel => 'Adresse (optional)';
 
   @override
-  String get restaurantEditTitle => 'Edit Restaurant';
+  String get restaurantEditTitle => 'Restaurant bearbeiten';
 
   @override
-  String get restaurantNotFound => 'Restaurant not found';
+  String get restaurantNotFound => 'Restaurant nicht gefunden';
 
   @override
-  String get restaurantOrderTemplates => 'Order Templates';
+  String get restaurantOrderTemplates => 'Bestellvorlagen';
 
   @override
   String get restaurantTemplatesEmpty =>
-      'No templates yet. Add one here or save from a personal order.';
+      'Noch keine Vorlagen. Hier hinzufügen oder aus einer persönlichen Bestellung speichern.';
 
   @override
-  String get restaurantMenuSection => 'Menu';
+  String get restaurantMenuSection => 'Speisekarte';
 
   @override
-  String get restaurantScanButton => 'Scan';
+  String get restaurantScanButton => 'Scannen';
 
   @override
-  String get restaurantMenuMarkYummie => 'Mark as Yummie';
+  String get restaurantMenuMarkYummie => 'Als Lecker markieren';
 
   @override
-  String get restaurantMenuRemoveYummie => 'Remove Yummie';
+  String get restaurantMenuRemoveYummie => 'Lecker entfernen';
 
   @override
-  String get restaurantTemplateDeleteTitle => 'Delete Template';
+  String get restaurantTemplateDeleteTitle => 'Vorlage löschen';
 
   @override
   String restaurantTemplateDeleteMessage(String name) {
-    return 'Are you sure you want to delete \"$name\"?';
+    return 'Möchtest du \"$name\" wirklich löschen?';
   }
 
   @override
-  String get restaurantTemplateReplaceTitle => 'Replace Template';
+  String get restaurantTemplateReplaceTitle => 'Vorlage ersetzen';
 
   @override
   String get restaurantTemplateReplaceMessage =>
-      'Do you also want to delete the old version?';
+      'Möchtest du auch die alte Version löschen?';
 
   @override
-  String get restaurantTemplateNewTitle => 'New Order Template';
+  String get restaurantTemplateNewTitle => 'Neue Bestellvorlage';
 
   @override
-  String get restaurantTemplateEditTitle => 'Edit Order Template';
+  String get restaurantTemplateEditTitle => 'Bestellvorlage bearbeiten';
 
   @override
-  String get restaurantTemplateNameLabel => 'Template name';
+  String get restaurantTemplateNameLabel => 'Vorlagenname';
 
   @override
-  String get restaurantTemplateSelectDishes => 'Select dishes to include:';
+  String get restaurantTemplateSelectDishes => 'Gerichte auswählen:';
 
   @override
   String restaurantTemplateSave(int count) {
-    return 'Save template ($count items)';
+    return 'Vorlage speichern ($count Artikel)';
   }
 
   @override
-  String get restaurantMenuItemEditTitle => 'Edit Menu Item';
+  String get restaurantMenuItemEditTitle => 'Menüeintrag bearbeiten';
 
   @override
-  String get restaurantMenuItemAddTitle => 'Add Menu Item';
+  String get restaurantMenuItemAddTitle => 'Menüeintrag hinzufügen';
 
   @override
-  String get restaurantMenuItemNameLabel => 'Item Name';
+  String get restaurantMenuItemNameLabel => 'Artikelname';
 
   @override
-  String get restaurantMenuItemDescLabel => 'Description (optional)';
+  String get restaurantMenuItemDescLabel => 'Beschreibung (optional)';
 
   @override
-  String get restaurantMenuItemNumberLabel => 'Item Number';
+  String get restaurantMenuItemNumberLabel => 'Artikelnummer';
 
   @override
-  String get sessionTableNotFound => 'Table not found';
+  String get sessionTableNotFound => 'Tisch nicht gefunden';
 
   @override
-  String get sessionShareTooltip => 'Share table';
+  String get sessionShareTooltip => 'Tisch teilen';
 
   @override
-  String get sessionLeaveTableMenu => 'Leave the table';
+  String get sessionLeaveTableMenu => 'Tisch verlassen';
 
   @override
-  String get sessionDeleteTableMenu => 'Delete table';
+  String get sessionDeleteTableMenu => 'Tisch löschen';
 
   @override
-  String get sessionCloseTitle => 'Close Table';
+  String get sessionCloseTitle => 'Tisch schließen';
 
   @override
   String get sessionCloseMessage =>
-      'Are you sure? Participants won\'t be able to join or order.';
+      'Bist du sicher? Teilnehmer können nicht mehr beitreten oder bestellen.';
 
   @override
-  String get sessionCloseButton => 'Close';
+  String get sessionCloseButton => 'Schließen';
 
   @override
   String get sessionDeleteMessage2 =>
-      'Are you sure you want to delete this table?';
+      'Möchtest du diesen Tisch wirklich löschen?';
 
   @override
   String get sessionClosedBanner =>
-      'This table has been left — no further changes can be made';
+      'Dieser Tisch wurde verlassen — es können keine weiteren Änderungen vorgenommen werden';
 
   @override
-  String get sessionTabMyOrder => 'My Order';
+  String get sessionTabMyOrder => 'Meine Bestellung';
 
   @override
-  String get sessionTabGroup => 'Group';
+  String get sessionTabGroup => 'Gruppe';
 
   @override
-  String get sessionTabChecklist => 'Checklist';
+  String get sessionTabChecklist => 'Checkliste';
 
   @override
-  String get checklistComplete => 'Complete';
+  String get checklistComplete => 'Vollständig';
 
   @override
-  String get checklistHostSubtitle => 'Track what has arrived from all orders';
+  String get checklistHostSubtitle =>
+      'Verfolge, was aus allen Bestellungen angekommen ist';
 
   @override
   String get checklistGuestSubtitle =>
-      'Track what has arrived from your dishes';
+      'Verfolge, was von deinen Gerichten angekommen ist';
 
   @override
-  String get checklistNoOrder => 'No order to track';
+  String get checklistNoOrder => 'Keine Bestellung zu verfolgen';
 
   @override
-  String get checklistNoOrderHint => 'The order hasn\'t been sent yet';
+  String get checklistNoOrderHint => 'Die Bestellung wurde noch nicht gesendet';
 
   @override
   String checklistArrivedOf(int arrived, int total) {
-    return '$arrived of $total arrived';
+    return '$arrived von $total angekommen';
   }
 
   @override
-  String get checklistHostOnly => 'Only the host can update arrival status';
+  String get checklistHostOnly =>
+      'Nur der Gastgeber kann den Ankunftsstatus aktualisieren';
 
   @override
   String checklistOrderLabel(int number) {
-    return 'Order $number';
+    return 'Bestellung $number';
   }
 
   @override
   String checklistItemsCount(int count) {
-    return '$count items';
+    return '$count Artikel';
   }
 
   @override
-  String get mergedOrderParticipants => 'Participants';
+  String get mergedOrderParticipants => 'Teilnehmer';
 
   @override
   String get mergedOrderWaiting =>
-      'Waiting for all participants to lock their orders';
+      'Warten, bis alle Teilnehmer ihre Bestellungen gesperrt haben';
 
   @override
-  String get mergedOrderSend => 'Send Order';
+  String get mergedOrderSend => 'Bestellung senden';
 
   @override
-  String get mergedOrderOpenRound => 'Open New Round';
+  String get mergedOrderOpenRound => 'Neue Runde öffnen';
 
   @override
-  String get mergedOrderCurrentEmpty => 'Current Order — empty';
+  String get mergedOrderCurrentEmpty => 'Aktuelle Bestellung — leer';
 
   @override
-  String get mergedOrderNoItems => 'No items yet';
+  String get mergedOrderNoItems => 'Noch keine Artikel';
 
   @override
   String mergedOrderBy(int count) {
-    return 'By $count participant(s)';
+    return 'Von $count Teilnehmer(n)';
   }
 
   @override
   String mergedOrderItemsCount(int count) {
-    return '$count items';
+    return '$count Artikel';
   }
 
   @override
   String get mergedOrderSendLocked =>
-      'All participants must lock their orders first';
+      'Alle Teilnehmer müssen ihre Bestellungen zuerst sperren';
 
   @override
   String mergedOrderSent(String label) {
-    return '$label sent! Participants can no longer edit.';
+    return '$label gesendet! Teilnehmer können nicht mehr bearbeiten.';
   }
 
   @override
   String mergedOrderRoundOpened(int number) {
-    return 'Round $number opened! Participants can add new items.';
+    return 'Runde $number geöffnet! Teilnehmer können neue Artikel hinzufügen.';
   }
 
   @override
   String mergedOrderOpenRoundTitle(int number) {
-    return 'Open Round $number';
+    return 'Runde $number öffnen';
   }
 
   @override
   String get mergedOrderOpenRoundDescription =>
-      'This will allow participants to add items to a new order. Current orders will be locked.';
+      'Dadurch können Teilnehmer Artikel zu einer neuen Bestellung hinzufügen. Aktuelle Bestellungen werden gesperrt.';
 
   @override
-  String get mergedOrderOpenRoundButton => 'Open Round';
+  String get mergedOrderOpenRoundButton => 'Runde öffnen';
 
   @override
-  String get mergedParticipantOrderAdded => 'Order added';
+  String get mergedParticipantOrderAdded => 'Bestellung hinzugefügt';
 
   @override
-  String get mergedParticipantNoOrder => 'No order yet';
+  String get mergedParticipantNoOrder => 'Noch keine Bestellung';
 
   @override
-  String get mergedParticipantItemsOrdered => 'Items ordered';
+  String get mergedParticipantItemsOrdered => 'Bestellte Artikel';
 
   @override
-  String get mergedOrderCurrentOrder => 'Current Order';
+  String get mergedOrderCurrentOrder => 'Aktuelle Bestellung';
 
   @override
-  String get personalOrderEmpty => 'Your order is empty';
+  String get personalOrderEmpty => 'Deine Bestellung ist leer';
 
   @override
-  String get personalOrderEmptyHint => 'Tap the button below to add dishes';
+  String get personalOrderEmptyHint =>
+      'Tippe auf die Schaltfläche unten, um Gerichte hinzuzufügen';
 
   @override
   String personalOrderTitle(int count) {
-    return 'Your Order ($count items)';
+    return 'Deine Bestellung ($count Artikel)';
   }
 
   @override
-  String get personalOrderSaveButton => 'Save';
+  String get personalOrderSaveButton => 'Speichern';
 
   @override
-  String get personalOrderAddFromMenu => 'Add from Menu';
+  String get personalOrderAddFromMenu => 'Aus der Speisekarte hinzufügen';
 
   @override
-  String get personalOrderCustomDish => 'Custom dish';
+  String get personalOrderCustomDish => 'Eigenes Gericht';
 
   @override
-  String get personalOrderUseTemplate => 'Use template';
+  String get personalOrderUseTemplate => 'Vorlage verwenden';
 
   @override
-  String get personalOrderFromMenu => 'From menu';
+  String get personalOrderFromMenu => 'Aus der Speisekarte';
 
   @override
   String personalOrderAddItemsButton(int count) {
-    return 'Add $count items';
+    return '$count Artikel hinzufügen';
   }
 
   @override
-  String get personalOrderCustomDishName => 'Dish name';
+  String get personalOrderCustomDishName => 'Gerichtname';
 
   @override
-  String get personalOrderCustomDishDesc => 'Description (optional)';
+  String get personalOrderCustomDishDesc => 'Beschreibung (optional)';
 
   @override
-  String get personalOrderCustomDishNumber => 'Menu number (optional)';
+  String get personalOrderCustomDishNumber => 'Menünummer (optional)';
 
   @override
-  String get personalOrderChooseTemplate => 'Choose a Template';
+  String get personalOrderChooseTemplate => 'Vorlage auswählen';
 
   @override
-  String get personalOrderSaveAsTemplate => 'Save as Template';
+  String get personalOrderSaveAsTemplate => 'Als Vorlage speichern';
 
   @override
-  String get personalOrderTemplateNameLabel => 'Template name';
+  String get personalOrderTemplateNameLabel => 'Vorlagenname';
 
   @override
   String personalOrderTemplateSaved(String name) {
-    return 'Template \"$name\" saved';
+    return 'Vorlage \"$name\" gespeichert';
   }
 
   @override
   String personalOrderCustomDishAdded(String name) {
-    return 'Added \"$name\" to order';
+    return '\"$name\" zur Bestellung hinzugefügt';
   }
 
   @override
   String personalOrderSaved(int count) {
-    return 'Order saved with $count items';
+    return 'Bestellung mit $count Artikeln gespeichert';
   }
 
   @override
-  String get personalOrderLogin => 'Please log in first';
+  String get personalOrderLogin => 'Bitte zuerst anmelden';
 
   @override
-  String get personalOrderRestaurantNotFound => 'Restaurant not found';
+  String get personalOrderRestaurantNotFound => 'Restaurant nicht gefunden';
 
   @override
-  String get scanMenuTitle => 'Scan Menu';
+  String get personalOrderSentBanner =>
+      'Bestellung gesendet — warte, bis der Gastgeber eine neue Runde öffnet, bevor du Artikel hinzufügst.';
 
   @override
-  String get scanMenuHeading => 'Scan menu pages to add items';
+  String get scanMenuTitle => 'Speisekarte scannen';
+
+  @override
+  String get scanMenuHeading =>
+      'Speisekartenseiten scannen, um Artikel hinzuzufügen';
 
   @override
   String get scanMenuSubtitle =>
-      'Take photos or pick from gallery — multiple pages supported. AI will extract items and merge duplicates automatically.';
+      'Fotos aufnehmen oder aus der Galerie auswählen — mehrere Seiten werden unterstützt. KI extrahiert Artikel und fügt Duplikate automatisch zusammen.';
 
   @override
   String scanMenuPagesScanned(int count) {
-    return '$count page(s) scanned';
+    return '$count Seite(n) gescannt';
   }
 
   @override
-  String get scanMenuTakePhoto => 'Take Photo';
+  String get scanMenuTakePhoto => 'Foto aufnehmen';
 
   @override
-  String get scanMenuAddPhoto => 'Add Photo';
+  String get scanMenuAddPhoto => 'Foto hinzufügen';
 
   @override
-  String get scanMenuGallery => 'Gallery';
+  String get scanMenuGallery => 'Galerie';
 
   @override
-  String get scanMenuAddFromGallery => 'Add from Gallery';
+  String get scanMenuAddFromGallery => 'Aus Galerie hinzufügen';
 
   @override
-  String get scanMenuAnalyzing => 'Analyzing page…';
+  String get scanMenuAnalyzing => 'Seite wird analysiert…';
 
   @override
   String scanMenuItemsFound(int count) {
-    return '$count item(s) found:';
+    return '$count Artikel gefunden:';
   }
 
   @override
-  String get scanMenuRemoveItem => 'Remove';
+  String get scanMenuRemoveItem => 'Entfernen';
 
   @override
-  String get scanMenuSaveButton => 'Save to Menu';
+  String get scanMenuSaveButton => 'In Speisekarte speichern';
 
   @override
   String get scanMenuApiKeyHint =>
-      'Requires a Google Gemini API key for AI analysis. Add it in Settings > AI Service.';
+      'Erfordert einen Google Gemini API-Schlüssel für die KI-Analyse. Unter Einstellungen > KI-Dienst hinzufügen.';
 
   @override
   String get scanMenuNoApiKey =>
-      'Please add your Google Gemini API key in Settings first';
+      'Bitte zuerst den Google Gemini API-Schlüssel in den Einstellungen hinzufügen';
 
   @override
-  String get scanMenuStartOver => 'Start over';
+  String get scanMenuStartOver => 'Von vorne beginnen';
 
   @override
-  String get scanMenuUpdated => 'Menu updated successfully!';
+  String get scanMenuUpdated => 'Speisekarte erfolgreich aktualisiert!';
 
   @override
-  String get scanMenuNumberConflicts => 'Number Conflicts';
+  String get scanMenuNumberConflicts => 'Nummernkonflikte';
 
   @override
   String scanMenuConflictDescription(int count) {
-    return '$count item(s) share a number with existing menu items.';
+    return '$count Artikel teilen eine Nummer mit vorhandenen Menüeinträgen.';
   }
 
   @override
   String scanMenuNumberConflictLabel(int number) {
-    return 'Number #$number conflict';
+    return 'Nummer #$number Konflikt';
   }
 
   @override
-  String get scanMenuConflictExisting => 'Existing';
+  String get scanMenuConflictExisting => 'Vorhanden';
 
   @override
-  String get scanMenuConflictNew => 'New';
+  String get scanMenuConflictNew => 'Neu';
 
   @override
-  String get scanMenuKeepExisting => 'Keep existing';
+  String get scanMenuKeepExisting => 'Vorhandenen behalten';
 
   @override
-  String get scanMenuUseNew => 'Use new';
+  String get scanMenuUseNew => 'Neuen verwenden';
 
   @override
-  String get scanMenuKeepBoth => 'Keep both';
+  String get scanMenuKeepBoth => 'Beide behalten';
 
   @override
-  String get scanMenuSaveTitle => 'Save scanned items';
+  String get scanMenuSaveTitle => 'Gescannte Artikel speichern';
 
   @override
   String scanMenuSaveDescription(int count) {
-    return 'The menu already has $count item(s). How would you like to save the new scan?';
+    return 'Die Speisekarte hat bereits $count Artikel. Wie möchtest du den neuen Scan speichern?';
   }
 
   @override
-  String get scanMenuAppend => 'Append to existing menu';
+  String get scanMenuAppend => 'An vorhandene Speisekarte anhängen';
 
   @override
-  String get scanMenuReplace => 'Replace entire menu';
+  String get scanMenuReplace => 'Gesamte Speisekarte ersetzen';
 
   @override
-  String get checklistTitle => 'Checklist';
+  String get checklistTitle => 'Checkliste';
 
   @override
-  String get leave => 'Leave';
+  String get leave => 'Verlassen';
 
   @override
-  String get personalOrderAddCustomDishTitle => 'Add Custom Dish';
+  String get personalOrderAddCustomDishTitle => 'Eigenes Gericht hinzufügen';
 }

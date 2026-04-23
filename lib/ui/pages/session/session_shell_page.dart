@@ -2,10 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import '../../../core/providers.dart';
+import '../../../core/utils/network_utils.dart';
 import '../../../domain/models/session.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../viewmodels/session_viewmodel.dart';
 import '../../viewmodels/profile_viewmodel.dart';
+import '../../viewmodels/restaurant_viewmodel.dart';
 import 'personal_order_content.dart';
 import 'merged_order_content.dart';
 import 'checklist_content.dart';
@@ -21,6 +24,7 @@ class SessionShellPage extends ConsumerStatefulWidget {
 
 class _SessionShellPageState extends ConsumerState<SessionShellPage> {
   int _currentIndex = 0;
+  bool _serverStarted = false;
 
   @override
   Widget build(BuildContext context) {
@@ -38,6 +42,10 @@ class _SessionShellPageState extends ConsumerState<SessionShellPage> {
         }
 
         final isHost = user?.id == session.hostUserId;
+
+        if (isHost && session.status != SessionStatus.closed && !_serverStarted) {
+          WidgetsBinding.instance.addPostFrameCallback((_) => _startHostServer(session));
+        }
 
         final tabs = [
           PersonalOrderContent(sessionId: widget.sessionId),
@@ -57,7 +65,7 @@ class _SessionShellPageState extends ConsumerState<SessionShellPage> {
             actions: [
               if (isHost && session.status != SessionStatus.closed)
                 IconButton(
-                  onPressed: () => _showShareSheet(context, l10n),
+                  onPressed: () async => _showShareSheet(context, l10n),
                   icon: const Icon(Icons.share),
                   tooltip: l10n.sessionShareTooltip,
                 ),
@@ -158,6 +166,32 @@ class _SessionShellPageState extends ConsumerState<SessionShellPage> {
     );
   }
 
+  Future<void> _startHostServer(Session session) async {
+    if (_serverStarted) return;
+    final serverService = ref.read(hostServerServiceProvider);
+    try {
+      await serverService.start();
+      serverService.setSessionData(session.toJson());
+      final restaurantRepo = ref.read(restaurantRepositoryProvider);
+      final restaurant = await restaurantRepo.getRestaurantById(session.restaurantId);
+      if (restaurant != null) {
+        serverService.setRestaurantData(restaurant.toJson());
+      }
+      serverService.messages.listen((msg) {
+        if (!mounted) return;
+        if (msg['type'] == 'participant_joined') {
+          final userId = msg['userId'] as String?;
+          if (userId != null) {
+            ref.read(sessionRepositoryProvider).addParticipant(widget.sessionId, userId).then((_) {
+              if (mounted) ref.invalidate(sessionDetailProvider(widget.sessionId));
+            });
+          }
+        }
+      });
+      if (mounted) setState(() => _serverStarted = true);
+    } catch (_) {}
+  }
+
   Future<bool?> _showConfirmSheet(
     BuildContext context,
     String title,
@@ -190,31 +224,56 @@ class _SessionShellPageState extends ConsumerState<SessionShellPage> {
     );
   }
 
-  void _showShareSheet(BuildContext context, AppLocalizations l10n) {
+  Future<void> _showShareSheet(BuildContext context, AppLocalizations l10n) async {
+    final serverService = ref.read(hostServerServiceProvider);
+    String? hostAddress;
+    if (serverService.isRunning) {
+      final ip = await getLocalIpAddress();
+      if (ip != null) hostAddress = '$ip:${serverService.port}';
+    }
+    final qrData = hostAddress != null
+        ? 'sushare://join/${widget.sessionId}?host=$hostAddress'
+        : 'sushare://join/${widget.sessionId}';
+
+    if (!context.mounted) return;
     showModalBottomSheet(
       context: context,
-      builder: (context) => SafeArea(
-        child: SizedBox(
-          width: double.infinity,
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(l10n.shareTableTitle, style: Theme.of(context).textTheme.titleLarge),
-                const SizedBox(height: 16),
-                Text(l10n.shareTableQrHint),
-                const SizedBox(height: 16),
-                QrImageView(data: 'sushare://join/${widget.sessionId}', size: 200),
-                const SizedBox(height: 16),
-                Text(l10n.shareTableCodeHint, style: Theme.of(context).textTheme.bodySmall),
-                const SizedBox(height: 8),
-                SelectableText(
-                  widget.sessionId.substring(0, 8).toUpperCase(),
-                  style: Theme.of(context).textTheme.headlineMedium,
-                ),
-                const SizedBox(height: 16),
-              ],
+      isScrollControlled: true,
+      builder: (context) => Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+        child: SafeArea(
+          child: SizedBox(
+            width: double.infinity,
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(l10n.shareTableTitle, style: Theme.of(context).textTheme.titleLarge),
+                  const SizedBox(height: 16),
+                  Text(l10n.shareTableQrHint),
+                  const SizedBox(height: 16),
+                  Container(
+                    color: Colors.white,
+                    padding: const EdgeInsets.all(12),
+                    child: QrImageView(data: qrData, size: 200),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(l10n.shareTableCodeHint, style: Theme.of(context).textTheme.bodySmall),
+                  const SizedBox(height: 8),
+                  SelectableText(
+                    widget.sessionId.substring(0, 8).toUpperCase(),
+                    style: Theme.of(context).textTheme.headlineMedium,
+                  ),
+                  if (hostAddress != null) ...[
+                    const SizedBox(height: 8),
+                    Text(l10n.joinTableHostLabel, style: Theme.of(context).textTheme.bodySmall),
+                    const SizedBox(height: 4),
+                    SelectableText(hostAddress, style: Theme.of(context).textTheme.bodyMedium),
+                  ],
+                  const SizedBox(height: 16),
+                ],
+              ),
             ),
           ),
         ),

@@ -302,6 +302,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get joinTableScanHint => 'Point camera at QR code';
 
   @override
+  String get joinTableHostLabel => 'Host address';
+
+  @override
+  String get joinTableHostHint => 'e.g., 192.168.1.100:8080';
+
+  @override
   String get newTableTitle => 'New Table';
 
   @override
@@ -669,6 +675,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get personalOrderRestaurantNotFound => 'Restaurant not found';
+
+  @override
+  String get personalOrderSentBanner =>
+      'Order sent — wait for the host to open a new round before adding items.';
 
   @override
   String get scanMenuTitle => 'Scan Menu';

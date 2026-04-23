@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import '../../../core/providers.dart';
+import '../../../core/utils/network_utils.dart';
 import '../../../domain/models/session.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../viewmodels/session_viewmodel.dart';
@@ -123,7 +125,7 @@ class SessionsPage extends ConsumerWidget {
                   title: Text(l10n.sessionActionsShareTable),
                   onTap: () {
                     Navigator.pop(sheetContext);
-                    _showShareSheet(context, session.id, l10n);
+                    _showShareSheet(context, ref, session.id, l10n);
                   },
                 ),
               if (session.status != SessionStatus.closed)
@@ -195,31 +197,72 @@ class SessionsPage extends ConsumerWidget {
     );
   }
 
-  void _showShareSheet(BuildContext context, String sessionId, AppLocalizations l10n) {
+  Future<void> _showShareSheet(
+    BuildContext context,
+    WidgetRef ref,
+    String sessionId,
+    AppLocalizations l10n,
+  ) async {
+    final serverService = ref.read(hostServerServiceProvider);
+    if (!serverService.isRunning) {
+      final session = await ref.read(sessionRepositoryProvider).getSessionById(sessionId);
+      if (session != null) {
+        await serverService.start();
+        serverService.setSessionData(session.toJson());
+        final restaurant = await ref
+            .read(restaurantRepositoryProvider)
+            .getRestaurantById(session.restaurantId);
+        if (restaurant != null) serverService.setRestaurantData(restaurant.toJson());
+      }
+    }
+    String? hostAddress;
+    if (serverService.isRunning) {
+      final ip = await getLocalIpAddress();
+      if (ip != null) hostAddress = '$ip:${serverService.port}';
+    }
+    final qrData = hostAddress != null
+        ? 'sushare://join/$sessionId?host=$hostAddress'
+        : 'sushare://join/$sessionId';
+
+    if (!context.mounted) return;
     showModalBottomSheet(
       context: context,
-      builder: (context) => SafeArea(
-        child: SizedBox(
-          width: double.infinity,
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(l10n.shareTableTitle, style: Theme.of(context).textTheme.titleLarge),
-                const SizedBox(height: 16),
-                Text(l10n.shareTableQrHint),
-                const SizedBox(height: 16),
-                QrImageView(data: 'sushare://join/$sessionId', size: 200),
-                const SizedBox(height: 16),
-                Text(l10n.shareTableCodeHint, style: Theme.of(context).textTheme.bodySmall),
-                const SizedBox(height: 8),
-                SelectableText(
-                  sessionId.substring(0, 8).toUpperCase(),
-                  style: Theme.of(context).textTheme.headlineMedium,
-                ),
-                const SizedBox(height: 16),
-              ],
+      isScrollControlled: true,
+      builder: (context) => Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+        child: SafeArea(
+          child: SizedBox(
+            width: double.infinity,
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(l10n.shareTableTitle, style: Theme.of(context).textTheme.titleLarge),
+                  const SizedBox(height: 16),
+                  Text(l10n.shareTableQrHint),
+                  const SizedBox(height: 16),
+                  Container(
+                    color: Colors.white,
+                    padding: const EdgeInsets.all(12),
+                    child: QrImageView(data: qrData, size: 200),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(l10n.shareTableCodeHint, style: Theme.of(context).textTheme.bodySmall),
+                  const SizedBox(height: 8),
+                  SelectableText(
+                    sessionId.substring(0, 8).toUpperCase(),
+                    style: Theme.of(context).textTheme.headlineMedium,
+                  ),
+                  if (hostAddress != null) ...[
+                    const SizedBox(height: 8),
+                    Text(l10n.joinTableHostLabel, style: Theme.of(context).textTheme.bodySmall),
+                    const SizedBox(height: 4),
+                    SelectableText(hostAddress, style: Theme.of(context).textTheme.bodyMedium),
+                  ],
+                  const SizedBox(height: 16),
+                ],
+              ),
             ),
           ),
         ),
