@@ -86,6 +86,7 @@ class SessionRepository {
       sentAt: row['sent_at'] != null
           ? DateTime.parse(row['sent_at'] as String)
           : null,
+      hostAddress: row['host_address'] as String?,
     );
   }
 
@@ -121,6 +122,7 @@ class SessionRepository {
       'arrived_counts_json': jsonEncode(session.arrivedCounts),
       'created_at': session.createdAt.toIso8601String(),
       'sent_at': session.sentAt?.toIso8601String(),
+      'host_address': session.hostAddress,
     };
   }
 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
+import '../../../core/providers.dart';
 import '../../../domain/models/restaurant.dart';
 import '../../../domain/models/personal_sub_order.dart';
 import '../../../domain/models/saved_order.dart';
@@ -544,6 +545,14 @@ class _PersonalOrderContentState extends ConsumerState<PersonalOrderContent> {
       ref.invalidate(subOrdersForSessionProvider(widget.sessionId));
       ref.invalidate(sessionDetailProvider(widget.sessionId));
 
+      // Push to host if connected as guest
+      final clientService = ref.read(sessionClientServiceProvider);
+      if (clientService.isConnected) {
+        final subOrderRepo = ref.read(personalSubOrderRepositoryProvider);
+        final saved = await subOrderRepo.getSubOrder(widget.sessionId, userId);
+        if (saved != null) clientService.pushSubOrderUpdate(saved);
+      }
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(l10n.personalOrderCustomDishAdded(newItem.name))),
@@ -579,6 +588,14 @@ class _PersonalOrderContentState extends ConsumerState<PersonalOrderContent> {
 
     ref.invalidate(subOrdersForSessionProvider(widget.sessionId));
     ref.invalidate(sessionDetailProvider(widget.sessionId));
+
+    // Push update to host if connected as guest
+    final clientService = ref.read(sessionClientServiceProvider);
+    if (clientService.isConnected) {
+      final subOrderRepo = ref.read(personalSubOrderRepositoryProvider);
+      final saved = await subOrderRepo.getSubOrder(widget.sessionId, userId);
+      if (saved != null) clientService.pushSubOrderUpdate(saved);
+    }
 
     if (!silent && context.mounted) {
       final l10n = AppLocalizations.of(context)!;

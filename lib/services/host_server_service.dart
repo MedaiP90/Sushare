@@ -5,203 +5,177 @@ import 'package:shelf/shelf.dart';
 import 'package:shelf/shelf_io.dart' as shelf_io;
 import 'package:shelf_web_socket/shelf_web_socket.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
+import '../domain/models/personal_sub_order.dart';
+import '../domain/models/restaurant.dart';
+import '../domain/models/session.dart';
+import 'sync_message.dart';
+
+class _Client {
+  final WebSocketChannel channel;
+  String userId;
+  _Client({required this.channel, required this.userId});
+}
 
 class HostServerService {
   HttpServer? _server;
-  final _clients = <WebSocketChannel>[];
-  final _messageController = StreamController<Map<String, dynamic>>.broadcast();
-  Map<String, dynamic>? _sessionData;
-  Map<String, dynamic>? _restaurantData;
+  final _clients = <_Client>[];
+  final _messageController = StreamController<SyncMessage>.broadcast();
+
+  Session? _session;
+  Restaurant? _restaurant;
+  final _subOrders = <String, PersonalSubOrder>{};
 
   int get port => _server?.port ?? 0;
   bool get isRunning => _server != null;
-  Stream<Map<String, dynamic>> get messages => _messageController.stream;
+  Stream<SyncMessage> get messages => _messageController.stream;
 
-  void setSessionData(Map<String, dynamic> data) => _sessionData = data;
-  void setRestaurantData(Map<String, dynamic> data) => _restaurantData = data;
+  void setSession(Session session) => _session = session;
+  void setRestaurant(Restaurant restaurant) => _restaurant = restaurant;
+
+  void upsertSubOrder(PersonalSubOrder subOrder) =>
+      _subOrders[subOrder.userId] = subOrder.copyWith(checklist: []);
+
+  void clearSubOrders() => _subOrders.clear();
 
   Future<int> start({int preferredPort = 8080}) async {
-    if (_server != null) {
-      return port;
-    }
-
+    if (_server != null) return port;
     try {
       _server = await HttpServer.bind(InternetAddress.anyIPv4, preferredPort);
-    } catch (e) {
-      try {
-        _server = await HttpServer.bind(InternetAddress.anyIPv4, 0);
-      } catch (e) {
-        throw Exception('Could not start server: $e');
-      }
+    } catch (_) {
+      _server = await HttpServer.bind(InternetAddress.anyIPv4, 0);
     }
-
     final handler = const Pipeline()
-        .addMiddleware(logRequests())
         .addMiddleware(_corsMiddleware())
         .addHandler(_router);
-
     shelf_io.serveRequests(_server!, handler);
     return port;
   }
 
-  Handler get _router {
-    return (Request request) {
-      if (request.url.path == 'ws') {
-        return _handleWebSocket(request);
+  Handler get _router => (Request request) {
+        final path = request.url.path;
+        if (path == 'ws') return _wsHandler(request);
+        if (path == 'api/session') return _sessionApiHandler(request);
+        if (path == 'api/restaurant') return _restaurantApiHandler(request);
+        return Response.ok('Sushare Host');
+      };
+
+  FutureOr<Response> _wsHandler(Request request) {
+    return webSocketHandler((WebSocketChannel channel, String? _) {
+      final client = _Client(channel: channel, userId: '');
+      _clients.add(client);
+
+      channel.stream.listen(
+        (raw) {
+          try {
+            final json = jsonDecode(raw as String) as Map<String, dynamic>;
+            final msg = SyncMessage.fromJson(json);
+            _handleClientMessage(client, msg);
+          } catch (_) {}
+        },
+        onDone: () => _clients.remove(client),
+        onError: (_) => _clients.remove(client),
+      );
+    })(request);
+  }
+
+  void _handleClientMessage(_Client client, SyncMessage msg) {
+    switch (msg.type) {
+      case SyncMessageType.userInfo:
+        final userId = msg.data['userId'] as String? ?? '';
+        client.userId = userId;
+        _sendTo(client.channel, SyncMessage(
+          type: SyncMessageType.initialSync,
+          data: {
+            if (_session != null) 'session': _session!.toJson(),
+            if (_restaurant != null) 'restaurant': _restaurant!.toJson(),
+            'subOrders': _subOrders.values.map((o) => o.toJson()).toList(),
+          },
+        ));
+        // Notify host app so it can add the participant to the session
+        _messageController.add(msg);
+      case SyncMessageType.subOrderUpdate:
+        final subOrder = PersonalSubOrder.fromJson(msg.data);
+        // Store without checklist — checklists are personal and local-only
+        final stripped = subOrder.copyWith(checklist: []);
+        _subOrders[stripped.userId] = stripped;
+        // Forward to all other connected guests (already no checklist)
+        _broadcastExcept(
+          SyncMessage(type: SyncMessageType.subOrderBroadcast, data: stripped.toJson()),
+          exclude: client.channel,
+        );
+        // Notify host app so it can persist to DB (original msg, host preserves its own checklist)
+        _messageController.add(msg);
+      default:
+        break;
+    }
+  }
+
+  void _sendTo(WebSocketChannel channel, SyncMessage msg) {
+    try {
+      channel.sink.add(jsonEncode(msg.toJson()));
+    } catch (_) {}
+  }
+
+  void _broadcastExcept(SyncMessage msg, {WebSocketChannel? exclude}) {
+    final json = jsonEncode(msg.toJson());
+    for (final c in List.of(_clients)) {
+      if (c.channel != exclude) {
+        try {
+          c.channel.sink.add(json);
+        } catch (_) {}
       }
-      if (request.url.path == 'api/session') {
-        return _handleSessionApi(request);
-      }
-      if (request.url.path == 'api/restaurant') {
-        return _handleRestaurantApi(request);
-      }
-      if (request.url.path == 'api/orders') {
-        return _handleOrdersApi(request);
-      }
-      if (request.url.path == 'api/participants') {
-        return _handleParticipantsApi(request);
-      }
-      if (request.url.path.startsWith('api/')) {
-        return Response.notFound('Not found');
-      }
-      return Response.ok('Sushare Host Server Running');
-    };
+    }
+  }
+
+  void broadcast(SyncMessage msg) => _broadcastExcept(msg);
+
+  void broadcastSessionUpdate(Session session) {
+    _session = session;
+    broadcast(SyncMessage(type: SyncMessageType.sessionUpdate, data: session.toJson()));
+  }
+
+  void broadcastRestaurantUpdate(Restaurant restaurant) {
+    _restaurant = restaurant;
+    broadcast(SyncMessage(type: SyncMessageType.restaurantUpdate, data: restaurant.toJson()));
+  }
+
+  Future<Response> _sessionApiHandler(Request request) async {
+    if (request.method != 'GET') return Response.badRequest(body: 'Method not allowed');
+    if (_session == null) return Response.internalServerError(body: 'Not ready');
+    return Response.ok(
+      jsonEncode(_session!.toJson()),
+      headers: {'Content-Type': 'application/json'},
+    );
+  }
+
+  Future<Response> _restaurantApiHandler(Request request) async {
+    if (request.method != 'GET') return Response.badRequest(body: 'Method not allowed');
+    if (_restaurant == null) return Response.notFound('Not available');
+    return Response.ok(
+      jsonEncode(_restaurant!.toJson()),
+      headers: {'Content-Type': 'application/json'},
+    );
   }
 
   Middleware _corsMiddleware() {
-    return (Handler innerHandler) {
-      return (Request request) async {
-        if (request.method == 'OPTIONS') {
-          return Response.ok('', headers: _corsHeaders);
-        }
-        final response = await innerHandler(request);
-        return response.change(headers: _corsHeaders);
-      };
-    };
-  }
-
-  Map<String, String> get _corsHeaders => {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-      };
-
-  Future<Response> _handleWebSocket(Request request) async {
-    final socket = webSocketHandler((channel, protocol) {
-      _clients.add(channel);
-      channel.stream.listen((message) {
-        try {
-          final data = jsonDecode(message as String) as Map<String, dynamic>;
-          _messageController.add(data);
-        } catch (e) {
-          // Invalid JSON
-        }
-      }, onDone: () {
-        _clients.remove(channel);
-      }, onError: (e) {
-        _clients.remove(channel);
-      });
-    })(request);
-
-    return socket;
-  }
-
-  Future<Response> _handleSessionApi(Request request) async {
-    if (request.method == 'GET') {
-      if (_sessionData == null) {
-        return Response.internalServerError(body: 'Session data not ready');
-      }
-      return Response.ok(
-        jsonEncode(_sessionData),
-        headers: {'Content-Type': 'application/json'},
-      );
-    }
-    return Response.badRequest(body: 'Method not allowed');
-  }
-
-  Future<Response> _handleRestaurantApi(Request request) async {
-    if (request.method == 'GET') {
-      if (_restaurantData == null) {
-        return Response.notFound('Restaurant data not available');
-      }
-      return Response.ok(
-        jsonEncode(_restaurantData),
-        headers: {'Content-Type': 'application/json'},
-      );
-    }
-    return Response.badRequest(body: 'Method not allowed');
-  }
-
-  Future<Response> _handleOrdersApi(Request request) async {
-    if (request.method == 'GET') {
-      return Response.ok(
-        jsonEncode({'orders': []}),
-        headers: {'Content-Type': 'application/json'},
-      );
-    }
-    if (request.method == 'POST') {
-      final body = await request.readAsString();
-      try {
-        final data = jsonDecode(body);
-        _broadcast({'type': 'order_update', 'data': data});
-        return Response.ok(
-          jsonEncode({'success': true}),
-          headers: {'Content-Type': 'application/json'},
-        );
-      } catch (e) {
-        return Response.badRequest(body: 'Invalid JSON');
-      }
-    }
-    return Response.badRequest(body: 'Method not allowed');
-  }
-
-  Future<Response> _handleParticipantsApi(Request request) async {
-    if (request.method == 'POST') {
-      final body = await request.readAsString();
-      try {
-        final data = jsonDecode(body) as Map<String, dynamic>;
-        final userId = data['userId'] as String?;
-        if (userId == null) return Response.badRequest(body: 'Missing userId');
-
-        // Update cached session data so subsequent GET /api/session includes the new participant
-        if (_sessionData != null) {
-          final participants = List<String>.from(_sessionData!['participantIds'] as List);
-          if (!participants.contains(userId)) {
-            participants.add(userId);
-            _sessionData!['participantIds'] = participants;
+    return (Handler inner) => (Request req) async {
+          if (req.method == 'OPTIONS') {
+            return Response.ok('', headers: _corsHeaders);
           }
-        }
-
-        _messageController.add({'type': 'participant_joined', 'userId': userId});
-        return Response.ok(
-          jsonEncode({'success': true}),
-          headers: {'Content-Type': 'application/json'},
-        );
-      } catch (_) {
-        return Response.badRequest(body: 'Invalid JSON');
-      }
-    }
-    return Response.badRequest(body: 'Method not allowed');
+          final res = await inner(req);
+          return res.change(headers: _corsHeaders);
+        };
   }
 
-  void _broadcast(Map<String, dynamic> message) {
-    final json = jsonEncode(message);
-    for (final client in _clients) {
-      client.sink.add(json);
-    }
-  }
-
-  void broadcastSessionUpdate(Map<String, dynamic> data) {
-    _broadcast({'type': 'session_update', 'data': data});
-  }
-
-  void broadcastOrderUpdate(Map<String, dynamic> data) {
-    _broadcast({'type': 'order_update', 'data': data});
-  }
+  static const _corsHeaders = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type',
+  };
 
   Future<void> stop() async {
-    for (final client in _clients) {
-      await client.sink.close();
+    for (final c in List.of(_clients)) {
+      await c.channel.sink.close();
     }
     _clients.clear();
     await _server?.close(force: true);

@@ -1,125 +1,104 @@
 import 'dart:async';
 import 'dart:convert';
-import 'package:dio/dio.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
+import '../domain/models/personal_sub_order.dart';
+import 'sync_message.dart';
 
 class SessionClientService {
-  final Dio _httpClient;
   WebSocketChannel? _wsChannel;
-  final _messageController = StreamController<Map<String, dynamic>>.broadcast();
+  final _messageController = StreamController<SyncMessage>.broadcast();
   final _connectionController = StreamController<bool>.broadcast();
-  
-  String? _hostAddress;
-  String? _sessionId;
-  bool _isConnected = false;
 
-  SessionClientService() : _httpClient = Dio(BaseOptions(
-    connectTimeout: const Duration(seconds: 10),
-    receiveTimeout: const Duration(seconds: 10),
-  ));
+  bool _isConnected = false;
+  String? _hostAddress;
+  Map<String, dynamic>? _pendingUserInfo;
 
   bool get isConnected => _isConnected;
-  Stream<Map<String, dynamic>> get messages => _messageController.stream;
+  Stream<SyncMessage> get messages => _messageController.stream;
   Stream<bool> get connectionStatus => _connectionController.stream;
-  String? get hostAddress => _hostAddress;
-  String? get sessionId => _sessionId;
 
-  Future<bool> connect(String hostAddress, String sessionId) async {
+  Future<bool> connect({
+    required String hostAddress,
+    required String userId,
+    required String userName,
+    String? userFullName,
+    String? userProfilePicturePath,
+  }) async {
     _hostAddress = hostAddress;
-    _sessionId = sessionId;
+    _pendingUserInfo = {
+      'userId': userId,
+      'userName': userName,
+      'userFullName': userFullName,
+      'userProfilePicturePath': userProfilePicturePath,
+    };
+    return _doConnect();
+  }
+
+  Future<bool> reconnect() async => _doConnect();
+
+  Future<bool> _doConnect() async {
+    if (_hostAddress == null) return false;
+    _wsChannel?.sink.close();
 
     try {
-      final baseUrl = hostAddress.startsWith('http') ? hostAddress : 'http://$hostAddress';
-      
-      final response = await _httpClient.get('$baseUrl/api/session');
-      if (response.statusCode != 200) {
-        return false;
-      }
-
-      final wsUrl = hostAddress.startsWith('ws') 
-          ? hostAddress 
-          : 'ws://$hostAddress/ws';
-      
+      final wsUrl = 'ws://$_hostAddress/ws';
       _wsChannel = WebSocketChannel.connect(Uri.parse(wsUrl));
-      
       await _wsChannel!.ready;
-      
+
       _wsChannel!.stream.listen(
-        (message) {
+        (raw) {
           try {
-            final data = jsonDecode(message as String) as Map<String, dynamic>;
-            _messageController.add(data);
-          } catch (e) {
-            // Invalid JSON
-          }
+            final json = jsonDecode(raw as String) as Map<String, dynamic>;
+            final msg = SyncMessage.fromJson(json);
+            _messageController.add(msg);
+          } catch (_) {}
         },
         onDone: () {
           _isConnected = false;
           _connectionController.add(false);
         },
-        onError: (e) {
+        onError: (_) {
           _isConnected = false;
           _connectionController.add(false);
         },
       );
 
+      if (_pendingUserInfo != null) {
+        _send(SyncMessage(type: SyncMessageType.userInfo, data: _pendingUserInfo!));
+      }
+
       _isConnected = true;
       _connectionController.add(true);
       return true;
-    } catch (e) {
+    } catch (_) {
       _isConnected = false;
       _connectionController.add(false);
       return false;
     }
   }
 
-  Future<void> sendOrder(Map<String, dynamic> orderData) async {
-    if (!_isConnected || _hostAddress == null || _sessionId == null) {
-      throw Exception('Not connected');
-    }
-
-    final baseUrl = _hostAddress!.startsWith('http') 
-        ? _hostAddress! 
-        : 'http://$_hostAddress!';
-
-    await _httpClient.post(
-      '$baseUrl/api/orders',
-      data: jsonEncode({
-        'sessionId': _sessionId,
-        ...orderData,
-      }),
-    );
+  void pushSubOrderUpdate(PersonalSubOrder subOrder) {
+    if (!_isConnected) return;
+    // Checklist is personal and local-only — never sync it
+    final stripped = subOrder.copyWith(checklist: []);
+    _send(SyncMessage(type: SyncMessageType.subOrderUpdate, data: stripped.toJson()));
   }
 
-  Future<Map<String, dynamic>?> getSessionInfo() async {
-    if (_hostAddress == null) return null;
-
-    final baseUrl = _hostAddress!.startsWith('http') 
-        ? _hostAddress! 
-        : 'http://$_hostAddress!';
-
+  void _send(SyncMessage message) {
     try {
-      final response = await _httpClient.get('$baseUrl/api/session');
-      if (response.statusCode == 200) {
-        return response.data as Map<String, dynamic>;
-      }
-    } catch (e) {
-      // Error
-    }
-    return null;
+      _wsChannel?.sink.add(jsonEncode(message.toJson()));
+    } catch (_) {}
   }
 
   void disconnect() {
     _wsChannel?.sink.close();
     _wsChannel = null;
     _isConnected = false;
-    _connectionController.add(false);
   }
 
   void dispose() {
     disconnect();
     _messageController.close();
     _connectionController.close();
-    _httpClient.close();
   }
 }

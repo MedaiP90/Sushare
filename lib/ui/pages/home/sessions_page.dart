@@ -208,11 +208,11 @@ class SessionsPage extends ConsumerWidget {
       final session = await ref.read(sessionRepositoryProvider).getSessionById(sessionId);
       if (session != null) {
         await serverService.start();
-        serverService.setSessionData(session.toJson());
+        serverService.setSession(session);
         final restaurant = await ref
             .read(restaurantRepositoryProvider)
             .getRestaurantById(session.restaurantId);
-        if (restaurant != null) serverService.setRestaurantData(restaurant.toJson());
+        if (restaurant != null) serverService.setRestaurant(restaurant);
       }
     }
     String? hostAddress;

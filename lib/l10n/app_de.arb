@@ -335,6 +335,8 @@
   "@sessionDeleteMessage2": {},
   "sessionClosedBanner": "Dieser Tisch wurde verlassen — es können keine weiteren Änderungen vorgenommen werden",
   "@sessionClosedBanner": {},
+  "sessionUnreachableBanner": "Sitzung vorübergehend nicht erreichbar — warte auf Wiederverbindung des Hosts",
+  "@sessionUnreachableBanner": {},
   "sessionTabMyOrder": "Meine Bestellung",
   "@sessionTabMyOrder": {},
   "sessionTabGroup": "Gruppe",

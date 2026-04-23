@@ -497,6 +497,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'This table has been left — no further changes can be made';
 
   @override
+  String get sessionUnreachableBanner =>
+      'Session temporarily unreachable — waiting for the host to reconnect';
+
+  @override
   String get sessionTabMyOrder => 'My Order';
 
   @override

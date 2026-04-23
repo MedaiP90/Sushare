@@ -14,6 +14,8 @@ class Session {
   final Map<String, int> arrivedCounts;
   final DateTime createdAt;
   final DateTime? sentAt;
+  /// Set on guest devices only — the host's network address used to (re)connect.
+  final String? hostAddress;
 
   Session({
     required this.id,
@@ -27,6 +29,7 @@ class Session {
     this.arrivedCounts = const {},
     required this.createdAt,
     this.sentAt,
+    this.hostAddress,
   });
 
   factory Session.fromJson(Map<String, dynamic> json) {
@@ -55,6 +58,7 @@ class Session {
       sentAt: json['sentAt'] != null
           ? DateTime.parse(json['sentAt'] as String)
           : null,
+      hostAddress: json['hostAddress'] as String?,
     );
   }
 
@@ -71,8 +75,11 @@ class Session {
       'arrivedCounts': arrivedCounts,
       'createdAt': createdAt.toIso8601String(),
       'sentAt': sentAt?.toIso8601String(),
+      'hostAddress': hostAddress,
     };
   }
+
+  static const _unset = Object();
 
   Session copyWith({
     String? id,
@@ -86,6 +93,7 @@ class Session {
     Map<String, int>? arrivedCounts,
     DateTime? createdAt,
     DateTime? sentAt,
+    Object? hostAddress = _unset,
   }) {
     return Session(
       id: id ?? this.id,
@@ -99,6 +107,7 @@ class Session {
       arrivedCounts: arrivedCounts ?? this.arrivedCounts,
       createdAt: createdAt ?? this.createdAt,
       sentAt: sentAt ?? this.sentAt,
+      hostAddress: identical(hostAddress, _unset) ? this.hostAddress : hostAddress as String?,
     );
   }
 }
