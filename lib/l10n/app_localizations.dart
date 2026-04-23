@@ -1004,6 +1004,12 @@ abstract class AppLocalizations {
   /// **'This table has been left — no further changes can be made'**
   String get sessionClosedBanner;
 
+  /// No description provided for @sessionUnreachableBanner.
+  ///
+  /// In en, this message translates to:
+  /// **'Session temporarily unreachable — waiting for the host to reconnect'**
+  String get sessionUnreachableBanner;
+
   /// No description provided for @sessionTabMyOrder.
   ///
   /// In en, this message translates to:

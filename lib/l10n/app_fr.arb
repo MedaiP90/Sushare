@@ -335,6 +335,8 @@
   "@sessionDeleteMessage2": {},
   "sessionClosedBanner": "Cette table a été quittée — aucune modification ne peut être apportée",
   "@sessionClosedBanner": {},
+  "sessionUnreachableBanner": "Session temporairement injoignable — en attente de reconnexion de l'hôte",
+  "@sessionUnreachableBanner": {},
   "sessionTabMyOrder": "Ma commande",
   "@sessionTabMyOrder": {},
   "sessionTabGroup": "Groupe",

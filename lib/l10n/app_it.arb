@@ -335,6 +335,8 @@
   "@sessionDeleteMessage2": {},
   "sessionClosedBanner": "Questo tavolo è stato abbandonato — non è possibile apportare ulteriori modifiche",
   "@sessionClosedBanner": {},
+  "sessionUnreachableBanner": "Sessione temporaneamente irraggiungibile — in attesa che l'host si riconnetta",
+  "@sessionUnreachableBanner": {},
   "sessionTabMyOrder": "Il mio ordine",
   "@sessionTabMyOrder": {},
   "sessionTabGroup": "Gruppo",

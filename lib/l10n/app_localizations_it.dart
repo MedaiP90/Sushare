@@ -500,6 +500,10 @@ class AppLocalizationsIt extends AppLocalizations {
       'Questo tavolo è stato abbandonato — non è possibile apportare ulteriori modifiche';
 
   @override
+  String get sessionUnreachableBanner =>
+      'Sessione temporaneamente irraggiungibile — in attesa che l\'host si riconnetta';
+
+  @override
   String get sessionTabMyOrder => 'Il mio ordine';
 
   @override

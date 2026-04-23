@@ -335,6 +335,8 @@
   "@sessionDeleteMessage2": {},
   "sessionClosedBanner": "Esta mesa ha sido abandonada — no se pueden hacer más cambios",
   "@sessionClosedBanner": {},
+  "sessionUnreachableBanner": "Sesión temporalmente inalcanzable — esperando que el anfitrión se reconecte",
+  "@sessionUnreachableBanner": {},
   "sessionTabMyOrder": "Mi pedido",
   "@sessionTabMyOrder": {},
   "sessionTabGroup": "Grupo",

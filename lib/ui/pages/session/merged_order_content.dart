@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/providers.dart';
 import '../../../domain/models/session.dart';
 import '../../../domain/models/personal_sub_order.dart';
 import '../../../domain/models/order.dart';
@@ -36,8 +37,6 @@ class MergedOrderContent extends ConsumerWidget {
         return subOrdersAsync.when(
           data: (subOrders) {
             final activeOrders = subOrders.where((o) => o.entries.isNotEmpty).toList();
-            final isHostOnly = session.participantIds.length == 1;
-            final allReady = isHostOnly || activeOrders.every((o) => o.locked);
             final restaurant = restaurantAsync.valueOrNull;
 
             final allOrders = <_OrderWithLabel>[];
@@ -55,32 +54,8 @@ class MergedOrderContent extends ConsumerWidget {
                   _buildParticipantsSection(context, subOrders, session),
                   const SizedBox(height: 24),
                   if (session.status == SessionStatus.open) ...[
-                    if (!isHostOnly && activeOrders.isNotEmpty && activeOrders.any((o) => !o.locked))
-                      Card(
-                        color: Theme.of(context).colorScheme.errorContainer,
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.warning_amber,
-                                color: Theme.of(context).colorScheme.onErrorContainer,
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  l10n.mergedOrderWaiting,
-                                  style: TextStyle(
-                                    color: Theme.of(context).colorScheme.onErrorContainer,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
                     const SizedBox(height: 16),
-                    _buildCurrentRound(context, activeOrders, allReady, restaurant),
+                    _buildCurrentRound(context, activeOrders, restaurant),
                   ],
                   if (allOrders.isNotEmpty) ...[
                     if (session.status == SessionStatus.open) const SizedBox(height: 24),
@@ -108,15 +83,7 @@ class MergedOrderContent extends ConsumerWidget {
                         if (session.status == SessionStatus.open && activeOrders.isNotEmpty)
                           FloatingActionButton.extended(
                             heroTag: 'sendOrder',
-                            onPressed: () {
-                              if (allReady) {
-                                _sendOrder(context, ref, session, activeOrders);
-                              } else {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text(l10n.mergedOrderSendLocked)),
-                                );
-                              }
-                            },
+                            onPressed: () => _sendOrder(context, ref, session, activeOrders),
                             icon: const Icon(Icons.send),
                             label: Text(l10n.mergedOrderSend),
                           ),
@@ -269,7 +236,7 @@ class MergedOrderContent extends ConsumerWidget {
     );
   }
 
-  Widget _buildCurrentRound(BuildContext context, List<PersonalSubOrder> activeOrders, bool allReady, Restaurant? restaurant) {
+  Widget _buildCurrentRound(BuildContext context, List<PersonalSubOrder> activeOrders, Restaurant? restaurant) {
     final l10n = AppLocalizations.of(context)!;
 
     if (activeOrders.isEmpty) {
@@ -292,7 +259,6 @@ class MergedOrderContent extends ConsumerWidget {
         ),
       );
     }
-    if (!allReady) return const SizedBox.shrink();
     return _buildAggregatedOrder(context, activeOrders, l10n.mergedOrderCurrentOrder, restaurant);
   }
 
@@ -416,6 +382,10 @@ class MergedOrderContent extends ConsumerWidget {
 
     await ref.read(sessionsProvider.notifier).updateSession(updated);
 
+    final hostServer = ref.read(hostServerServiceProvider);
+    hostServer.setSession(updated);
+    hostServer.clearSubOrders();
+
     for (final subOrder in subOrders) {
       final clearedSubOrder = subOrder.copyWith(locked: true, entries: [], updatedAt: DateTime.now());
       await ref.read(personalSubOrderRepositoryProvider).updateSubOrder(clearedSubOrder);
@@ -423,6 +393,8 @@ class MergedOrderContent extends ConsumerWidget {
     }
     ref.invalidate(subOrdersForSessionProvider(session.id));
     ref.invalidate(sessionDetailProvider(session.id));
+
+    hostServer.broadcastSessionUpdate(updated);
 
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -495,6 +467,10 @@ class MergedOrderContent extends ConsumerWidget {
 
     await ref.read(sessionsProvider.notifier).updateSession(updated);
 
+    final hostServer = ref.read(hostServerServiceProvider);
+    hostServer.setSession(updated);
+    hostServer.clearSubOrders();
+
     final subOrders = await ref.read(personalSubOrderRepositoryProvider).getSubOrdersForSession(session.id);
     for (final subOrder in subOrders) {
       final unlockedSubOrder = subOrder.copyWith(
@@ -507,6 +483,8 @@ class MergedOrderContent extends ConsumerWidget {
 
     ref.invalidate(subOrdersForSessionProvider(session.id));
     ref.invalidate(sessionDetailProvider(session.id));
+
+    hostServer.broadcastSessionUpdate(updated);
 
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(

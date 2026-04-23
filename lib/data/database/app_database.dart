@@ -16,7 +16,7 @@ class AppDatabase {
 
     return openDatabase(
       path,
-      version: 4,
+      version: 5,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -32,6 +32,9 @@ class AppDatabase {
     }
     if (oldVersion < 4) {
       await db.execute('ALTER TABLE personal_sub_orders ADD COLUMN user_full_name TEXT');
+    }
+    if (oldVersion < 5) {
+      await db.execute('ALTER TABLE sessions ADD COLUMN host_address TEXT');
     }
   }
 
@@ -71,7 +74,8 @@ class AppDatabase {
         additional_orders_json TEXT NOT NULL,
         arrived_counts_json TEXT,
         created_at TEXT NOT NULL,
-        sent_at TEXT
+        sent_at TEXT,
+        host_address TEXT
       )
     ''');
 
