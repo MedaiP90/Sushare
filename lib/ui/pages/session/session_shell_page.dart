@@ -1,8 +1,13 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'package:uuid/uuid.dart';
 import '../../../core/providers.dart';
 import '../../../core/utils/network_utils.dart';
 import '../../../domain/models/local_user.dart';
@@ -300,7 +305,42 @@ class _SessionShellPageState extends ConsumerState<SessionShellPage> {
         if (userId == null) return;
         final sessionRepo = ref.read(sessionRepositoryProvider);
         await sessionRepo.addParticipant(widget.sessionId, userId);
-        if (mounted) ref.invalidate(sessionDetailProvider(widget.sessionId));
+
+        // Save guest profile picture to host's local storage
+        String? savedPicturePath;
+        final pictureBase64 = msg.data['userProfilePictureBase64'] as String?;
+        if (pictureBase64 != null) {
+          try {
+            final bytes = base64Decode(pictureBase64);
+            final dir = await getApplicationDocumentsDirectory();
+            final file = File('${dir.path}/guest_profile_$userId.jpg');
+            await file.writeAsBytes(bytes);
+            savedPicturePath = file.path;
+          } catch (_) {}
+        }
+
+        // Create or update sub-order with profile info immediately on connect
+        final subOrderRepo = ref.read(personalSubOrderRepositoryProvider);
+        final existing = await subOrderRepo.getSubOrder(widget.sessionId, userId);
+        final profileOrder = PersonalSubOrder(
+          id: existing?.id ?? const Uuid().v4(),
+          sessionId: widget.sessionId,
+          userId: userId,
+          userName: msg.data['userName'] as String?,
+          userFullName: msg.data['userFullName'] as String?,
+          userProfilePicturePath: savedPicturePath ?? existing?.userProfilePicturePath,
+          entries: existing?.entries ?? [],
+          checklist: existing?.checklist ?? [],
+          locked: existing?.locked ?? false,
+          updatedAt: DateTime.now(),
+        );
+        await subOrderRepo.saveSubOrder(profileOrder);
+
+        if (mounted) {
+          ref.invalidate(sessionDetailProvider(widget.sessionId));
+          ref.invalidate(subOrdersForSessionProvider(widget.sessionId));
+          ref.invalidate(sessionsProvider);
+        }
 
         // Broadcast updated session to all guests
         final updatedSession =
@@ -315,8 +355,13 @@ class _SessionShellPageState extends ConsumerState<SessionShellPage> {
         final existing =
             await subOrderRepo.getSubOrder(subOrder.sessionId, subOrder.userId);
         if (existing != null) {
-          // Preserve local checklist data; remote strips checklist before sending
-          await subOrderRepo.updateSubOrder(subOrder.copyWith(checklist: existing.checklist));
+          // Use existing.id: host may have created the row with a different UUID on connect
+          // Preserve picture path: guest sends their local path which is invalid on the host
+          await subOrderRepo.updateSubOrder(subOrder.copyWith(
+            id: existing.id,
+            checklist: existing.checklist,
+            userProfilePicturePath: existing.userProfilePicturePath,
+          ));
         } else {
           await subOrderRepo.saveSubOrder(subOrder);
         }
@@ -359,12 +404,18 @@ class _SessionShellPageState extends ConsumerState<SessionShellPage> {
       });
     });
 
+    Uint8List? pictureBytes;
+    if (user.profilePicturePath != null) {
+      final f = File(user.profilePicturePath!);
+      if (await f.exists()) pictureBytes = await f.readAsBytes();
+    }
+
     final connected = await client.connect(
       hostAddress: session.hostAddress!,
       userId: user.id,
       userName: user.username,
       userFullName: '${user.firstName} ${user.lastName}'.trim(),
-      userProfilePicturePath: user.profilePicturePath,
+      userProfilePictureBytes: pictureBytes,
     );
 
     if (mounted) {
@@ -381,13 +432,7 @@ class _SessionShellPageState extends ConsumerState<SessionShellPage> {
       final client = ref.read(sessionClientServiceProvider);
       if (client.isSessionClosed) return;
       if (!client.isConnected) {
-        await client.connect(
-          hostAddress: session.hostAddress!,
-          userId: user.id,
-          userName: user.username,
-          userFullName: '${user.firstName} ${user.lastName}'.trim(),
-          userProfilePicturePath: user.profilePicturePath,
-        );
+        await client.reconnect();
       }
     });
   }
