@@ -34,12 +34,12 @@ class _JoinSessionPageState extends ConsumerState<JoinSessionPage> {
   }
 
   /// Returns the canonical session ID (as stored in DB) on success.
-  Future<String> _resolveAndJoin(String rawId, String host, String userId) async {
+  Future<String> _resolveAndJoin(String rawId, String host, String userId, AppLocalizations l10n) async {
     final sessionRepo = ref.read(sessionRepositoryProvider);
     if (host.isNotEmpty) {
-      return _joinViaNetwork(rawId, host, sessionRepo, userId);
+      return _joinViaNetwork(rawId, host, sessionRepo, userId, l10n);
     } else {
-      return _joinViaLocalDb(rawId, sessionRepo);
+      return _joinViaLocalDb(rawId, sessionRepo, l10n);
     }
   }
 
@@ -52,6 +52,7 @@ class _JoinSessionPageState extends ConsumerState<JoinSessionPage> {
     });
 
     try {
+      final l10n = AppLocalizations.of(context)!;
       final user = ref.read(profileViewModelProvider).value;
       if (user == null) throw Exception('Please log in first');
 
@@ -59,7 +60,7 @@ class _JoinSessionPageState extends ConsumerState<JoinSessionPage> {
       final host = hostAddress ?? _hostController.text.trim();
 
       // canonicalId is the exact ID as stored in the DB (may differ in case from rawId)
-      final canonicalId = await _resolveAndJoin(rawId, host, user.id);
+      final canonicalId = await _resolveAndJoin(rawId, host, user.id, l10n);
 
       final sessionRepo = ref.read(sessionRepositoryProvider);
       await sessionRepo.addParticipant(canonicalId, user.id);
@@ -80,6 +81,7 @@ class _JoinSessionPageState extends ConsumerState<JoinSessionPage> {
     String host,
     SessionRepository sessionRepo,
     String userId,
+    AppLocalizations l10n,
   ) async {
     final baseUrl = 'http://$host';
 
@@ -98,7 +100,7 @@ class _JoinSessionPageState extends ConsumerState<JoinSessionPage> {
       throw Exception('Session ID mismatch');
     }
     if (session.status == SessionStatus.closed) {
-      throw Exception('This table is closed');
+      throw Exception(l10n.joinTableClosedError);
     }
 
     // Save session with host address so it can auto-reconnect later
@@ -122,6 +124,7 @@ class _JoinSessionPageState extends ConsumerState<JoinSessionPage> {
   Future<String> _joinViaLocalDb(
     String sessionId,
     SessionRepository sessionRepo,
+    AppLocalizations l10n,
   ) async {
     // Try exact match first, then short-code prefix match
     Session? session = await sessionRepo.getSessionById(sessionId);
@@ -131,7 +134,7 @@ class _JoinSessionPageState extends ConsumerState<JoinSessionPage> {
       throw Exception('Table not found — scan the QR code or enter the host address');
     }
     if (session.status == SessionStatus.closed) {
-      throw Exception('This table is closed');
+      throw Exception(l10n.joinTableClosedError);
     }
     return session.id;
   }
