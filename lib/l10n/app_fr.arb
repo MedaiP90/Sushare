@@ -206,6 +206,8 @@
   "@joinTableHostLabel": {},
   "joinTableHostHint": "ex. 192.168.1.100:8080",
   "@joinTableHostHint": {},
+  "joinTableClosedError": "Cette table est fermée",
+  "@joinTableClosedError": {},
 
   "newTableTitle": "Nouvelle table",
   "@newTableTitle": {},

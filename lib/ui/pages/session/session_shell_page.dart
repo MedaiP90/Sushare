@@ -33,7 +33,6 @@ class _SessionShellPageState extends ConsumerState<SessionShellPage> {
   bool _serverStarted = false;
   bool _isGuest = false;
   bool _guestConnected = false;
-  bool _guestFrozen = false;
   SessionStatus? _lastKnownStatus;
 
   StreamSubscription<SyncMessage>? _hostMsgSub;
@@ -84,7 +83,7 @@ class _SessionShellPageState extends ConsumerState<SessionShellPage> {
           WidgetsBinding.instance.addPostFrameCallback((_) => _startHostServer(session));
         }
 
-        if (!isHost && session.hostAddress != null && !_guestConnected && user != null) {
+        if (!isHost && session.hostAddress != null && !_guestConnected && session.status != SessionStatus.closed && user != null) {
           WidgetsBinding.instance
               .addPostFrameCallback((_) => _connectAsGuest(session, user));
         }
@@ -161,44 +160,52 @@ class _SessionShellPageState extends ConsumerState<SessionShellPage> {
           body: Column(
             children: [
               if (session.status == SessionStatus.closed)
-                Material(
-                  color: Theme.of(context).colorScheme.secondaryContainer,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                    child: Row(
-                      children: [
-                        Icon(Icons.lock_outline, size: 16,
-                            color: Theme.of(context).colorScheme.onSecondaryContainer),
-                        const SizedBox(width: 8),
-                        Text(
-                          l10n.sessionClosedBanner,
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: Theme.of(context).colorScheme.onSecondaryContainer,
-                              ),
-                        ),
-                      ],
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: double.infinity),
+                  child: Material(
+                    color: Theme.of(context).colorScheme.secondaryContainer,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                      child: Row(
+                        children: [
+                          Icon(Icons.lock_outline, size: 16,
+                              color: Theme.of(context).colorScheme.onSecondaryContainer),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              l10n.sessionClosedBanner,
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: Theme.of(context).colorScheme.onSecondaryContainer,
+                                  ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
-              if (!isHost && _guestFrozen)
-                Material(
-                  color: Theme.of(context).colorScheme.errorContainer,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                    child: Row(
-                      children: [
-                        Icon(Icons.wifi_off, size: 16,
-                            color: Theme.of(context).colorScheme.onErrorContainer),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            l10n.sessionUnreachableBanner,
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color: Theme.of(context).colorScheme.onErrorContainer,
-                                ),
+              if (!isHost && !_guestConnected && session.status != SessionStatus.closed)
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: double.infinity),
+                  child: Material(
+                    color: Theme.of(context).colorScheme.errorContainer,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                      child: Row(
+                        children: [
+                          Icon(Icons.wifi_off, size: 16,
+                              color: Theme.of(context).colorScheme.onErrorContainer),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              l10n.sessionUnreachableBanner,
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: Theme.of(context).colorScheme.onErrorContainer,
+                                  ),
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -326,7 +333,6 @@ class _SessionShellPageState extends ConsumerState<SessionShellPage> {
     _clientConnSub?.cancel();
     _clientConnSub = client.connectionStatus.listen((connected) {
       if (!mounted) return;
-      setState(() => _guestFrozen = !connected);
       if (!connected) _scheduleReconnect(session, user);
     });
 
@@ -343,8 +349,7 @@ class _SessionShellPageState extends ConsumerState<SessionShellPage> {
 
     if (mounted) {
       setState(() {
-        _guestConnected = true;
-        _guestFrozen = !connected;
+        _guestConnected = connected;
       });
     }
   }

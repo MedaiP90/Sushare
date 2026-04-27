@@ -310,6 +310,9 @@ class AppLocalizationsDe extends AppLocalizations {
   String get joinTableHostHint => 'z.B. 192.168.1.100:8080';
 
   @override
+  String get joinTableClosedError => 'Dieser Tisch ist geschlossen';
+
+  @override
   String get newTableTitle => 'Neuer Tisch';
 
   @override

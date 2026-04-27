@@ -668,6 +668,12 @@ abstract class AppLocalizations {
   /// **'e.g., 192.168.1.100:8080'**
   String get joinTableHostHint;
 
+  /// No description provided for @joinTableClosedError.
+  ///
+  /// In en, this message translates to:
+  /// **'This table is closed'**
+  String get joinTableClosedError;
+
   /// No description provided for @newTableTitle.
   ///
   /// In en, this message translates to:

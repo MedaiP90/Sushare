@@ -206,6 +206,8 @@
   "@joinTableHostLabel": {},
   "joinTableHostHint": "es. 192.168.1.100:8080",
   "@joinTableHostHint": {},
+  "joinTableClosedError": "Questo tavolo è chiuso",
+  "@joinTableClosedError": {},
 
   "newTableTitle": "Nuovo tavolo",
   "@newTableTitle": {},
