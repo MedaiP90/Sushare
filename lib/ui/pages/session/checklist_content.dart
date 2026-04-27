@@ -47,11 +47,15 @@ class ChecklistContent extends ConsumerWidget {
           );
         }
 
-        // Each user sees only the items they personally ordered
+        // Each user sees only the items they personally ordered, with their personal quantity
         final allOrders = <_OrderWithLabel>[];
         void addIfNonEmpty(Order order, String label) {
           final items = order.items
-              .where((item) => item.contributorIds.contains(user.id))
+              .where((item) => item.contributions.containsKey(user.id))
+              .map((item) => item.copyWith(
+                    quantity: item.contributions[user.id]!,
+                    contributions: {user.id: item.contributions[user.id]!},
+                  ))
               .toList();
           if (items.isNotEmpty) {
             allOrders.add(_OrderWithLabel(order.copyWith(items: items), label));

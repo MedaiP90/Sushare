@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import '../domain/models/personal_sub_order.dart';
 import '../domain/models/session.dart';
@@ -38,14 +39,15 @@ class SessionClientService {
     required String userId,
     required String userName,
     String? userFullName,
-    String? userProfilePicturePath,
+    Uint8List? userProfilePictureBytes,
   }) async {
     _hostAddress = hostAddress;
     _pendingUserInfo = {
       'userId': userId,
       'userName': userName,
       'userFullName': userFullName,
-      'userProfilePicturePath': userProfilePicturePath,
+      if (userProfilePictureBytes != null)
+        'userProfilePictureBase64': base64Encode(userProfilePictureBytes),
     };
     return _doConnect();
   }

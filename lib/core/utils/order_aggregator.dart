@@ -14,11 +14,14 @@ Order aggregateSubOrders(List<PersonalSubOrder> subOrders, String label) {
               menuItemId: entry.menuItemId,
               name: entry.name,
               quantity: entry.quantity,
-              contributorIds: [subOrder.userId],
+              contributions: {subOrder.userId: entry.quantity},
             )
           : existing.copyWith(
               quantity: existing.quantity + entry.quantity,
-              contributorIds: [...existing.contributorIds, subOrder.userId],
+              contributions: {
+                ...existing.contributions,
+                subOrder.userId: entry.quantity,
+              },
             );
     }
   }
