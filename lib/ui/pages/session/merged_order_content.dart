@@ -164,6 +164,7 @@ class MergedOrderContent extends ConsumerWidget {
   ) {
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       builder: (sheetContext) {
         final l10n = AppLocalizations.of(sheetContext)!;
         return SafeArea(
@@ -220,12 +221,20 @@ class MergedOrderContent extends ConsumerWidget {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    ...subOrder.entries.map((e) => ListTile(
-                          dense: true,
-                          contentPadding: EdgeInsets.zero,
-                          title: Text(e.name),
-                          trailing: Text('x${e.quantity}'),
-                        )),
+                    ConstrainedBox(
+                      constraints: BoxConstraints(
+                        maxHeight: MediaQuery.of(sheetContext).size.height * 0.4,
+                      ),
+                      child: ListView(
+                        shrinkWrap: true,
+                        children: subOrder.entries.map((e) => ListTile(
+                              dense: true,
+                              contentPadding: EdgeInsets.zero,
+                              title: Text(e.name),
+                              trailing: Text('x${e.quantity}'),
+                            )).toList(),
+                      ),
+                    ),
                   ],
                 ],
               ),
