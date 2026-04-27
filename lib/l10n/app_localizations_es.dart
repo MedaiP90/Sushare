@@ -59,6 +59,36 @@ class AppLocalizationsEs extends AppLocalizations {
   String get welcomeTitle => 'Bienvenido a Sushare';
 
   @override
+  String get onboardingCreateTitle => 'Crea una Mesa';
+
+  @override
+  String get onboardingCreateDescription =>
+      'Inicia una nueva sesión, invita amigos y divide la cuenta juntos.';
+
+  @override
+  String get onboardingJoinTitle => 'Únete a una Mesa';
+
+  @override
+  String get onboardingJoinDescription =>
+      'Escanea un código QR o ingresa un código para unirte a la sesión de tus amigos.';
+
+  @override
+  String get onboardingEnjoyTitle => 'Disfruta de la Comida';
+
+  @override
+  String get onboardingEnjoyDescription =>
+      'Haz tu pedido, sigue el pedido combinado y divide la cuenta justamente.';
+
+  @override
+  String get onboardingNext => 'Siguiente';
+
+  @override
+  String get onboardingGetStarted => 'Comenzar';
+
+  @override
+  String get onboardingSkip => 'Omitir';
+
+  @override
   String get profileSetupSubtitle => 'Vamos a configurar tu perfil';
 
   @override

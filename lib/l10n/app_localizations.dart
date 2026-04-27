@@ -200,6 +200,60 @@ abstract class AppLocalizations {
   /// **'Welcome to Sushare'**
   String get welcomeTitle;
 
+  /// No description provided for @onboardingCreateTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Create a Table'**
+  String get onboardingCreateTitle;
+
+  /// No description provided for @onboardingCreateDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Start a new session, invite friends, and share the bill together.'**
+  String get onboardingCreateDescription;
+
+  /// No description provided for @onboardingJoinTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Join a Table'**
+  String get onboardingJoinTitle;
+
+  /// No description provided for @onboardingJoinDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan a QR code or enter a code to join your friends\' session.'**
+  String get onboardingJoinDescription;
+
+  /// No description provided for @onboardingEnjoyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Enjoy the Meal'**
+  String get onboardingEnjoyTitle;
+
+  /// No description provided for @onboardingEnjoyDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Place your order, track the merged order, and split the bill fairly.'**
+  String get onboardingEnjoyDescription;
+
+  /// No description provided for @onboardingNext.
+  ///
+  /// In en, this message translates to:
+  /// **'Next'**
+  String get onboardingNext;
+
+  /// No description provided for @onboardingGetStarted.
+  ///
+  /// In en, this message translates to:
+  /// **'Get Started'**
+  String get onboardingGetStarted;
+
+  /// No description provided for @onboardingSkip.
+  ///
+  /// In en, this message translates to:
+  /// **'Skip'**
+  String get onboardingSkip;
+
   /// No description provided for @profileSetupSubtitle.
   ///
   /// In en, this message translates to:

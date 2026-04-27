@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../../ui/pages/onboarding/onboarding_page.dart';
 import '../../ui/pages/profile/profile_setup_page.dart';
 import '../../ui/pages/home/home_page.dart';
 import '../../ui/pages/home/sessions_page.dart';
@@ -17,17 +19,43 @@ final routerProvider = Provider<GoRouter>((ref) {
   final userAsync = ref.watch(profileViewModelProvider);
 
   return GoRouter(
-    initialLocation: '/home/sessions',
-    redirect: (context, state) {
-      final isOnProfileSetup = state.matchedLocation == '/profile/setup';
+    initialLocation: '/',
+    redirect: (context, state) async {
+      final location = state.matchedLocation;
+      final isOnRoot = location == '/';
+      final isOnOnboarding = location == '/onboarding';
+      final isOnProfileSetup = location == '/profile/setup';
+
+      final prefs = await SharedPreferences.getInstance();
+      final onboardingCompleted = prefs.getBool('onboarding_completed') ?? false;
+
+      if (!onboardingCompleted && !isOnOnboarding) {
+        return '/onboarding';
+      }
+
+      if (onboardingCompleted && isOnOnboarding) {
+        return '/profile/setup';
+      }
+
+      if (isOnOnboarding) {
+        return null;
+      }
 
       return userAsync.when(
         data: (user) {
+          if (isOnRoot || (!onboardingCompleted && !isOnOnboarding)) {
+            if (!onboardingCompleted) return '/onboarding';
+            if (user == null) return '/profile/setup';
+            return '/home/sessions';
+          }
           if (user == null && !isOnProfileSetup) {
             return '/profile/setup';
           }
           if (user != null && isOnProfileSetup) {
             return '/home/sessions';
+          }
+          if (user == null && isOnProfileSetup) {
+            return null;
           }
           return null;
         },
@@ -36,6 +64,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       );
     },
     routes: [
+      GoRoute(
+        path: '/onboarding',
+        builder: (context, state) => const OnboardingPage(),
+      ),
       GoRoute(
         path: '/profile/setup',
         builder: (context, state) => const ProfileSetupPage(),
