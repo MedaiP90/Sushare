@@ -2,20 +2,36 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import '../domain/models/personal_sub_order.dart';
+import '../domain/models/session.dart';
 import 'sync_message.dart';
 
 class SessionClientService {
   WebSocketChannel? _wsChannel;
   final _messageController = StreamController<SyncMessage>.broadcast();
   final _connectionController = StreamController<bool>.broadcast();
+  final _sessionClosedController = StreamController<void>.broadcast();
 
   bool _isConnected = false;
+  bool _isSessionClosed = false;
+  Session? _session;
   String? _hostAddress;
   Map<String, dynamic>? _pendingUserInfo;
 
   bool get isConnected => _isConnected;
+  bool get isSessionClosed => _isSessionClosed;
+  Session? get session => _session;
   Stream<SyncMessage> get messages => _messageController.stream;
   Stream<bool> get connectionStatus => _connectionController.stream;
+  Stream<void> get sessionClosed => _sessionClosedController.stream;
+
+  void setSession(Session session) {
+    _session = session;
+  }
+
+  void markSessionClosed() {
+    _isSessionClosed = true;
+    _session = _session?.copyWith(status: SessionStatus.closed);
+  }
 
   Future<bool> connect({
     required String hostAddress,
@@ -50,7 +66,13 @@ class SessionClientService {
           try {
             final json = jsonDecode(raw as String) as Map<String, dynamic>;
             final msg = SyncMessage.fromJson(json);
-            _messageController.add(msg);
+            if (msg.type == SyncMessageType.sessionClosed) {
+              _isSessionClosed = true;
+              _isConnected = false;
+              _sessionClosedController.add(null);
+            } else {
+              _messageController.add(msg);
+            }
           } catch (_) {}
         },
         onDone: () {
