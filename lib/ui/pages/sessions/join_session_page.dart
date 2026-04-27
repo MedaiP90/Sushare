@@ -1,13 +1,17 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:http/http.dart' as http;
 import 'package:mobile_scanner/mobile_scanner.dart';
+import '../../../core/providers.dart';
 import '../../../domain/models/restaurant.dart';
 import '../../../domain/models/session.dart';
-import '../../../domain/repositories/session_repository.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../../services/participant_ble_service.dart';
+import '../../../services/permission_service.dart';
+import '../../../services/sync_message.dart';
 import '../../viewmodels/profile_viewmodel.dart';
 import '../../viewmodels/restaurant_viewmodel.dart';
 import '../../viewmodels/session_viewmodel.dart';
@@ -21,30 +25,53 @@ class JoinSessionPage extends ConsumerStatefulWidget {
 
 class _JoinSessionPageState extends ConsumerState<JoinSessionPage> {
   final _codeController = TextEditingController();
-  final _hostController = TextEditingController();
-  bool _isScanning = false;
+  bool _isQrScanning = false;
   bool _isConnecting = false;
   String? _error;
+  String _filterCode = '';
+
+  StreamSubscription<List<DiscoveredSession>>? _discoverySub;
+  List<DiscoveredSession> _discovered = [];
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _startDiscovery());
+  }
 
   @override
   void dispose() {
     _codeController.dispose();
-    _hostController.dispose();
+    _discoverySub?.cancel();
+    // Stop discovery only if we didn't just connect.
+    final svc = ref.read(participantBleServiceProvider);
+    if (!svc.isConnected) svc.stopDiscovery();
     super.dispose();
   }
 
-  /// Returns the canonical session ID (as stored in DB) on success.
-  Future<String> _resolveAndJoin(String rawId, String host, String userId, AppLocalizations l10n) async {
-    final sessionRepo = ref.read(sessionRepositoryProvider);
-    if (host.isNotEmpty) {
-      return _joinViaNetwork(rawId, host, sessionRepo, userId, l10n);
-    } else {
-      return _joinViaLocalDb(rawId, sessionRepo, l10n);
-    }
+  Future<void> _startDiscovery() async {
+    if (!mounted) return;
+    final granted = await PermissionService.requestBluetooth(context);
+    if (!granted || !mounted) return;
+
+    final svc = ref.read(participantBleServiceProvider);
+    await svc.startDiscovery(
+      myDeviceName: ref.read(profileViewModelProvider).value?.username,
+    );
+
+    _discoverySub = svc.discoveredSessions.listen((list) {
+      if (mounted) setState(() => _discovered = list);
+    });
   }
 
-  Future<void> _joinSession(String sessionId, {String? hostAddress}) async {
-    if (sessionId.isEmpty) return;
+  // ── Connection ──────────────────────────────────────────────────────────────
+
+  Future<void> _connectTo(DiscoveredSession session) async {
+    final user = ref.read(profileViewModelProvider).value;
+    if (user == null) {
+      _setError('Please set up your profile first.');
+      return;
+    }
 
     setState(() {
       _isConnecting = true;
@@ -52,273 +79,391 @@ class _JoinSessionPageState extends ConsumerState<JoinSessionPage> {
     });
 
     try {
-      final l10n = AppLocalizations.of(context)!;
-      final user = ref.read(profileViewModelProvider).value;
-      if (user == null) throw Exception('Please log in first');
+      final svc = ref.read(participantBleServiceProvider);
 
-      final rawId = sessionId.trim();
-      final host = hostAddress ?? _hostController.text.trim();
+      // Build user-info payload (profile picture is optional, adds latency).
+      final userInfo = <String, dynamic>{
+        'userId': user.id,
+        'userName': user.username,
+        'userFullName': '${user.firstName} ${user.lastName}'.trim(),
+      };
+      if (user.profilePicturePath != null) {
+        final f = File(user.profilePicturePath!);
+        if (await f.exists()) {
+          userInfo['userProfilePictureBase64'] =
+              base64Encode(await f.readAsBytes());
+        }
+      }
 
-      // canonicalId is the exact ID as stored in the DB (may differ in case from rawId)
-      final canonicalId = await _resolveAndJoin(rawId, host, user.id, l10n);
+      final connected = await svc.connect(
+        endpointId: session.endpointId,
+        userInfo: userInfo,
+        myDeviceName: user.username,
+      );
+      if (!connected) throw Exception('Could not connect. Make sure you\'re close to the host device.');
+
+      // Wait for initialSync from the host (contains session + restaurant data).
+      final initialSync = await svc.messages
+          .where((m) => m.type == SyncMessageType.initialSync)
+          .first
+          .timeout(
+            const Duration(seconds: 15),
+            onTimeout: () => throw TimeoutException(
+                'Timed out waiting for session data from host.'),
+          );
 
       final sessionRepo = ref.read(sessionRepositoryProvider);
-      await sessionRepo.addParticipant(canonicalId, user.id);
-
-      if (mounted) context.go('/sessions/$canonicalId');
-    } catch (e) {
-      setState(() {
-        _error = e.toString().replaceFirst('Exception: ', '');
-        _isConnecting = false;
-      });
-    }
-  }
-
-  /// Fetches session + restaurant from the host device over HTTP.
-  /// Returns the canonical session ID from the server.
-  Future<String> _joinViaNetwork(
-    String sessionId,
-    String host,
-    SessionRepository sessionRepo,
-    String userId,
-    AppLocalizations l10n,
-  ) async {
-    final baseUrl = 'http://$host';
-
-    final sessionRes = await http
-        .get(Uri.parse('$baseUrl/api/session'))
-        .timeout(const Duration(seconds: 10));
-    if (sessionRes.statusCode != 200) {
-      throw Exception('Could not reach host — check the address and try again');
-    }
-
-    final sessionJson = jsonDecode(sessionRes.body) as Map<String, dynamic>;
-    final session = Session.fromJson(sessionJson);
-
-    // Accept both full UUID and 8-char short code (case-insensitive prefix match)
-    if (!session.id.toUpperCase().startsWith(sessionId.toUpperCase())) {
-      throw Exception('Session ID mismatch');
-    }
-    if (session.status == SessionStatus.closed) {
-      throw Exception(l10n.joinTableClosedError);
-    }
-
-    // Save session with host address so it can auto-reconnect later
-    await sessionRepo.saveSession(session.copyWith(hostAddress: host));
-
-    final restaurantRes = await http
-        .get(Uri.parse('$baseUrl/api/restaurant'))
-        .timeout(const Duration(seconds: 10));
-    if (restaurantRes.statusCode == 200) {
-      final restaurantJson = jsonDecode(restaurantRes.body) as Map<String, dynamic>;
-      final restaurant = Restaurant.fromJson(restaurantJson);
       final restaurantRepo = ref.read(restaurantRepositoryProvider);
-      await restaurantRepo.saveRestaurant(restaurant);
-    }
 
-    return session.id;
+      final sessionData =
+          initialSync.data['session'] as Map<String, dynamic>?;
+      if (sessionData == null) throw Exception('Received invalid data from host.');
+
+      final remoteSession = Session.fromJson(sessionData);
+      await sessionRepo.saveSession(remoteSession);
+      await sessionRepo.addParticipant(remoteSession.id, user.id);
+
+      final restaurantData =
+          initialSync.data['restaurant'] as Map<String, dynamic>?;
+      if (restaurantData != null) {
+        await restaurantRepo.saveRestaurant(Restaurant.fromJson(restaurantData));
+      }
+
+      if (mounted) context.go('/sessions/${remoteSession.id}');
+    } on TimeoutException catch (e) {
+      _setError(e.message ?? 'Connection timed out.');
+    } catch (e) {
+      _setError(e.toString().replaceFirst('Exception: ', ''));
+    }
   }
 
-  /// Falls back to local DB — works when both devices already have the session
-  /// (e.g. re-joining a session created on this device).
-  Future<String> _joinViaLocalDb(
-    String sessionId,
-    SessionRepository sessionRepo,
-    AppLocalizations l10n,
-  ) async {
-    // Try exact match first, then short-code prefix match
-    Session? session = await sessionRepo.getSessionById(sessionId);
-    session ??= await sessionRepo.getSessionByShortCode(sessionId);
-
-    if (session == null) {
-      throw Exception('Table not found — scan the QR code or enter the host address');
-    }
-    if (session.status == SessionStatus.closed) {
-      throw Exception(l10n.joinTableClosedError);
-    }
-    return session.id;
+  void _setError(String msg) {
+    if (mounted) setState(() { _error = msg; _isConnecting = false; });
   }
+
+  // ── QR scanning ─────────────────────────────────────────────────────────────
 
   void _handleQrDetected(String value) {
-    _stopScanning();
+    _stopQrScanning();
+    String? code;
     final uri = Uri.tryParse(value);
     if (uri != null && uri.scheme == 'sushare' && uri.host == 'join') {
-      final sessionId = uri.pathSegments.isNotEmpty ? uri.pathSegments.first : '';
-      final host = uri.queryParameters['host'];
-      _joinSession(sessionId, hostAddress: host);
+      code = uri.pathSegments.isNotEmpty ? uri.pathSegments.first : null;
     } else if (value.startsWith('sushare://join/')) {
-      _joinSession(value.substring('sushare://join/'.length));
-    } else {
-      _joinSession(value);
+      code = value.substring('sushare://join/'.length);
+    } else if (value.length >= 8) {
+      code = value.substring(0, 8);
+    }
+    if (code != null) {
+      // Use the first 8 chars as the short code to match against discovered sessions.
+      final shortCode = code.substring(0, code.length.clamp(0, 8)).toUpperCase();
+      _codeController.text = shortCode;
+      setState(() => _filterCode = shortCode);
+      _tryConnectByCode(shortCode);
     }
   }
 
-  void _startScanning() => setState(() => _isScanning = true);
-  void _stopScanning() => setState(() => _isScanning = false);
+  void _tryConnectByCode(String code) {
+    final match = _discovered.where(
+      (s) => s.shortId.toUpperCase().startsWith(code.toUpperCase()),
+    ).firstOrNull;
+    if (match != null) {
+      _connectTo(match);
+    } else {
+      _setError('Session "$code" not found nearby. Make sure the host has '
+          'Bluetooth enabled and you\'re within range.');
+    }
+  }
+
+  void _startQrScanning() => setState(() => _isQrScanning = true);
+  void _stopQrScanning() => setState(() => _isQrScanning = false);
+
+  // ── Build ────────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final l10n = AppLocalizations.of(context)!;
 
-    if (_isScanning) {
-      return Scaffold(
-        appBar: AppBar(
-          title: Text(l10n.joinTableScanQr),
-          leading: IconButton(
-            icon: const Icon(Icons.close),
-            onPressed: _stopScanning,
-          ),
-        ),
-        body: Stack(
-          children: [
-            MobileScanner(
-              onDetect: (capture) {
-                final barcode = capture.barcodes.firstOrNull;
-                if (barcode?.rawValue != null) {
-                  _handleQrDetected(barcode!.rawValue!);
-                }
-              },
-            ),
-            Center(
-              child: Container(
-                width: 250,
-                height: 250,
-                decoration: BoxDecoration(
-                  border: Border.all(color: colorScheme.primary, width: 2),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-              ),
-            ),
-            Center(
-              child: Container(
-                margin: const EdgeInsets.only(top: 300),
-                child: Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Text(
-                      l10n.joinTableScanHint,
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      );
-    }
+    if (_isQrScanning) return _buildQrScanner(colorScheme, l10n);
+
+    final filtered = _filterCode.isEmpty
+        ? _discovered
+        : _discovered
+            .where((s) =>
+                s.shortId.toUpperCase().startsWith(_filterCode.toUpperCase()))
+            .toList();
 
     return Scaffold(
       appBar: AppBar(
         title: Text(l10n.joinTableTitle),
         centerTitle: true,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(l10n.joinTableHeading, style: Theme.of(context).textTheme.headlineMedium),
-            const SizedBox(height: 8),
-            Text(
-              l10n.joinTableSubtitle,
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
+      body: _isConnecting
+          ? const Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 16),
+                  Text('Connecting…'),
+                ],
+              ),
+            )
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(l10n.joinTableHeading,
+                      style: Theme.of(context).textTheme.headlineMedium),
+                  const SizedBox(height: 8),
+                  Text(
+                    l10n.joinTableSubtitle,
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                        color: colorScheme.onSurfaceVariant),
                   ),
-            ),
-            const SizedBox(height: 32),
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(Icons.qr_code_scanner, color: colorScheme.primary),
-                        const SizedBox(width: 8),
-                        Text(l10n.joinTableScanQr, style: Theme.of(context).textTheme.titleMedium),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    FilledButton.tonalIcon(
-                      onPressed: _startScanning,
-                      icon: const Icon(Icons.qr_code_scanner),
-                      label: Text(l10n.joinTableOpenScanner),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(Icons.keyboard, color: colorScheme.primary),
-                        const SizedBox(width: 8),
-                        Text(l10n.joinTableEnterCode, style: Theme.of(context).textTheme.titleMedium),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    TextField(
-                      controller: _codeController,
-                      decoration: InputDecoration(
-                        labelText: l10n.joinTableCodeLabel,
-                        hintText: l10n.joinTableCodeHint,
-                        border: const OutlineInputBorder(),
-                        prefixIcon: const Icon(Icons.tag),
-                      ),
-                      textCapitalization: TextCapitalization.characters,
-                      maxLength: 8,
-                    ),
-                    const SizedBox(height: 8),
-                    TextField(
-                      controller: _hostController,
-                      decoration: InputDecoration(
-                        labelText: l10n.joinTableHostLabel,
-                        hintText: l10n.joinTableHostHint,
-                        border: const OutlineInputBorder(),
-                        prefixIcon: const Icon(Icons.router_outlined),
-                      ),
-                      keyboardType: TextInputType.url,
-                    ),
-                    if (_error != null) ...[
-                      const SizedBox(height: 8),
-                      Text(_error!, style: TextStyle(color: colorScheme.error)),
-                    ],
-                    const SizedBox(height: 16),
-                    FilledButton(
-                      onPressed: _isConnecting
-                          ? null
-                          : () => _joinSession(_codeController.text),
-                      child: _isConnecting
-                          ? const SizedBox(
-                              height: 20,
-                              width: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
+                  const SizedBox(height: 24),
+
+                  // ── Nearby sessions ──────────────────────────────────────
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(Icons.bluetooth_searching,
+                                  color: colorScheme.primary),
+                              const SizedBox(width: 8),
+                              Text('Nearby Sessions',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .titleMedium),
+                              const Spacer(),
+                              if (_discovered.isEmpty)
+                                const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                      strokeWidth: 2),
+                                ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          if (filtered.isEmpty)
+                            Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 8),
+                              child: Text(
+                                'Scanning for nearby sessions…',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodyMedium
+                                    ?.copyWith(
+                                        color: colorScheme.onSurfaceVariant),
+                              ),
                             )
-                          : Text(l10n.joinTableJoin),
+                          else
+                            ...filtered.map((s) => _SessionTile(
+                                  session: s,
+                                  onTap: () => _connectTo(s),
+                                )),
+                        ],
+                      ),
                     ),
-                  ],
-                ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // ── QR scan ──────────────────────────────────────────────
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(Icons.qr_code_scanner,
+                                  color: colorScheme.primary),
+                              const SizedBox(width: 8),
+                              Text(l10n.joinTableScanQr,
+                                  style:
+                                      Theme.of(context).textTheme.titleMedium),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          FilledButton.tonalIcon(
+                            onPressed: _startQrScanning,
+                            icon: const Icon(Icons.qr_code_scanner),
+                            label: Text(l10n.joinTableOpenScanner),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // ── Manual code ──────────────────────────────────────────
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(Icons.keyboard, color: colorScheme.primary),
+                              const SizedBox(width: 8),
+                              Text(l10n.joinTableEnterCode,
+                                  style:
+                                      Theme.of(context).textTheme.titleMedium),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          TextField(
+                            controller: _codeController,
+                            decoration: InputDecoration(
+                              labelText: l10n.joinTableCodeLabel,
+                              hintText: l10n.joinTableCodeHint,
+                              border: const OutlineInputBorder(),
+                              prefixIcon: const Icon(Icons.tag),
+                            ),
+                            textCapitalization: TextCapitalization.characters,
+                            maxLength: 8,
+                            onChanged: (v) =>
+                                setState(() => _filterCode = v.trim()),
+                          ),
+                          if (_error != null) ...[
+                            const SizedBox(height: 8),
+                            Text(_error!,
+                                style:
+                                    TextStyle(color: colorScheme.error)),
+                          ],
+                          const SizedBox(height: 8),
+                          FilledButton(
+                            onPressed: _filterCode.isEmpty
+                                ? null
+                                : () => _tryConnectByCode(_filterCode),
+                            child: Text(l10n.joinTableJoin),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  // ── Cross-platform note ──────────────────────────────────
+                  const SizedBox(height: 16),
+                  Card(
+                    color: colorScheme.surfaceContainerHigh,
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(Icons.info_outline,
+                              size: 16,
+                              color: colorScheme.onSurfaceVariant),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'BLE discovery works between Android devices and '
+                              'between iOS devices. For mixed groups, have '
+                              'everyone join from the same platform, or ask the '
+                              'host to share the session code.',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodySmall
+                                  ?.copyWith(
+                                      color: colorScheme.onSurfaceVariant),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 32),
+                  Center(
+                    child: TextButton(
+                      onPressed: () => context.go('/sessions/new'),
+                      child: Text(l10n.joinTableStartNew),
+                    ),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 32),
-            Center(
-              child: TextButton(
-                onPressed: () => context.go('/sessions/new'),
-                child: Text(l10n.joinTableStartNew),
-              ),
-            ),
-          ],
+    );
+  }
+
+  Widget _buildQrScanner(ColorScheme colorScheme, AppLocalizations l10n) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(l10n.joinTableScanQr),
+        leading: IconButton(
+          icon: const Icon(Icons.close),
+          onPressed: _stopQrScanning,
         ),
       ),
+      body: Stack(
+        children: [
+          MobileScanner(
+            onDetect: (capture) {
+              final barcode = capture.barcodes.firstOrNull;
+              if (barcode?.rawValue != null) {
+                _handleQrDetected(barcode!.rawValue!);
+              }
+            },
+          ),
+          Center(
+            child: Container(
+              width: 250,
+              height: 250,
+              decoration: BoxDecoration(
+                border: Border.all(color: colorScheme.primary, width: 2),
+                borderRadius: BorderRadius.circular(16),
+              ),
+            ),
+          ),
+          Center(
+            child: Container(
+              margin: const EdgeInsets.only(top: 300),
+              child: Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Text(
+                    l10n.joinTableScanHint,
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SessionTile extends StatelessWidget {
+  final DiscoveredSession session;
+  final VoidCallback onTap;
+
+  const _SessionTile({required this.session, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return ListTile(
+      leading: CircleAvatar(
+        backgroundColor: colorScheme.primaryContainer,
+        child: Icon(Icons.restaurant, color: colorScheme.onPrimaryContainer),
+      ),
+      title: Text(session.sessionName),
+      subtitle: Text('Host: ${session.hostName}  ·  Code: ${session.shortId}'),
+      trailing: Icon(Icons.bluetooth, color: colorScheme.primary),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      onTap: onTap,
     );
   }
 }

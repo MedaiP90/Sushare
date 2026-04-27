@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 
@@ -5,6 +6,7 @@ enum AppPermission {
   camera,
   photoLibrary,
   notifications,
+  bluetooth,
 }
 
 class PermissionService {
@@ -170,6 +172,38 @@ class PermissionService {
         ),
       ),
     );
+  }
+
+  /// Requests all permissions required for BLE P2P (Nearby Connections).
+  /// On Android 12+ this includes BLUETOOTH_SCAN, BLUETOOTH_ADVERTISE, and
+  /// BLUETOOTH_CONNECT; older Android also needs ACCESS_FINE_LOCATION.
+  /// On iOS the system prompt is triggered automatically by the plugin.
+  static Future<bool> requestBluetooth(BuildContext context) async {
+    if (Platform.isAndroid) {
+      final permissions = [
+        Permission.bluetooth,
+        Permission.bluetoothScan,
+        Permission.bluetoothAdvertise,
+        Permission.bluetoothConnect,
+        Permission.locationWhenInUse,
+        Permission.nearbyWifiDevices,
+      ];
+      final statuses = await permissions.request();
+      final allGranted =
+          statuses.values.every((s) => s.isGranted || s.isLimited);
+      if (!allGranted && context.mounted) {
+        await _showSettingsDialog(
+          context,
+          'Bluetooth Access Required',
+          'Bluetooth and location permissions are needed to discover and '
+              'connect to nearby devices. Please enable them in settings.',
+        );
+      }
+      return allGranted;
+    }
+    // iOS: permissions are declared in Info.plist; request triggers system prompt.
+    final status = await Permission.bluetooth.request();
+    return status.isGranted;
   }
 
   static Future<Map<Permission, PermissionStatus>> checkAllPermissions() async {

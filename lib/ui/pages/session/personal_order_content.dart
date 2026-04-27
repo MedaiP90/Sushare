@@ -546,7 +546,7 @@ class _PersonalOrderContentState extends ConsumerState<PersonalOrderContent> {
       ref.invalidate(sessionDetailProvider(widget.sessionId));
 
       // Push to host if connected as guest
-      final clientService = ref.read(sessionClientServiceProvider);
+      final clientService = ref.read(participantBleServiceProvider);
       if (clientService.isConnected) {
         final subOrderRepo = ref.read(personalSubOrderRepositoryProvider);
         final saved = await subOrderRepo.getSubOrder(widget.sessionId, userId);
@@ -590,7 +590,7 @@ class _PersonalOrderContentState extends ConsumerState<PersonalOrderContent> {
     ref.invalidate(sessionDetailProvider(widget.sessionId));
 
     // Push update to host if connected as guest
-    final clientService = ref.read(sessionClientServiceProvider);
+    final clientService = ref.read(participantBleServiceProvider);
     if (clientService.isConnected) {
       final subOrderRepo = ref.read(personalSubOrderRepositoryProvider);
       final saved = await subOrderRepo.getSubOrder(widget.sessionId, userId);
