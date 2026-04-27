@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flex_color_scheme/flex_color_scheme.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-const Color fallbackSeed = Color(0xFFC0392B);
+const Color fallbackSeed = Color(0xFFFF7E70);
 
 TextTheme buildTextTheme() => GoogleFonts.nunitoTextTheme().copyWith(
   displayLarge: GoogleFonts.nunito(fontWeight: FontWeight.w800),
