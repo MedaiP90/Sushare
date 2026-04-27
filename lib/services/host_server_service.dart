@@ -81,6 +81,15 @@ class HostServerService {
   void _handleClientMessage(_Client client, SyncMessage msg) {
     switch (msg.type) {
       case SyncMessageType.userInfo:
+        if (_session == null || _session!.status == SessionStatus.closed) {
+          _sendTo(client.channel, SyncMessage(
+            type: SyncMessageType.sessionClosed,
+            data: {},
+          ));
+          client.channel.sink.close();
+          _clients.remove(client);
+          return;
+        }
         final userId = msg.data['userId'] as String? ?? '';
         client.userId = userId;
         _sendTo(client.channel, SyncMessage(
@@ -132,6 +141,16 @@ class HostServerService {
   void broadcastSessionUpdate(Session session) {
     _session = session;
     broadcast(SyncMessage(type: SyncMessageType.sessionUpdate, data: session.toJson()));
+  }
+
+  void sendSessionClosedToGuests() {
+    broadcast(SyncMessage(type: SyncMessageType.sessionClosed, data: {}));
+    for (final c in List.of(_clients)) {
+      try {
+        c.channel.sink.close();
+      } catch (_) {}
+    }
+    _clients.clear();
   }
 
   void broadcastRestaurantUpdate(Restaurant restaurant) {

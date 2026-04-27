@@ -7,6 +7,7 @@ enum SyncMessageType {
   sessionUpdate,
   restaurantUpdate,
   subOrderBroadcast,
+  sessionClosed,
 }
 
 class SyncMessage {

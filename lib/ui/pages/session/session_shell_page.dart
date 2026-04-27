@@ -38,6 +38,7 @@ class _SessionShellPageState extends ConsumerState<SessionShellPage> {
   StreamSubscription<SyncMessage>? _hostMsgSub;
   StreamSubscription<SyncMessage>? _clientMsgSub;
   StreamSubscription<bool>? _clientConnSub;
+  StreamSubscription<void>? _sessionClosedSub;
   Timer? _reconnectTimer;
 
   @override
@@ -45,6 +46,7 @@ class _SessionShellPageState extends ConsumerState<SessionShellPage> {
     _hostMsgSub?.cancel();
     _clientMsgSub?.cancel();
     _clientConnSub?.cancel();
+    _sessionClosedSub?.cancel();
     _reconnectTimer?.cancel();
     ref.read(sessionClientServiceProvider).disconnect();
     if (_isGuest) {
@@ -129,6 +131,8 @@ class _SessionShellPageState extends ConsumerState<SessionShellPage> {
                       l10n.sessionCloseButton,
                     );
                     if (confirm == true && context.mounted) {
+                      final hostServer = ref.read(hostServerServiceProvider);
+                      hostServer.sendSessionClosedToGuests();
                       await ref
                           .read(sessionsProvider.notifier)
                           .closeSession(widget.sessionId);
@@ -142,6 +146,8 @@ class _SessionShellPageState extends ConsumerState<SessionShellPage> {
                       isDestructive: true,
                     );
                     if (confirm == true && context.mounted) {
+                      final hostServer = ref.read(hostServerServiceProvider);
+                      hostServer.sendSessionClosedToGuests();
                       await ref
                           .read(sessionsProvider.notifier)
                           .deleteSession(widget.sessionId);
@@ -339,6 +345,20 @@ class _SessionShellPageState extends ConsumerState<SessionShellPage> {
     _clientMsgSub?.cancel();
     _clientMsgSub = client.messages.listen((msg) => _handleGuestMessage(msg, session));
 
+    _sessionClosedSub?.cancel();
+    _sessionClosedSub = client.sessionClosed.listen((_) {
+      if (!mounted) return;
+      client.markSessionClosed();
+      final sessionRepo = ref.read(sessionRepositoryProvider);
+      final closedSession = session.copyWith(status: SessionStatus.closed);
+      sessionRepo.saveSession(closedSession);
+      ref.invalidate(sessionDetailProvider(session.id));
+      ref.invalidate(sessionsProvider);
+      setState(() {
+        _guestConnected = false;
+      });
+    });
+
     final connected = await client.connect(
       hostAddress: session.hostAddress!,
       userId: user.id,
@@ -359,6 +379,7 @@ class _SessionShellPageState extends ConsumerState<SessionShellPage> {
     _reconnectTimer = Timer(const Duration(seconds: 5), () async {
       if (!mounted) return;
       final client = ref.read(sessionClientServiceProvider);
+      if (client.isSessionClosed) return;
       if (!client.isConnected) {
         await client.connect(
           hostAddress: session.hostAddress!,
@@ -447,6 +468,16 @@ class _SessionShellPageState extends ConsumerState<SessionShellPage> {
         final local = await restaurantRepo.getRestaurantById(remote.id);
         await restaurantRepo.saveRestaurant(_mergeRestaurant(remote, local));
         if (mounted) ref.invalidate(restaurantDetailProvider(remote.id));
+
+      case SyncMessageType.sessionClosed:
+        final client = ref.read(sessionClientServiceProvider);
+        client.markSessionClosed();
+        final closedSession = currentSession.copyWith(status: SessionStatus.closed);
+        await sessionRepo.saveSession(closedSession);
+        if (mounted) {
+          ref.invalidate(sessionDetailProvider(currentSession.id));
+          ref.invalidate(sessionsProvider);
+        }
 
       case SyncMessageType.subOrderBroadcast:
         final so = PersonalSubOrder.fromJson(msg.data);
