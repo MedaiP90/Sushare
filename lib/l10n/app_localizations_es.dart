@@ -70,7 +70,20 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get onboardingJoinDescription =>
-      'Escanea un código QR o ingresa un código para unirte a la sesión de tus amigos.';
+      'Conéctate vía Bluetooth para unirte a la mesa de tus amigos y compartir pedidos.';
+
+  @override
+  String get bluetoothWarningTitle => 'Bluetooth Requerido';
+
+  @override
+  String get bluetoothWarningMessage =>
+      'El Bluetooth es necesario para unirte o compartir mesas. Puedes seguir usando la app como usuario único para gestionar tus propios pedidos.';
+
+  @override
+  String get bluetoothWarningOpenSettings => 'Abrir Ajustes';
+
+  @override
+  String get bluetoothWarningContinueAnyway => 'Continuar Igual';
 
   @override
   String get onboardingEnjoyTitle => 'Disfruta de la Comida';

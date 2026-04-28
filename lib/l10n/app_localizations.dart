@@ -221,8 +221,32 @@ abstract class AppLocalizations {
   /// No description provided for @onboardingJoinDescription.
   ///
   /// In en, this message translates to:
-  /// **'Scan a QR code or enter a code to join your friends\' session.'**
+  /// **'Connect via Bluetooth to join your friends\' table and share orders.'**
   String get onboardingJoinDescription;
+
+  /// No description provided for @bluetoothWarningTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Bluetooth Required'**
+  String get bluetoothWarningTitle;
+
+  /// No description provided for @bluetoothWarningMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Bluetooth is required to join or share tables. You can still use the app as a single user to manage your own orders.'**
+  String get bluetoothWarningMessage;
+
+  /// No description provided for @bluetoothWarningOpenSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Open Settings'**
+  String get bluetoothWarningOpenSettings;
+
+  /// No description provided for @bluetoothWarningContinueAnyway.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue Anyway'**
+  String get bluetoothWarningContinueAnyway;
 
   /// No description provided for @onboardingEnjoyTitle.
   ///

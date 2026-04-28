@@ -70,7 +70,20 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get onboardingJoinDescription =>
-      'Scan a QR code or enter a code to join your friends\' session.';
+      'Connect via Bluetooth to join your friends\' table and share orders.';
+
+  @override
+  String get bluetoothWarningTitle => 'Bluetooth Required';
+
+  @override
+  String get bluetoothWarningMessage =>
+      'Bluetooth is required to join or share tables. You can still use the app as a single user to manage your own orders.';
+
+  @override
+  String get bluetoothWarningOpenSettings => 'Open Settings';
+
+  @override
+  String get bluetoothWarningContinueAnyway => 'Continue Anyway';
 
   @override
   String get onboardingEnjoyTitle => 'Enjoy the Meal';

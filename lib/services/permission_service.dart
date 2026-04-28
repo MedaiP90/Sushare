@@ -216,4 +216,33 @@ class PermissionService {
   static Future<void> openSettings() async {
     await openAppSettings();
   }
+
+  static Future<bool> isBluetoothEnabled() async {
+    if (Platform.isAndroid) {
+      final bluetoothStatus = await Permission.bluetooth.status;
+      final locationStatus = await Permission.locationWhenInUse.status;
+      return bluetoothStatus.isGranted && locationStatus.isGranted;
+    } else {
+      final status = await Permission.bluetooth.status;
+      return status.isGranted;
+    }
+  }
+
+  static Future<bool> checkBluetoothPermissions() async {
+    if (Platform.isAndroid) {
+      final permissions = [
+        Permission.bluetooth,
+        Permission.bluetoothScan,
+        Permission.bluetoothAdvertise,
+        Permission.bluetoothConnect,
+        Permission.locationWhenInUse,
+        Permission.nearbyWifiDevices,
+      ];
+      final statuses = await permissions.request();
+      return statuses.values.every((s) => s.isGranted || s.isLimited);
+    } else {
+      final status = await Permission.bluetooth.request();
+      return status.isGranted;
+    }
+  }
 }
