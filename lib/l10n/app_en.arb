@@ -574,5 +574,39 @@
   "leave": "Leave",
   "@leave": {},
   "personalOrderAddCustomDishTitle": "Add Custom Dish",
-  "@personalOrderAddCustomDishTitle": {}
+  "@personalOrderAddCustomDishTitle": {},
+
+  "joinTableConnecting": "Connecting…",
+  "@joinTableConnecting": {},
+  "joinTableNearbySessions": "Nearby Sessions",
+  "@joinTableNearbySessions": {},
+  "joinTableScanning": "Scanning for nearby sessions…",
+  "@joinTableScanning": {},
+  "joinTableCrossPlatformNote": "BLE discovery works between Android and iOS devices. Use the QR code or session code if the table doesn't appear automatically.",
+  "@joinTableCrossPlatformNote": {},
+  "joinTableSessionTileSubtitle": "Host: {hostName}  ·  Code: {shortId}",
+  "@joinTableSessionTileSubtitle": {
+    "placeholders": {
+      "hostName": { "type": "String" },
+      "shortId": { "type": "String" }
+    }
+  },
+  "joinTableErrorNoProfile": "Please set up your profile first.",
+  "@joinTableErrorNoProfile": {},
+  "joinTableErrorConnectFailed": "Could not connect. Make sure you're close to the host device.",
+  "@joinTableErrorConnectFailed": {},
+  "joinTableErrorSyncTimeout": "Timed out waiting for session data from host.",
+  "@joinTableErrorSyncTimeout": {},
+  "joinTableErrorInvalidData": "Received invalid data from host.",
+  "@joinTableErrorInvalidData": {},
+  "joinTableErrorConnectionTimeout": "Connection timed out.",
+  "@joinTableErrorConnectionTimeout": {},
+  "joinTableErrorNotFound": "Session \"{code}\" not found nearby. Make sure the host has Bluetooth enabled and you're within range.",
+  "@joinTableErrorNotFound": {
+    "placeholders": { "code": { "type": "String" } }
+  },
+  "sessionReconnect": "Reconnect",
+  "@sessionReconnect": {},
+  "sessionShareBleHint": "Make sure Bluetooth is enabled on all devices.",
+  "@sessionShareBleHint": {}
 }

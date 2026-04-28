@@ -1,34 +1,54 @@
 import 'dart:async';
 import 'dart:convert';
-import 'package:flutter_nearby_connections_plus/flutter_nearby_connections_plus.dart';
+import 'dart:typed_data';
+
+import 'package:bluetooth_low_energy/bluetooth_low_energy.dart';
+
 import '../domain/models/personal_sub_order.dart';
 import '../domain/models/restaurant.dart';
 import '../domain/models/session.dart';
+import 'ble_framing.dart';
 import 'sync_message.dart';
 
-/// Encodes session info into a BLE advertisement name (≤ 42 chars for iOS MCPeerID).
-/// Format: "S|{8charId}|{name≤20}|{host≤10}"
+// Custom 128-bit UUIDs for the Sushare BLE GATT service.
+final _serviceUuid = UUID.fromString('19B10000-E8F2-537E-4F6C-D104768A1214');
+// TX: host → participant (notify characteristic)
+final _txUuid = UUID.fromString('19B10001-E8F2-537E-4F6C-D104768A1214');
+// RX: participant → host (write characteristic)
+final _rxUuid = UUID.fromString('19B10002-E8F2-537E-4F6C-D104768A1214');
+
+/// Encodes session info into a BLE advertisement local name (≤ 36 chars).
+/// Format: "S|{8charId}|{name≤16}|{host≤8}"
 String encodeAdvertisementName({
   required String sessionId,
   required String sessionName,
   required String hostName,
 }) {
   final shortId = sessionId.substring(0, 8).toUpperCase();
-  final name = sessionName.length > 20 ? sessionName.substring(0, 20) : sessionName;
-  final host = hostName.length > 10 ? hostName.substring(0, 10) : hostName;
+  final name =
+      sessionName.length > 16 ? sessionName.substring(0, 16) : sessionName;
+  final host = hostName.length > 8 ? hostName.substring(0, 8) : hostName;
   return 'S|$shortId|$name|$host';
 }
 
 class HostBleService {
-  NearbyService? _nearby;
+  final _peripheral = PeripheralManager();
+
   Session? _session;
   Restaurant? _restaurant;
   final _subOrders = <String, PersonalSubOrder>{};
-  StreamSubscription? _stateSub;
-  StreamSubscription? _dataSub;
-  Set<String> _connectedIds = {};
-  final _msgCtrl = StreamController<SyncMessage>.broadcast();
 
+  // Keyed by Central UUID string. Only centrals that have subscribed to
+  // TX notifications are tracked here so notifyCharacteristic succeeds.
+  final _connectedCentrals = <String, Central>{};
+  final _centralAssemblers = <String, ChunkAssembler>{};
+
+  GATTCharacteristic? _txCharacteristic;
+
+  StreamSubscription? _writesSub;
+  StreamSubscription? _notifyStateSub;
+
+  final _msgCtrl = StreamController<SyncMessage>.broadcast();
   bool _isRunning = false;
 
   bool get isRunning => _isRunning;
@@ -49,53 +69,91 @@ class HostBleService {
   }) async {
     if (_isRunning) return;
 
-    final advName = encodeAdvertisementName(
-      sessionId: sessionId,
-      sessionName: sessionName,
-      hostName: hostName,
+    final txChar = GATTCharacteristic.mutable(
+      uuid: _txUuid,
+      properties: [GATTCharacteristicProperty.notify],
+      permissions: [GATTCharacteristicPermission.read],
+      descriptors: [],
+    );
+    _txCharacteristic = txChar;
+
+    final rxChar = GATTCharacteristic.mutable(
+      uuid: _rxUuid,
+      properties: [
+        GATTCharacteristicProperty.write,
+        GATTCharacteristicProperty.writeWithoutResponse,
+      ],
+      permissions: [GATTCharacteristicPermission.write],
+      descriptors: [],
     );
 
-    _nearby = NearbyService();
-    await _nearby!.init(
-      serviceType: 'sushare',
-      strategy: Strategy.P2P_STAR,
-      deviceName: advName,
-      callback: (isRunning) async {
-        if (isRunning) await _nearby!.startAdvertisingPeer();
-      },
-    );
+    await _peripheral.removeAllServices();
+    await _peripheral.addService(GATTService(
+      uuid: _serviceUuid,
+      isPrimary: true,
+      includedServices: [],
+      characteristics: [txChar, rxChar],
+    ));
 
-    _stateSub = _nearby!.stateChangedSubscription(callback: _onStateChanged);
-    _dataSub = _nearby!.dataReceivedSubscription(callback: _onDataReceived);
+    _writesSub =
+        _peripheral.characteristicWriteRequested.listen(_onWrite);
+    _notifyStateSub = _peripheral.characteristicNotifyStateChanged
+        .listen(_onNotifyStateChanged);
+
+    await _peripheral.startAdvertising(Advertisement(
+      name: encodeAdvertisementName(
+        sessionId: sessionId,
+        sessionName: sessionName,
+        hostName: hostName,
+      ),
+      serviceUUIDs: [_serviceUuid],
+    ));
+
     _isRunning = true;
   }
 
-  void _onStateChanged(List<Device> devices) {
-    final nowConnected = devices
-        .where((d) => d.state == SessionState.connected)
-        .map((d) => d.deviceId)
-        .toSet();
-    _connectedIds = nowConnected;
+  void _onNotifyStateChanged(
+      GATTCharacteristicNotifyStateChangedEventArgs e) {
+    final id = e.central.uuid.toString();
+    if (e.state) {
+      _connectedCentrals[id] = e.central;
+      _centralAssemblers.putIfAbsent(id, ChunkAssembler.new);
+    } else {
+      _connectedCentrals.remove(id);
+      _centralAssemblers.remove(id);
+    }
   }
 
-  void _onDataReceived(dynamic data) {
+  void _onWrite(GATTCharacteristicWriteRequestedEventArgs e) {
+    // Always respond to write-with-response so the central doesn't time out.
+    _peripheral.respondWriteRequest(e.request).catchError((_) {});
+
+    final id = e.central.uuid.toString();
+    final assembler =
+        _centralAssemblers.putIfAbsent(id, ChunkAssembler.new);
+    final complete = assembler.feed(e.request.value);
+    if (complete == null) return;
     try {
       final msg = SyncMessage.fromJson(
-          jsonDecode(data.message as String) as Map<String, dynamic>);
-      _handleClientMessage(data.deviceId as String, msg);
+          jsonDecode(utf8.decode(complete)) as Map<String, dynamic>);
+      _handleClientMessage(id, e.central, msg);
     } catch (_) {}
   }
 
-  void _handleClientMessage(String senderId, SyncMessage msg) {
+  void _handleClientMessage(
+      String centralId, Central central, SyncMessage msg) {
+    // Track the central even if the notify-state event arrived slightly late.
+    _connectedCentrals.putIfAbsent(centralId, () => central);
+
     switch (msg.type) {
       case SyncMessageType.userInfo:
         if (_session == null || _session!.status == SessionStatus.closed) {
-          _sendTo(senderId,
+          _sendTo(central,
               const SyncMessage(type: SyncMessageType.sessionClosed, data: {}));
           return;
         }
         _sendTo(
-          senderId,
+          central,
           SyncMessage(
             type: SyncMessageType.initialSync,
             data: {
@@ -116,7 +174,7 @@ class HostBleService {
           SyncMessage(
               type: SyncMessageType.subOrderBroadcast,
               data: stripped.toJson()),
-          excludeId: senderId,
+          excludeId: centralId,
         );
         _msgCtrl.add(msg);
 
@@ -125,19 +183,32 @@ class HostBleService {
     }
   }
 
-  void _sendTo(String endpointId, SyncMessage msg) {
-    try {
-      _nearby?.sendMessage(endpointId, jsonEncode(msg.toJson()));
-    } catch (_) {}
+  void _sendTo(Central central, SyncMessage msg) {
+    if (_txCharacteristic == null) return;
+    final bytes =
+        Uint8List.fromList(utf8.encode(jsonEncode(msg.toJson())));
+    _sendChunks(central, bytes);
+  }
+
+  // Sends chunks sequentially so the BLE stack is not overwhelmed.
+  Future<void> _sendChunks(Central central, Uint8List bytes) async {
+    for (final chunk in chunkBytes(bytes)) {
+      try {
+        await _peripheral.notifyCharacteristic(
+            central, _txCharacteristic!,
+            value: chunk);
+      } catch (_) {
+        break;
+      }
+    }
   }
 
   void _broadcastExcept(SyncMessage msg, {String? excludeId}) {
-    final json = jsonEncode(msg.toJson());
-    for (final id in List.of(_connectedIds)) {
-      if (id != excludeId) {
-        try {
-          _nearby?.sendMessage(id, json);
-        } catch (_) {}
+    final bytes =
+        Uint8List.fromList(utf8.encode(jsonEncode(msg.toJson())));
+    for (final entry in List.of(_connectedCentrals.entries)) {
+      if (entry.key != excludeId) {
+        _sendChunks(entry.value, bytes);
       }
     }
   }
@@ -146,8 +217,8 @@ class HostBleService {
 
   void broadcastSessionUpdate(Session session) {
     _session = session;
-    broadcast(
-        SyncMessage(type: SyncMessageType.sessionUpdate, data: session.toJson()));
+    broadcast(SyncMessage(
+        type: SyncMessageType.sessionUpdate, data: session.toJson()));
   }
 
   void broadcastRestaurantUpdate(Restaurant restaurant) {
@@ -158,21 +229,25 @@ class HostBleService {
   }
 
   void sendSessionClosedToGuests() {
-    broadcast(const SyncMessage(type: SyncMessageType.sessionClosed, data: {}));
-    _connectedIds.clear();
+    broadcast(
+        const SyncMessage(type: SyncMessageType.sessionClosed, data: {}));
+    _connectedCentrals.clear();
+    _centralAssemblers.clear();
   }
 
   Future<void> stop() async {
     if (!_isRunning) return;
-    _stateSub?.cancel();
-    _dataSub?.cancel();
-    _stateSub = null;
-    _dataSub = null;
+    _writesSub?.cancel();
+    _notifyStateSub?.cancel();
+    _writesSub = null;
+    _notifyStateSub = null;
     try {
-      await _nearby?.stopAdvertisingPeer();
+      await _peripheral.stopAdvertising();
+      await _peripheral.removeAllServices();
     } catch (_) {}
-    _connectedIds.clear();
-    _nearby = null;
+    _connectedCentrals.clear();
+    _centralAssemblers.clear();
+    _txCharacteristic = null;
     _isRunning = false;
   }
 

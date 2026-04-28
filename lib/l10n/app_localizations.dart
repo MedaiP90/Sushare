@@ -1585,6 +1585,84 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Add Custom Dish'**
   String get personalOrderAddCustomDishTitle;
+
+  /// No description provided for @joinTableConnecting.
+  ///
+  /// In en, this message translates to:
+  /// **'Connecting…'**
+  String get joinTableConnecting;
+
+  /// No description provided for @joinTableNearbySessions.
+  ///
+  /// In en, this message translates to:
+  /// **'Nearby Sessions'**
+  String get joinTableNearbySessions;
+
+  /// No description provided for @joinTableScanning.
+  ///
+  /// In en, this message translates to:
+  /// **'Scanning for nearby sessions…'**
+  String get joinTableScanning;
+
+  /// No description provided for @joinTableCrossPlatformNote.
+  ///
+  /// In en, this message translates to:
+  /// **'BLE discovery works between Android and iOS devices. Use the QR code or session code if the table doesn\'t appear automatically.'**
+  String get joinTableCrossPlatformNote;
+
+  /// No description provided for @joinTableSessionTileSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Host: {hostName}  ·  Code: {shortId}'**
+  String joinTableSessionTileSubtitle(String hostName, String shortId);
+
+  /// No description provided for @joinTableErrorNoProfile.
+  ///
+  /// In en, this message translates to:
+  /// **'Please set up your profile first.'**
+  String get joinTableErrorNoProfile;
+
+  /// No description provided for @joinTableErrorConnectFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not connect. Make sure you\'re close to the host device.'**
+  String get joinTableErrorConnectFailed;
+
+  /// No description provided for @joinTableErrorSyncTimeout.
+  ///
+  /// In en, this message translates to:
+  /// **'Timed out waiting for session data from host.'**
+  String get joinTableErrorSyncTimeout;
+
+  /// No description provided for @joinTableErrorInvalidData.
+  ///
+  /// In en, this message translates to:
+  /// **'Received invalid data from host.'**
+  String get joinTableErrorInvalidData;
+
+  /// No description provided for @joinTableErrorConnectionTimeout.
+  ///
+  /// In en, this message translates to:
+  /// **'Connection timed out.'**
+  String get joinTableErrorConnectionTimeout;
+
+  /// No description provided for @joinTableErrorNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'Session \"{code}\" not found nearby. Make sure the host has Bluetooth enabled and you\'re within range.'**
+  String joinTableErrorNotFound(String code);
+
+  /// No description provided for @sessionReconnect.
+  ///
+  /// In en, this message translates to:
+  /// **'Reconnect'**
+  String get sessionReconnect;
+
+  /// No description provided for @sessionShareBleHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Make sure Bluetooth is enabled on all devices.'**
+  String get sessionShareBleHint;
 }
 
 class _AppLocalizationsDelegate

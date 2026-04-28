@@ -574,5 +574,39 @@
   "leave": "Verlassen",
   "@leave": {},
   "personalOrderAddCustomDishTitle": "Eigenes Gericht hinzufügen",
-  "@personalOrderAddCustomDishTitle": {}
+  "@personalOrderAddCustomDishTitle": {},
+
+  "joinTableConnecting": "Verbinden…",
+  "@joinTableConnecting": {},
+  "joinTableNearbySessions": "Sitzungen in der Nähe",
+  "@joinTableNearbySessions": {},
+  "joinTableScanning": "Suche nach Sitzungen in der Nähe…",
+  "@joinTableScanning": {},
+  "joinTableCrossPlatformNote": "BLE-Erkennung funktioniert zwischen Android- und iOS-Geräten. Verwende den QR-Code oder Sitzungscode, wenn der Tisch nicht automatisch erscheint.",
+  "@joinTableCrossPlatformNote": {},
+  "joinTableSessionTileSubtitle": "Host: {hostName}  ·  Code: {shortId}",
+  "@joinTableSessionTileSubtitle": {
+    "placeholders": {
+      "hostName": { "type": "String" },
+      "shortId": { "type": "String" }
+    }
+  },
+  "joinTableErrorNoProfile": "Bitte richte zuerst dein Profil ein.",
+  "@joinTableErrorNoProfile": {},
+  "joinTableErrorConnectFailed": "Verbindung fehlgeschlagen. Stelle sicher, dass du in der Nähe des Host-Geräts bist.",
+  "@joinTableErrorConnectFailed": {},
+  "joinTableErrorSyncTimeout": "Zeitüberschreitung beim Warten auf Sitzungsdaten vom Host.",
+  "@joinTableErrorSyncTimeout": {},
+  "joinTableErrorInvalidData": "Ungültige Daten vom Host empfangen.",
+  "@joinTableErrorInvalidData": {},
+  "joinTableErrorConnectionTimeout": "Verbindungszeitüberschreitung.",
+  "@joinTableErrorConnectionTimeout": {},
+  "joinTableErrorNotFound": "Sitzung \"{code}\" in der Nähe nicht gefunden. Stelle sicher, dass der Host Bluetooth aktiviert hat und du in Reichweite bist.",
+  "@joinTableErrorNotFound": {
+    "placeholders": { "code": { "type": "String" } }
+  },
+  "sessionReconnect": "Erneut verbinden",
+  "@sessionReconnect": {},
+  "sessionShareBleHint": "Stelle sicher, dass Bluetooth auf allen Geräten aktiviert ist.",
+  "@sessionShareBleHint": {}
 }

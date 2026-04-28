@@ -45,18 +45,10 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
-	<!-- Bluetooth / MultipeerConnectivity -->
+	<!-- Bluetooth Low Energy -->
 	<key>NSBluetoothAlwaysUsageDescription</key>
 	<string>Sushare uses Bluetooth to discover and connect to nearby devices for group ordering sessions.</string>
 	<key>NSBluetoothPeripheralUsageDescription</key>
 	<string>Sushare uses Bluetooth to host and join group ordering sessions with nearby devices.</string>
-	<!-- Local network (MultipeerConnectivity falls back to peer-to-peer Wi-Fi) -->
-	<key>NSLocalNetworkUsageDescription</key>
-	<string>Sushare uses the local network to exchange session data with nearby devices.</string>
-	<key>NSBonjourServices</key>
-	<array>
-		<string>_sushare._tcp</string>
-		<string>_sushare._udp</string>
-	</array>
 </dict>
 </plist>

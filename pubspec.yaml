@@ -19,7 +19,7 @@ dependencies:
   json_annotation: ^4.9.0
   uuid: ^4.5.1
 
-  flutter_nearby_connections_plus: ^1.0.0
+  bluetooth_low_energy: ^6.2.0
   http: ^1.2.0          # used by menu_ai_service for external AI API calls
 
   go_router: ^14.8.1

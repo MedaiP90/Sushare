@@ -67,9 +67,10 @@ class _JoinSessionPageState extends ConsumerState<JoinSessionPage> {
   // ── Connection ──────────────────────────────────────────────────────────────
 
   Future<void> _connectTo(DiscoveredSession session) async {
+    final l10n = AppLocalizations.of(context)!;
     final user = ref.read(profileViewModelProvider).value;
     if (user == null) {
-      _setError('Please set up your profile first.');
+      _setError(l10n.joinTableErrorNoProfile);
       return;
     }
 
@@ -100,24 +101,26 @@ class _JoinSessionPageState extends ConsumerState<JoinSessionPage> {
         userInfo: userInfo,
         myDeviceName: user.username,
       );
-      if (!connected) throw Exception('Could not connect. Make sure you\'re close to the host device.');
+      if (!connected) {
+        _setError(l10n.joinTableErrorConnectFailed);
+        return;
+      }
 
       // Wait for initialSync from the host (contains session + restaurant data).
       final initialSync = await svc.messages
           .where((m) => m.type == SyncMessageType.initialSync)
           .first
-          .timeout(
-            const Duration(seconds: 15),
-            onTimeout: () => throw TimeoutException(
-                'Timed out waiting for session data from host.'),
-          );
+          .timeout(const Duration(seconds: 15));
 
       final sessionRepo = ref.read(sessionRepositoryProvider);
       final restaurantRepo = ref.read(restaurantRepositoryProvider);
 
       final sessionData =
           initialSync.data['session'] as Map<String, dynamic>?;
-      if (sessionData == null) throw Exception('Received invalid data from host.');
+      if (sessionData == null) {
+        _setError(l10n.joinTableErrorInvalidData);
+        return;
+      }
 
       final remoteSession = Session.fromJson(sessionData);
       await sessionRepo.saveSession(remoteSession);
@@ -130,10 +133,10 @@ class _JoinSessionPageState extends ConsumerState<JoinSessionPage> {
       }
 
       if (mounted) context.go('/sessions/${remoteSession.id}');
-    } on TimeoutException catch (e) {
-      _setError(e.message ?? 'Connection timed out.');
-    } catch (e) {
-      _setError(e.toString().replaceFirst('Exception: ', ''));
+    } on TimeoutException {
+      _setError(AppLocalizations.of(context)!.joinTableErrorSyncTimeout);
+    } catch (_) {
+      _setError(AppLocalizations.of(context)!.joinTableErrorConnectionTimeout);
     }
   }
 
@@ -170,8 +173,7 @@ class _JoinSessionPageState extends ConsumerState<JoinSessionPage> {
     if (match != null) {
       _connectTo(match);
     } else {
-      _setError('Session "$code" not found nearby. Make sure the host has '
-          'Bluetooth enabled and you\'re within range.');
+      _setError(AppLocalizations.of(context)!.joinTableErrorNotFound(code));
     }
   }
 
@@ -200,13 +202,13 @@ class _JoinSessionPageState extends ConsumerState<JoinSessionPage> {
         centerTitle: true,
       ),
       body: _isConnecting
-          ? const Center(
+          ? Center(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  CircularProgressIndicator(),
-                  SizedBox(height: 16),
-                  Text('Connecting…'),
+                  const CircularProgressIndicator(),
+                  const SizedBox(height: 16),
+                  Text(l10n.joinTableConnecting),
                 ],
               ),
             )
@@ -237,7 +239,7 @@ class _JoinSessionPageState extends ConsumerState<JoinSessionPage> {
                               Icon(Icons.bluetooth_searching,
                                   color: colorScheme.primary),
                               const SizedBox(width: 8),
-                              Text('Nearby Sessions',
+                              Text(l10n.joinTableNearbySessions,
                                   style: Theme.of(context)
                                       .textTheme
                                       .titleMedium),
@@ -256,7 +258,7 @@ class _JoinSessionPageState extends ConsumerState<JoinSessionPage> {
                             Padding(
                               padding: const EdgeInsets.symmetric(vertical: 8),
                               child: Text(
-                                'Scanning for nearby sessions…',
+                                l10n.joinTableScanning,
                                 style: Theme.of(context)
                                     .textTheme
                                     .bodyMedium
@@ -367,10 +369,7 @@ class _JoinSessionPageState extends ConsumerState<JoinSessionPage> {
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
-                              'BLE discovery works between Android devices and '
-                              'between iOS devices. For mixed groups, have '
-                              'everyone join from the same platform, or ask the '
-                              'host to share the session code.',
+                              l10n.joinTableCrossPlatformNote,
                               style: Theme.of(context)
                                   .textTheme
                                   .bodySmall
@@ -460,7 +459,7 @@ class _SessionTile extends StatelessWidget {
         child: Icon(Icons.restaurant, color: colorScheme.onPrimaryContainer),
       ),
       title: Text(session.sessionName),
-      subtitle: Text('Host: ${session.hostName}  ·  Code: ${session.shortId}'),
+      subtitle: Text(AppLocalizations.of(context)!.joinTableSessionTileSubtitle(session.hostName, session.shortId)),
       trailing: Icon(Icons.bluetooth, color: colorScheme.primary),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       onTap: onTap,

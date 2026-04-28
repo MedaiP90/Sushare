@@ -174,19 +174,17 @@ class PermissionService {
     );
   }
 
-  /// Requests all permissions required for BLE P2P (Nearby Connections).
-  /// On Android 12+ this includes BLUETOOTH_SCAN, BLUETOOTH_ADVERTISE, and
-  /// BLUETOOTH_CONNECT; older Android also needs ACCESS_FINE_LOCATION.
-  /// On iOS the system prompt is triggered automatically by the plugin.
+  /// Requests all permissions required for standard BLE (bluetooth_low_energy).
+  /// Android 12+: BLUETOOTH_SCAN, BLUETOOTH_ADVERTISE, BLUETOOTH_CONNECT.
+  /// Android 6–11: legacy BLUETOOTH + location for BLE scanning.
+  /// iOS: system prompt triggered by NSBluetoothAlwaysUsageDescription in Info.plist.
   static Future<bool> requestBluetooth(BuildContext context) async {
     if (Platform.isAndroid) {
+      // Android 12+ (API 31+)
       final permissions = [
-        Permission.bluetooth,
         Permission.bluetoothScan,
         Permission.bluetoothAdvertise,
         Permission.bluetoothConnect,
-        Permission.locationWhenInUse,
-        Permission.nearbyWifiDevices,
       ];
       final statuses = await permissions.request();
       final allGranted =
@@ -195,8 +193,8 @@ class PermissionService {
         await _showSettingsDialog(
           context,
           'Bluetooth Access Required',
-          'Bluetooth and location permissions are needed to discover and '
-              'connect to nearby devices. Please enable them in settings.',
+          'Bluetooth permissions are needed to discover and connect to '
+              'nearby devices. Please enable them in settings.',
         );
       }
       return allGranted;
@@ -219,9 +217,8 @@ class PermissionService {
 
   static Future<bool> isBluetoothEnabled() async {
     if (Platform.isAndroid) {
-      final bluetoothStatus = await Permission.bluetooth.status;
-      final locationStatus = await Permission.locationWhenInUse.status;
-      return bluetoothStatus.isGranted && locationStatus.isGranted;
+      final status = await Permission.bluetoothScan.status;
+      return status.isGranted;
     } else {
       final status = await Permission.bluetooth.status;
       return status.isGranted;
@@ -231,12 +228,9 @@ class PermissionService {
   static Future<bool> checkBluetoothPermissions() async {
     if (Platform.isAndroid) {
       final permissions = [
-        Permission.bluetooth,
         Permission.bluetoothScan,
         Permission.bluetoothAdvertise,
         Permission.bluetoothConnect,
-        Permission.locationWhenInUse,
-        Permission.nearbyWifiDevices,
       ];
       final statuses = await permissions.request();
       return statuses.values.every((s) => s.isGranted || s.isLimited);

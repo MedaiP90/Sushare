@@ -835,4 +835,51 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get personalOrderAddCustomDishTitle => 'Add Custom Dish';
+
+  @override
+  String get joinTableConnecting => 'Connecting…';
+
+  @override
+  String get joinTableNearbySessions => 'Nearby Sessions';
+
+  @override
+  String get joinTableScanning => 'Scanning for nearby sessions…';
+
+  @override
+  String get joinTableCrossPlatformNote =>
+      'BLE discovery works between Android and iOS devices. Use the QR code or session code if the table doesn\'t appear automatically.';
+
+  @override
+  String joinTableSessionTileSubtitle(String hostName, String shortId) {
+    return 'Host: $hostName  ·  Code: $shortId';
+  }
+
+  @override
+  String get joinTableErrorNoProfile => 'Please set up your profile first.';
+
+  @override
+  String get joinTableErrorConnectFailed =>
+      'Could not connect. Make sure you\'re close to the host device.';
+
+  @override
+  String get joinTableErrorSyncTimeout =>
+      'Timed out waiting for session data from host.';
+
+  @override
+  String get joinTableErrorInvalidData => 'Received invalid data from host.';
+
+  @override
+  String get joinTableErrorConnectionTimeout => 'Connection timed out.';
+
+  @override
+  String joinTableErrorNotFound(String code) {
+    return 'Session \"$code\" not found nearby. Make sure the host has Bluetooth enabled and you\'re within range.';
+  }
+
+  @override
+  String get sessionReconnect => 'Reconnect';
+
+  @override
+  String get sessionShareBleHint =>
+      'Make sure Bluetooth is enabled on all devices.';
 }

@@ -185,7 +185,7 @@ class _SessionShellPageState extends ConsumerState<SessionShellPage> {
                   onColor: Theme.of(context).colorScheme.onErrorContainer,
                   trailing: TextButton(
                     onPressed: () => context.go('/sessions/join'),
-                    child: const Text('Reconnect'),
+                    child: Text(AppLocalizations.of(context)!.sessionReconnect),
                   ),
                 ),
               Expanded(child: tabs[safeIndex]),
@@ -609,7 +609,7 @@ class _SessionShellPageState extends ConsumerState<SessionShellPage> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Make sure Bluetooth is enabled on all devices.',
+                    AppLocalizations.of(context)!.sessionShareBleHint,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: Theme.of(context)
                             .colorScheme

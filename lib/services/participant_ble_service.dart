@@ -1,12 +1,21 @@
 import 'dart:async';
 import 'dart:convert';
-import 'package:flutter_nearby_connections_plus/flutter_nearby_connections_plus.dart';
+import 'dart:typed_data';
+
+import 'package:bluetooth_low_energy/bluetooth_low_energy.dart';
+
 import '../domain/models/personal_sub_order.dart';
+import 'ble_framing.dart';
 import 'sync_message.dart';
 
-/// A nearby session discovered via BLE advertisement.
+// Must match the UUIDs declared in HostBleService.
+final _serviceUuid = UUID.fromString('19B10000-E8F2-537E-4F6C-D104768A1214');
+final _txUuid = UUID.fromString('19B10001-E8F2-537E-4F6C-D104768A1214');
+final _rxUuid = UUID.fromString('19B10002-E8F2-537E-4F6C-D104768A1214');
+
+/// A Sushare session discovered via BLE advertisement scanning.
 class DiscoveredSession {
-  final String endpointId;
+  final String endpointId; // Peripheral UUID string
   final String shortId;
   final String sessionName;
   final String hostName;
@@ -19,11 +28,11 @@ class DiscoveredSession {
   });
 }
 
-/// Parses a Sushare host advertisement name.
+/// Parses a Sushare host advertisement local name.
 /// Expected format: "S|{8charId}|{sessionName}|{hostName}"
-/// Returns null when the name does not match the format.
-DiscoveredSession? parseAdvertisement(String endpointId, String deviceName) {
-  final parts = deviceName.split('|');
+DiscoveredSession? parseAdvertisement(String endpointId, String? name) {
+  if (name == null) return null;
+  final parts = name.split('|');
   if (parts.length != 4 || parts[0] != 'S') return null;
   return DiscoveredSession(
     endpointId: endpointId,
@@ -34,14 +43,16 @@ DiscoveredSession? parseAdvertisement(String endpointId, String deviceName) {
 }
 
 class ParticipantBleService {
-  NearbyService? _nearby;
-  String? _hostEndpointId;
-  String? _pendingEndpointId;
-  Map<String, dynamic>? _pendingUserInfo;
-  Completer<bool>? _connectCompleter;
+  final _central = CentralManager();
 
-  StreamSubscription? _stateSub;
-  StreamSubscription? _dataSub;
+  Peripheral? _hostPeripheral;
+  GATTCharacteristic? _rxCharacteristic;
+
+  final _assembler = ChunkAssembler();
+
+  StreamSubscription? _discoveredSub;
+  StreamSubscription? _connStateSub;
+  StreamSubscription? _notifiedSub;
 
   final _msgCtrl = StreamController<SyncMessage>.broadcast();
   final _connCtrl = StreamController<bool>.broadcast();
@@ -49,7 +60,9 @@ class ParticipantBleService {
   final _discoveredCtrl =
       StreamController<List<DiscoveredSession>>.broadcast();
 
+  // UUID string → DiscoveredSession / Peripheral for lookup during connect().
   final _discoveredMap = <String, DiscoveredSession>{};
+  final _peripheralMap = <String, Peripheral>{};
 
   bool _isConnected = false;
   bool _isSessionClosed = false;
@@ -66,126 +79,55 @@ class ParticipantBleService {
 
   Future<void> startDiscovery({String? myDeviceName}) async {
     if (_isDiscovering) return;
-    _nearby = NearbyService();
-    await _nearby!.init(
-      serviceType: 'sushare',
-      strategy: Strategy.P2P_STAR,
-      deviceName: myDeviceName,
-      callback: (isRunning) async {
-        if (isRunning) await _nearby!.startBrowsingForPeers();
-      },
-    );
-    _stateSub = _nearby!.stateChangedSubscription(callback: _onStateChanged);
-    _dataSub = _nearby!.dataReceivedSubscription(callback: _onDataReceived);
+    _discoveredSub = _central.discovered.listen(_onDiscovered);
+    _connStateSub =
+        _central.connectionStateChanged.listen(_onConnectionStateChanged);
+    _notifiedSub =
+        _central.characteristicNotified.listen(_onCharacteristicNotified);
+    await _central.startDiscovery(serviceUUIDs: [_serviceUuid]);
     _isDiscovering = true;
   }
 
   Future<void> stopDiscovery() async {
     if (!_isDiscovering) return;
+    _discoveredSub?.cancel();
+    _discoveredSub = null;
     try {
-      await _nearby?.stopBrowsingForPeers();
+      await _central.stopDiscovery();
     } catch (_) {}
     _isDiscovering = false;
     _discoveredMap.clear();
+    _peripheralMap.clear();
   }
 
-  /// Initiates a BLE connection to [endpointId], sends [userInfo] once
-  /// the connection is confirmed, then waits up to 15 s for the host to
-  /// accept.  Returns true on success.
-  Future<bool> connect({
-    required String endpointId,
-    required Map<String, dynamic> userInfo,
-    String? myDeviceName,
-  }) async {
-    if (_isConnected) return true;
-
-    // Ensure we're discovering so the underlying stack is running.
-    if (!_isDiscovering) {
-      await startDiscovery(myDeviceName: myDeviceName);
-    }
-
-    _pendingEndpointId = endpointId;
-    _pendingUserInfo = userInfo;
-    _connectCompleter = Completer<bool>();
-
-    try {
-      await _nearby!.invitePeer(
-        deviceID: endpointId,
-        deviceName: myDeviceName ?? '',
-      );
-    } catch (_) {
-      _connectCompleter?.complete(false);
-      _connectCompleter = null;
-      return false;
-    }
-
-    return _connectCompleter!.future.timeout(
-      const Duration(seconds: 15),
-      onTimeout: () {
-        _connectCompleter = null;
-        return false;
-      },
-    );
-  }
-
-  void _onStateChanged(List<Device> devices) {
-    bool discoveryChanged = false;
-
-    for (final device in devices) {
-      final id = device.deviceId;
-
-      switch (device.state) {
-        case SessionState.notConnected:
-          // If this was our connected host, handle the drop.
-          if (id == _hostEndpointId) {
-            _hostEndpointId = null;
-            _isConnected = false;
-            _connCtrl.add(false);
-          }
-          // Track as a discovered session if it has a valid Sushare advertisement.
-          final parsed = parseAdvertisement(id, device.deviceName);
-          if (parsed != null && !_discoveredMap.containsKey(id)) {
-            _discoveredMap[id] = parsed;
-            discoveryChanged = true;
-          }
-
-        case SessionState.connected:
-          if (id == _pendingEndpointId && !_isConnected) {
-            _hostEndpointId = id;
-            _isConnected = true;
-            _connCtrl.add(true);
-            // Send registration message to host.
-            if (_pendingUserInfo != null) {
-              _send(SyncMessage(
-                  type: SyncMessageType.userInfo, data: _pendingUserInfo!));
-              _pendingUserInfo = null;
-            }
-            _connectCompleter?.complete(true);
-            _connectCompleter = null;
-          }
-
-        default:
-          break;
-      }
-    }
-
-    // Remove devices that disappeared from the scan entirely.
-    final liveIds = devices.map((d) => d.deviceId).toSet();
-    final gone = _discoveredMap.keys.where((k) => !liveIds.contains(k)).toList();
-    if (gone.isNotEmpty) {
-      gone.forEach(_discoveredMap.remove);
-      discoveryChanged = true;
-    }
-
-    if (discoveryChanged) {
-      _discoveredCtrl.add(List.unmodifiable(_discoveredMap.values.toList()));
+  void _onDiscovered(DiscoveredEventArgs e) {
+    final id = e.peripheral.uuid.toString();
+    final session = parseAdvertisement(id, e.advertisement.name);
+    if (session == null) return;
+    _peripheralMap[id] = e.peripheral;
+    if (_discoveredMap[id]?.sessionName != session.sessionName) {
+      _discoveredMap[id] = session;
+      _discoveredCtrl
+          .add(List.unmodifiable(_discoveredMap.values.toList()));
     }
   }
 
-  void _onDataReceived(dynamic data) {
+  void _onConnectionStateChanged(PeripheralConnectionStateChangedEventArgs e) {
+    if (_hostPeripheral?.uuid.toString() != e.peripheral.uuid.toString()) return;
+    if (e.state == ConnectionState.disconnected) {
+      _hostPeripheral = null;
+      _rxCharacteristic = null;
+      _isConnected = false;
+      _connCtrl.add(false);
+    }
+  }
+
+  void _onCharacteristicNotified(GATTCharacteristicNotifiedEventArgs e) {
+    final complete = _assembler.feed(e.value);
+    if (complete == null) return;
     try {
       final msg = SyncMessage.fromJson(
-          jsonDecode(data.message as String) as Map<String, dynamic>);
+          jsonDecode(utf8.decode(complete)) as Map<String, dynamic>);
       if (msg.type == SyncMessageType.sessionClosed) {
         _isSessionClosed = true;
         _isConnected = false;
@@ -196,42 +138,137 @@ class ParticipantBleService {
     } catch (_) {}
   }
 
+  /// Connect to [endpointId] (a peripheral UUID string from [DiscoveredSession]),
+  /// subscribe to TX notifications, then send [userInfo] to register with the host.
+  Future<bool> connect({
+    required String endpointId,
+    required Map<String, dynamic> userInfo,
+    String? myDeviceName,
+  }) async {
+    if (_isConnected) return true;
+
+    final peripheral = _peripheralMap[endpointId];
+    if (peripheral == null) return false;
+
+    if (!_isDiscovering) await startDiscovery(myDeviceName: myDeviceName);
+
+    // Wait for connectionStateChanged to confirm the link is up.
+    final completer = Completer<bool>();
+    StreamSubscription? sub;
+    sub = _central.connectionStateChanged.listen((e) {
+      if (e.peripheral.uuid.toString() != endpointId) return;
+      if (completer.isCompleted) return;
+      if (e.state == ConnectionState.connected) {
+        sub?.cancel();
+        completer.complete(true);
+      } else if (e.state == ConnectionState.disconnected) {
+        sub?.cancel();
+        completer.complete(false);
+      }
+    });
+
+    try {
+      await _central.connect(peripheral);
+    } catch (_) {
+      sub.cancel();
+      return false;
+    }
+
+    final connected = await completer.future.timeout(
+      const Duration(seconds: 15),
+      onTimeout: () {
+        sub?.cancel();
+        return false;
+      },
+    );
+    if (!connected) return false;
+
+    try {
+      final services = await _central.discoverGATT(peripheral);
+
+      final svcMatch = _serviceUuid.toString().toUpperCase();
+      final service = services.firstWhere(
+        (s) => s.uuid.toString().toUpperCase() == svcMatch,
+        orElse: () =>
+            throw Exception('Sushare GATT service not found on host device'),
+      );
+
+      final txMatch = _txUuid.toString().toUpperCase();
+      final rxMatch = _rxUuid.toString().toUpperCase();
+      final txChar = service.characteristics
+          .firstWhere((c) => c.uuid.toString().toUpperCase() == txMatch);
+      final rxChar = service.characteristics
+          .firstWhere((c) => c.uuid.toString().toUpperCase() == rxMatch);
+
+      // Subscribe to host notifications before writing so the host can respond.
+      await _central.setCharacteristicNotifyState(
+          peripheral, txChar,
+          state: true);
+
+      _hostPeripheral = peripheral;
+      _rxCharacteristic = rxChar;
+      _isConnected = true;
+      _connCtrl.add(true);
+
+      // Register with the host; it will reply with initialSync via notify.
+      await _sendMsg(
+          SyncMessage(type: SyncMessageType.userInfo, data: userInfo));
+
+      return true;
+    } catch (_) {
+      try {
+        await _central.disconnect(peripheral);
+      } catch (_) {}
+      return false;
+    }
+  }
+
+  Future<void> _sendMsg(SyncMessage msg) async {
+    final peripheral = _hostPeripheral;
+    final rxChar = _rxCharacteristic;
+    if (peripheral == null || rxChar == null) return;
+    final bytes =
+        Uint8List.fromList(utf8.encode(jsonEncode(msg.toJson())));
+    for (final chunk in chunkBytes(bytes)) {
+      try {
+        await _central.writeCharacteristic(
+          peripheral,
+          rxChar,
+          value: chunk,
+          type: GATTCharacteristicWriteType.withResponse,
+        );
+      } catch (_) {
+        break;
+      }
+    }
+  }
+
   void pushSubOrderUpdate(PersonalSubOrder subOrder) {
     if (!_isConnected) return;
     final stripped = subOrder.copyWith(checklist: []);
-    _send(SyncMessage(
+    _sendMsg(SyncMessage(
         type: SyncMessageType.subOrderUpdate, data: stripped.toJson()));
   }
 
-  void _send(SyncMessage msg) {
-    if (_hostEndpointId == null) return;
-    try {
-      _nearby?.sendMessage(_hostEndpointId!, jsonEncode(msg.toJson()));
-    } catch (_) {}
-  }
-
-  void markSessionClosed() {
-    _isSessionClosed = true;
-  }
+  void markSessionClosed() => _isSessionClosed = true;
 
   Future<void> disconnect() async {
-    _connectCompleter?.complete(false);
-    _connectCompleter = null;
-    if (_hostEndpointId != null) {
+    final peripheral = _hostPeripheral;
+    _hostPeripheral = null;
+    _rxCharacteristic = null;
+    _isConnected = false;
+    if (peripheral != null) {
       try {
-        await _nearby?.disconnectPeer(deviceID: _hostEndpointId!);
+        await _central.disconnect(peripheral);
       } catch (_) {}
     }
-    _hostEndpointId = null;
-    _pendingEndpointId = null;
-    _isConnected = false;
   }
 
   void dispose() {
     disconnect();
     stopDiscovery();
-    _stateSub?.cancel();
-    _dataSub?.cancel();
+    _connStateSub?.cancel();
+    _notifiedSub?.cancel();
     _msgCtrl.close();
     _connCtrl.close();
     _sessionClosedCtrl.close();
