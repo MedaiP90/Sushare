@@ -42,7 +42,7 @@ class _NewSessionPageState extends ConsumerState<NewSessionPage> {
             hostUserId: user.id,
             hostUserName: user.username,
             hostFullName: '${user.firstName} ${user.lastName}'.trim(),
-            hostAvatarIconCodePoint: user.avatarIconCodePoint,
+            hostAvatarIconName: user.avatarIconName,
             hostAvatarColorValue: user.avatarColorValue,
           );
 

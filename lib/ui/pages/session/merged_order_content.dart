@@ -127,16 +127,15 @@ class MergedOrderContent extends ConsumerWidget {
             final subOrder = subOrders.where((s) => s.userId == participantId).firstOrNull;
             final hasOrdered = subOrder != null && subOrder.entries.isNotEmpty;
             final displayName = subOrder?.userName ?? participantId.substring(0, 6);
-            final avatarIconCodePoint = subOrder?.userAvatarIconCodePoint;
+            final avatarIconName = subOrder?.userAvatarIconName;
             final avatarColorValue = subOrder?.userAvatarColorValue;
 
             return ActionChip(
-              avatar: avatarIconCodePoint != null && avatarColorValue != null
+              avatar: avatarIconName != null && avatarColorValue != null
                   ? AvatarCircle(
-                      iconCodePoint: avatarIconCodePoint,
+                      iconName: avatarIconName,
                       colorValue: avatarColorValue,
-                      size: 32,
-                      iconSize: 18,
+                      size: 22,
                     )
                   : CircleAvatar(
                       backgroundColor: hasOrdered
@@ -151,7 +150,7 @@ class MergedOrderContent extends ConsumerWidget {
               backgroundColor: hasOrdered
                   ? Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.5)
                   : Theme.of(context).colorScheme.surfaceContainerHighest,
-              onPressed: () => _showParticipantInfo(context, subOrder, displayName, subOrder?.userFullName, avatarIconCodePoint, avatarColorValue, hasOrdered),
+              onPressed: () => _showParticipantInfo(context, subOrder, displayName, subOrder?.userFullName, avatarIconName, avatarColorValue, hasOrdered),
             );
           }).toList(),
         ),
@@ -164,7 +163,7 @@ class MergedOrderContent extends ConsumerWidget {
     PersonalSubOrder? subOrder,
     String displayName,
     String? fullName,
-    int? avatarIconCodePoint,
+    String? avatarIconName,
     int? avatarColorValue,
     bool hasOrdered,
   ) {
@@ -181,12 +180,11 @@ class MergedOrderContent extends ConsumerWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  if (avatarIconCodePoint != null && avatarColorValue != null)
+                  if (avatarIconName != null && avatarColorValue != null)
                     AvatarCircle(
-                      iconCodePoint: avatarIconCodePoint,
+                      iconName: avatarIconName,
                       colorValue: avatarColorValue,
                       size: 80,
-                      iconSize: 40,
                     )
                   else
                     CircleAvatar(

@@ -4,7 +4,7 @@ class PersonalSubOrder {
   final String userId;
   final String? userName;
   final String? userFullName;
-  final int? userAvatarIconCodePoint;
+  final String? userAvatarIconName;
   final int? userAvatarColorValue;
   final List<SubOrderEntry> entries;
   final List<ChecklistEntry> checklist;
@@ -17,7 +17,7 @@ class PersonalSubOrder {
     required this.userId,
     this.userName,
     this.userFullName,
-    this.userAvatarIconCodePoint,
+    this.userAvatarIconName,
     this.userAvatarColorValue,
     required this.entries,
     required this.checklist,
@@ -32,7 +32,7 @@ class PersonalSubOrder {
       userId: json['userId'] as String,
       userName: json['userName'] as String?,
       userFullName: json['userFullName'] as String?,
-      userAvatarIconCodePoint: json['userAvatarIconCodePoint'] as int?,
+      userAvatarIconName: json['userAvatarIconName'] as String?,
       userAvatarColorValue: json['userAvatarColorValue'] as int?,
       entries: (json['entries'] as List<dynamic>)
           .map((e) => SubOrderEntry.fromJson(e as Map<String, dynamic>))
@@ -52,7 +52,7 @@ class PersonalSubOrder {
       'userId': userId,
       'userName': userName,
       'userFullName': userFullName,
-      'userAvatarIconCodePoint': userAvatarIconCodePoint,
+      'userAvatarIconName': userAvatarIconName,
       'userAvatarColorValue': userAvatarColorValue,
       'entries': entries.map((e) => e.toJson()).toList(),
       'checklist': checklist.map((e) => e.toJson()).toList(),
@@ -67,7 +67,7 @@ class PersonalSubOrder {
     String? userId,
     String? userName,
     String? userFullName,
-    int? userAvatarIconCodePoint,
+    String? userAvatarIconName,
     int? userAvatarColorValue,
     List<SubOrderEntry>? entries,
     List<ChecklistEntry>? checklist,
@@ -80,7 +80,7 @@ class PersonalSubOrder {
       userId: userId ?? this.userId,
       userName: userName ?? this.userName,
       userFullName: userFullName ?? this.userFullName,
-      userAvatarIconCodePoint: userAvatarIconCodePoint ?? this.userAvatarIconCodePoint,
+      userAvatarIconName: userAvatarIconName ?? this.userAvatarIconName,
       userAvatarColorValue: userAvatarColorValue ?? this.userAvatarColorValue,
       entries: entries ?? this.entries,
       checklist: checklist ?? this.checklist,

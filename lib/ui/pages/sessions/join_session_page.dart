@@ -94,6 +94,8 @@ class _JoinSessionPageState extends ConsumerState<JoinSessionPage> {
         'userId': user.id,
         'userName': user.username,
         'userFullName': '${user.firstName} ${user.lastName}'.trim(),
+        'userAvatarIconName': user.avatarIconName,
+        'userAvatarColorValue': user.avatarColorValue,
       };
 
       final connected = await svc.connect(

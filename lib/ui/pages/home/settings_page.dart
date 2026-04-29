@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../viewmodels/profile_viewmodel.dart';
@@ -99,12 +100,9 @@ class SettingsPage extends ConsumerWidget {
                 );
               }
               return ListTile(
-                leading: CircleAvatar(
-                  backgroundColor: Color(user.avatarColorValue),
-                  child: Icon(
-                    IconData(user.avatarIconCodePoint, fontFamily: 'MaterialIcons'),
-                    color: Colors.white,
-                  ),
+                leading: _AvatarCircleSmall(
+                  iconName: user.avatarIconName,
+                  colorValue: user.avatarColorValue,
                 ),
                 title: Text('${user.firstName} ${user.lastName}'),
                 subtitle: Text('@${user.username}'),
@@ -314,6 +312,29 @@ class SettingsPage extends ConsumerWidget {
   }
 }
 
+class _AvatarCircleSmall extends StatelessWidget {
+  final String iconName;
+  final int colorValue;
+
+  const _AvatarCircleSmall({required this.iconName, required this.colorValue});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 40,
+      height: 40,
+      decoration: BoxDecoration(shape: BoxShape.circle, color: Color(colorValue)),
+      child: Padding(
+        padding: const EdgeInsets.all(9),
+        child: SvgPicture.asset(
+          'assets/profile_icons/$iconName',
+          colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+        ),
+      ),
+    );
+  }
+}
+
 class _SectionHeader extends StatelessWidget {
   final String title;
 
@@ -423,7 +444,7 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
     _firstNameController = TextEditingController(text: widget.user.firstName);
     _lastNameController = TextEditingController(text: widget.user.lastName);
     _avatarData = AvatarData(
-      iconCodePoint: widget.user.avatarIconCodePoint,
+      iconName: widget.user.avatarIconName,
       colorValue: widget.user.avatarColorValue,
     );
   }
@@ -472,13 +493,19 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
                 onTap: () => _showAvatarPicker(context),
                 child: Stack(
                   children: [
-                    CircleAvatar(
-                      radius: 50,
-                      backgroundColor: Color(_avatarData.colorValue),
-                      child: Icon(
-                        IconData(_avatarData.iconCodePoint, fontFamily: 'MaterialIcons'),
-                        size: 40,
-                        color: Colors.white,
+                    Container(
+                      width: 100,
+                      height: 100,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Color(_avatarData.colorValue),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(22),
+                        child: SvgPicture.asset(
+                          'assets/profile_icons/${_avatarData.iconName}',
+                          colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                        ),
                       ),
                     ),
                     Positioned(
@@ -539,7 +566,7 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
                             username: _usernameController.text.trim(),
                             firstName: _firstNameController.text.trim(),
                             lastName: _lastNameController.text.trim(),
-                            avatarIconCodePoint: _avatarData.iconCodePoint,
+                            avatarIconName: _avatarData.iconName,
                             avatarColorValue: _avatarData.colorValue,
                           );
                       if (context.mounted) {

@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 import '../../domain/models/local_user.dart';
@@ -21,7 +20,7 @@ class ProfileViewModel extends AsyncNotifier<LocalUser?> {
     required String username,
     required String firstName,
     required String lastName,
-    required int avatarIconCodePoint,
+    required String avatarIconName,
     required int avatarColorValue,
   }) async {
     final repo = ref.read(userRepositoryProvider);
@@ -30,7 +29,7 @@ class ProfileViewModel extends AsyncNotifier<LocalUser?> {
       username: username,
       firstName: firstName,
       lastName: lastName,
-      avatarIconCodePoint: avatarIconCodePoint,
+      avatarIconName: avatarIconName,
       avatarColorValue: avatarColorValue,
       createdAt: DateTime.now(),
     );
@@ -42,7 +41,7 @@ class ProfileViewModel extends AsyncNotifier<LocalUser?> {
     String? username,
     String? firstName,
     String? lastName,
-    int? avatarIconCodePoint,
+    String? avatarIconName,
     int? avatarColorValue,
   }) async {
     final currentUser = state.value;
@@ -52,7 +51,7 @@ class ProfileViewModel extends AsyncNotifier<LocalUser?> {
       username: username ?? currentUser.username,
       firstName: firstName ?? currentUser.firstName,
       lastName: lastName ?? currentUser.lastName,
-      avatarIconCodePoint: avatarIconCodePoint ?? currentUser.avatarIconCodePoint,
+      avatarIconName: avatarIconName ?? currentUser.avatarIconName,
       avatarColorValue: avatarColorValue ?? currentUser.avatarColorValue,
     );
 
