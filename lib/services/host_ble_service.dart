@@ -221,8 +221,15 @@ class HostBleService {
   }
 
   // Sends chunks sequentially so the BLE stack is not overwhelmed.
+  // Payload size per chunk is derived from the negotiated MTU for this central.
   Future<void> _sendChunks(Central central, Uint8List bytes) async {
-    for (final chunk in chunkBytes(bytes)) {
+    int payloadSize = defaultChunkPayloadSize;
+    try {
+      final maxNotify = await _peripheral.getMaximumNotifyLength(central);
+      payloadSize = (maxNotify - 4).clamp(20, 512);
+    } catch (_) {}
+
+    for (final chunk in chunkBytes(bytes, payloadSize: payloadSize)) {
       try {
         await _peripheral.notifyCharacteristic(
             central, _txCharacteristic!,

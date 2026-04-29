@@ -62,6 +62,12 @@ class _JoinSessionPageState extends ConsumerState<JoinSessionPage> {
     _discoverySub = svc.discoveredSessions.listen((list) {
       if (mounted) setState(() => _discovered = list);
     });
+
+    // Seed with sessions already discovered before this page was opened.
+    final existing = svc.currentDiscoveredSessions;
+    if (mounted && existing.isNotEmpty) {
+      setState(() => _discovered = existing);
+    }
   }
 
   // ── Connection ──────────────────────────────────────────────────────────────
@@ -134,8 +140,11 @@ class _JoinSessionPageState extends ConsumerState<JoinSessionPage> {
 
       if (mounted) context.go('/sessions/${remoteSession.id}');
     } on TimeoutException {
+      // Disconnect so the service is in a clean state for a retry.
+      ref.read(participantBleServiceProvider).disconnect();
       _setError(AppLocalizations.of(context)!.joinTableErrorSyncTimeout);
     } catch (_) {
+      ref.read(participantBleServiceProvider).disconnect();
       _setError(AppLocalizations.of(context)!.joinTableErrorConnectionTimeout);
     }
   }

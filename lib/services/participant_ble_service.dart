@@ -123,10 +123,17 @@ class ParticipantBleService {
     _isDiscovering = true;
   }
 
+  List<DiscoveredSession> get currentDiscoveredSessions =>
+      List.unmodifiable(_discoveredMap.values.toList());
+
   Future<void> stopDiscovery() async {
     if (!_isDiscovering) return;
     _discoveredSub?.cancel();
     _discoveredSub = null;
+    _connStateSub?.cancel();
+    _connStateSub = null;
+    _notifiedSub?.cancel();
+    _notifiedSub = null;
     try {
       await _central.stopDiscovery();
     } catch (_) {}
@@ -235,6 +242,12 @@ class ParticipantBleService {
       final rxChar = service.characteristics
           .firstWhere((c) => c.uuid.toString().toUpperCase() == rxMatch);
 
+      // Negotiate the highest possible MTU so large messages fit in fewer chunks.
+      // This must complete before any characteristic writes.
+      try {
+        await _central.requestMTU(peripheral, mtu: 512);
+      } catch (_) {}
+
       // Subscribe to host notifications before writing so the host can respond.
       await _central.setCharacteristicNotifyState(
           peripheral, txChar,
@@ -264,7 +277,16 @@ class ParticipantBleService {
     if (peripheral == null || rxChar == null) return;
     final bytes =
         Uint8List.fromList(utf8.encode(jsonEncode(msg.toJson())));
-    for (final chunk in chunkBytes(bytes)) {
+
+    int payloadSize = defaultChunkPayloadSize;
+    try {
+      final maxWrite = await _central.getMaximumWriteLength(
+          peripheral,
+          type: GATTCharacteristicWriteType.withResponse);
+      payloadSize = (maxWrite - 4).clamp(20, 512);
+    } catch (_) {}
+
+    for (final chunk in chunkBytes(bytes, payloadSize: payloadSize)) {
       try {
         await _central.writeCharacteristic(
           peripheral,

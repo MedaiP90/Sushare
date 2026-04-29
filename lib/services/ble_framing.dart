@@ -4,14 +4,21 @@ import 'dart:typed_data';
 // 4-byte header so the receiver can reassemble them in order.
 //
 // Header layout per packet: [totalChunks:2][chunkIndex:2][payload bytes...]
-const int _chunkPayloadSize = 500;
+
+/// Default payload size in bytes per chunk (fits the lowest common denominator
+/// of iOS default ATT MTU 185 − 3 ATT overhead − 4 framing header = 178).
+const int defaultChunkPayloadSize = 178;
 
 /// Splits [bytes] into BLE-safe chunks, each prefixed with a 4-byte header.
-List<Uint8List> chunkBytes(Uint8List bytes) {
-  final total = (bytes.length / _chunkPayloadSize).ceil().clamp(1, 65535);
+/// [payloadSize] is the maximum payload bytes per chunk (excluding the 4-byte
+/// header). Pass a value derived from [CentralManager.getMaximumWriteLength]
+/// or [PeripheralManager.getMaximumNotifyLength] minus 4.
+List<Uint8List> chunkBytes(Uint8List bytes,
+    {int payloadSize = defaultChunkPayloadSize}) {
+  final total = (bytes.length / payloadSize).ceil().clamp(1, 65535);
   return List.generate(total, (i) {
-    final start = i * _chunkPayloadSize;
-    final end = (start + _chunkPayloadSize).clamp(0, bytes.length);
+    final start = i * payloadSize;
+    final end = (start + payloadSize).clamp(0, bytes.length);
     final payload = bytes.sublist(start, end);
     final packet = Uint8List(4 + payload.length);
     packet[0] = (total >> 8) & 0xFF;
