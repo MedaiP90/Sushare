@@ -48,8 +48,8 @@ class _SessionShellPageState extends ConsumerState<SessionShellPage> {
     _guestMsgSub?.cancel();
     _guestConnSub?.cancel();
     _sessionClosedSub?.cancel();
-    // Disconnect guest when leaving the session page.
-    ref.read(participantBleServiceProvider).disconnect();
+    // Keep the BLE connection alive so the guest can re-sync on re-entry.
+    // Disconnection happens only when explicitly joining a different session.
     super.dispose();
   }
 
@@ -374,6 +374,10 @@ class _SessionShellPageState extends ConsumerState<SessionShellPage> {
       ref.invalidate(sessionsProvider);
       if (mounted) setState(() => _guestSubscribed = false);
     });
+
+    // Request fresh state from the host so any changes made while the guest was
+    // away from this page are immediately reflected.
+    participantSvc.requestSync();
   }
 
   Future<void> _handleGuestMessage(SyncMessage msg, Session currentSession) async {

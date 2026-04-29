@@ -88,6 +88,9 @@ class _JoinSessionPageState extends ConsumerState<JoinSessionPage> {
     try {
       final svc = ref.read(participantBleServiceProvider);
 
+      // Disconnect from any previous session before joining a new one.
+      if (svc.isConnected) await svc.disconnect();
+
       // Build user-info payload (profile picture is optional, adds latency).
       final userInfo = <String, dynamic>{
         'userId': user.id,

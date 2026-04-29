@@ -307,6 +307,13 @@ class ParticipantBleService {
         type: SyncMessageType.subOrderUpdate, data: stripped.toJson()));
   }
 
+  /// Requests a fresh [initialSync] from the host (e.g. after re-entering the
+  /// session page while already connected).
+  void requestSync() {
+    if (!_isConnected) return;
+    _sendMsg(const SyncMessage(type: SyncMessageType.requestSync, data: {}));
+  }
+
   void markSessionClosed() => _isSessionClosed = true;
 
   Future<void> disconnect() async {

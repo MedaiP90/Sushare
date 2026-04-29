@@ -208,6 +208,26 @@ class HostBleService {
         );
         _msgCtrl.add(msg);
 
+      case SyncMessageType.requestSync:
+        // Guest re-entered the session page and needs fresh state.
+        if (_session == null || _session!.status == SessionStatus.closed) {
+          _sendTo(central,
+              const SyncMessage(type: SyncMessageType.sessionClosed, data: {}));
+          return;
+        }
+        _sendTo(
+          central,
+          SyncMessage(
+            type: SyncMessageType.initialSync,
+            data: {
+              if (_session != null) 'session': _session!.toJson(),
+              if (_restaurant != null) 'restaurant': _restaurant!.toJson(),
+              'subOrders':
+                  _subOrders.values.map((o) => o.toJson()).toList(),
+            },
+          ),
+        );
+
       default:
         break;
     }

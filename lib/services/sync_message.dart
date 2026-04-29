@@ -2,6 +2,7 @@ enum SyncMessageType {
   // guest → host
   userInfo,
   subOrderUpdate,
+  requestSync,   // guest asks host to re-send initialSync (e.g. on re-entry)
   // host → guests
   initialSync,
   sessionUpdate,
