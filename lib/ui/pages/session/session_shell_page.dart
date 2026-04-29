@@ -1,10 +1,8 @@
 import 'dart:async';
-import 'dart:convert';
-import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:uuid/uuid.dart';
 import '../../../core/providers.dart';
@@ -304,20 +302,7 @@ class _SessionShellPageState extends ConsumerState<SessionShellPage> {
         final sessionRepo = ref.read(sessionRepositoryProvider);
         await sessionRepo.addParticipant(widget.sessionId, userId);
 
-        // Persist guest's profile picture on the host device.
-        String? savedPicturePath;
-        final pictureBase64 = msg.data['userProfilePictureBase64'] as String?;
-        if (pictureBase64 != null) {
-          try {
-            final bytes = base64Decode(pictureBase64);
-            final dir = await getApplicationDocumentsDirectory();
-            final file = File('${dir.path}/guest_profile_$userId.jpg');
-            await file.writeAsBytes(bytes);
-            savedPicturePath = file.path;
-          } catch (_) {}
-        }
-
-        // Create / update sub-order entry with the guest's profile info.
+        // Add guest's profile info on the host device.
         final subOrderRepo = ref.read(personalSubOrderRepositoryProvider);
         final existing =
             await subOrderRepo.getSubOrder(widget.sessionId, userId);
@@ -327,8 +312,8 @@ class _SessionShellPageState extends ConsumerState<SessionShellPage> {
           userId: userId,
           userName: msg.data['userName'] as String?,
           userFullName: msg.data['userFullName'] as String?,
-          userProfilePicturePath:
-              savedPicturePath ?? existing?.userProfilePicturePath,
+          userAvatarIconCodePoint: msg.data['userAvatarIconCodePoint'] as int? ?? existing?.userAvatarIconCodePoint,
+          userAvatarColorValue: msg.data['userAvatarColorValue'] as int? ?? existing?.userAvatarColorValue,
           entries: existing?.entries ?? [],
           checklist: existing?.checklist ?? [],
           locked: existing?.locked ?? false,
@@ -357,7 +342,8 @@ class _SessionShellPageState extends ConsumerState<SessionShellPage> {
           await subOrderRepo.updateSubOrder(subOrder.copyWith(
             id: existing.id,
             checklist: existing.checklist,
-            userProfilePicturePath: existing.userProfilePicturePath,
+            userAvatarIconCodePoint: existing.userAvatarIconCodePoint,
+            userAvatarColorValue: existing.userAvatarColorValue,
           ));
         } else {
           await subOrderRepo.saveSubOrder(subOrder);

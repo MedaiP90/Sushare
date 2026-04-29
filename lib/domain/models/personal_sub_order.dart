@@ -4,7 +4,8 @@ class PersonalSubOrder {
   final String userId;
   final String? userName;
   final String? userFullName;
-  final String? userProfilePicturePath;
+  final int? userAvatarIconCodePoint;
+  final int? userAvatarColorValue;
   final List<SubOrderEntry> entries;
   final List<ChecklistEntry> checklist;
   final bool locked;
@@ -16,7 +17,8 @@ class PersonalSubOrder {
     required this.userId,
     this.userName,
     this.userFullName,
-    this.userProfilePicturePath,
+    this.userAvatarIconCodePoint,
+    this.userAvatarColorValue,
     required this.entries,
     required this.checklist,
     required this.locked,
@@ -30,7 +32,8 @@ class PersonalSubOrder {
       userId: json['userId'] as String,
       userName: json['userName'] as String?,
       userFullName: json['userFullName'] as String?,
-      userProfilePicturePath: json['userProfilePicturePath'] as String?,
+      userAvatarIconCodePoint: json['userAvatarIconCodePoint'] as int?,
+      userAvatarColorValue: json['userAvatarColorValue'] as int?,
       entries: (json['entries'] as List<dynamic>)
           .map((e) => SubOrderEntry.fromJson(e as Map<String, dynamic>))
           .toList(),
@@ -49,7 +52,8 @@ class PersonalSubOrder {
       'userId': userId,
       'userName': userName,
       'userFullName': userFullName,
-      'userProfilePicturePath': userProfilePicturePath,
+      'userAvatarIconCodePoint': userAvatarIconCodePoint,
+      'userAvatarColorValue': userAvatarColorValue,
       'entries': entries.map((e) => e.toJson()).toList(),
       'checklist': checklist.map((e) => e.toJson()).toList(),
       'locked': locked,
@@ -63,7 +67,8 @@ class PersonalSubOrder {
     String? userId,
     String? userName,
     String? userFullName,
-    String? userProfilePicturePath,
+    int? userAvatarIconCodePoint,
+    int? userAvatarColorValue,
     List<SubOrderEntry>? entries,
     List<ChecklistEntry>? checklist,
     bool? locked,
@@ -75,7 +80,8 @@ class PersonalSubOrder {
       userId: userId ?? this.userId,
       userName: userName ?? this.userName,
       userFullName: userFullName ?? this.userFullName,
-      userProfilePicturePath: userProfilePicturePath ?? this.userProfilePicturePath,
+      userAvatarIconCodePoint: userAvatarIconCodePoint ?? this.userAvatarIconCodePoint,
+      userAvatarColorValue: userAvatarColorValue ?? this.userAvatarColorValue,
       entries: entries ?? this.entries,
       checklist: checklist ?? this.checklist,
       locked: locked ?? this.locked,
