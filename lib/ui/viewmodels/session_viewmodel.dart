@@ -23,7 +23,8 @@ class SessionsNotifier extends AsyncNotifier<List<Session>> {
     required String hostUserId,
     String? hostUserName,
     String? hostFullName,
-    String? hostProfilePicturePath,
+    int? hostAvatarIconCodePoint,
+    int? hostAvatarColorValue,
   }) async {
     final sessionRepo = ref.read(sessionRepositoryProvider);
     final subOrderRepo = ref.read(personalSubOrderRepositoryProvider);
@@ -47,7 +48,8 @@ class SessionsNotifier extends AsyncNotifier<List<Session>> {
       userId: hostUserId,
       userName: hostUserName,
       userFullName: hostFullName,
-      userProfilePicturePath: hostProfilePicturePath,
+      userAvatarIconCodePoint: hostAvatarIconCodePoint,
+      userAvatarColorValue: hostAvatarColorValue,
       entries: [],
       checklist: [],
       locked: false,

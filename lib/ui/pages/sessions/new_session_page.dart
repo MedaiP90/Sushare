@@ -42,7 +42,8 @@ class _NewSessionPageState extends ConsumerState<NewSessionPage> {
             hostUserId: user.id,
             hostUserName: user.username,
             hostFullName: '${user.firstName} ${user.lastName}'.trim(),
-            hostProfilePicturePath: user.profilePicturePath,
+            hostAvatarIconCodePoint: user.avatarIconCodePoint,
+            hostAvatarColorValue: user.avatarColorValue,
           );
 
       if (mounted) {

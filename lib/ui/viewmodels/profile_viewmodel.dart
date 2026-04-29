@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 import '../../domain/models/local_user.dart';
 import '../../domain/repositories/user_repository.dart';
+import '../widgets/avatar_widget.dart';
 
 final userRepositoryProvider = Provider<UserRepository>((ref) => UserRepository());
 
@@ -20,7 +21,8 @@ class ProfileViewModel extends AsyncNotifier<LocalUser?> {
     required String username,
     required String firstName,
     required String lastName,
-    String? profilePicturePath,
+    required int avatarIconCodePoint,
+    required int avatarColorValue,
   }) async {
     final repo = ref.read(userRepositoryProvider);
     final user = LocalUser(
@@ -28,8 +30,8 @@ class ProfileViewModel extends AsyncNotifier<LocalUser?> {
       username: username,
       firstName: firstName,
       lastName: lastName,
-      profilePicturePath: profilePicturePath,
-      avatarColorValue: _generateAvatarColor(username),
+      avatarIconCodePoint: avatarIconCodePoint,
+      avatarColorValue: avatarColorValue,
       createdAt: DateTime.now(),
     );
     await repo.saveLocalUser(user);
@@ -40,7 +42,8 @@ class ProfileViewModel extends AsyncNotifier<LocalUser?> {
     String? username,
     String? firstName,
     String? lastName,
-    String? profilePicturePath,
+    int? avatarIconCodePoint,
+    int? avatarColorValue,
   }) async {
     final currentUser = state.value;
     if (currentUser == null) return;
@@ -49,7 +52,8 @@ class ProfileViewModel extends AsyncNotifier<LocalUser?> {
       username: username ?? currentUser.username,
       firstName: firstName ?? currentUser.firstName,
       lastName: lastName ?? currentUser.lastName,
-      profilePicturePath: profilePicturePath ?? currentUser.profilePicturePath,
+      avatarIconCodePoint: avatarIconCodePoint ?? currentUser.avatarIconCodePoint,
+      avatarColorValue: avatarColorValue ?? currentUser.avatarColorValue,
     );
 
     final repo = ref.read(userRepositoryProvider);
@@ -57,12 +61,7 @@ class ProfileViewModel extends AsyncNotifier<LocalUser?> {
     state = AsyncValue.data(updatedUser);
   }
 
-  int _generateAvatarColor(String username) {
-    final colors = [
-      0xFFE57373, 0xFF81C784, 0xFF64B5F6, 0xFFFFD54F,
-      0xFFBA68C8, 0xFF4DB6AC, 0xFFFF8A65, 0xFFA1887F,
-    ];
-    final hash = username.hashCode.abs();
-    return colors[hash % colors.length];
+  AvatarData generateAvatarFromUsername(String username) {
+    return AvatarData.generateFromUsername(username);
   }
 }

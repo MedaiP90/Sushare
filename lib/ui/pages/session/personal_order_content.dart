@@ -90,7 +90,8 @@ class _PersonalOrderContentState extends ConsumerState<PersonalOrderContent> {
 
             final String userName = user.username;
             final String userFullName = '${user.firstName} ${user.lastName}'.trim();
-            final String? userProfilePicturePath = user.profilePicturePath;
+            final int userAvatarIconCodePoint = user.avatarIconCodePoint;
+            final int userAvatarColorValue = user.avatarColorValue;
 
             return Scaffold(
               body: Column(
@@ -188,7 +189,7 @@ class _PersonalOrderContentState extends ConsumerState<PersonalOrderContent> {
                                                   silent: true,
                                                   userName: userName,
                                                   userFullName: userFullName,
-                                                  userProfilePicturePath: userProfilePicturePath);
+                                                  userAvatarIconCodePoint: userAvatarIconCodePoint);
                                             },
                                           ),
                                           SizedBox(
@@ -210,7 +211,7 @@ class _PersonalOrderContentState extends ConsumerState<PersonalOrderContent> {
                                                   silent: true,
                                                   userName: userName,
                                                   userFullName: userFullName,
-                                                  userProfilePicturePath: userProfilePicturePath);
+                                                  userAvatarIconCodePoint: userAvatarIconCodePoint);
                                             },
                                           ),
                                         ],
@@ -237,7 +238,7 @@ class _PersonalOrderContentState extends ConsumerState<PersonalOrderContent> {
                             onPressed: canAddDishes
                                 ? () => _showUseTemplateSheet(
                                     context, ref, templates, restaurant, user.id,
-                                    userName, userFullName, userProfilePicturePath)
+                                    userName, userFullName, userAvatarIconCodePoint, userAvatarColorValue)
                                 : null,
                             tooltip: l10n.personalOrderUseTemplate,
                             child: const Icon(Icons.bookmarks_outlined),
@@ -248,7 +249,7 @@ class _PersonalOrderContentState extends ConsumerState<PersonalOrderContent> {
                           onPressed: canAddDishes
                               ? () => _showAddFromMenuSheet(
                                   context, restaurant, user.id, userName,
-                                  userFullName, userProfilePicturePath)
+                                  userFullName, userAvatarIconCodePoint)
                               : null,
                           tooltip: l10n.personalOrderFromMenu,
                           child: const Icon(Icons.restaurant_menu),
@@ -259,7 +260,7 @@ class _PersonalOrderContentState extends ConsumerState<PersonalOrderContent> {
                           onPressed: canAddDishes
                               ? () => _showAddCustomDishSheet(
                                   context, restaurant, user.id, userName,
-                                  userFullName, userProfilePicturePath)
+                                  userFullName, userAvatarIconCodePoint)
                               : null,
                           tooltip: l10n.personalOrderCustomDish,
                           icon: const Icon(Icons.add),
@@ -285,7 +286,7 @@ class _PersonalOrderContentState extends ConsumerState<PersonalOrderContent> {
   }
 
   void _showAddFromMenuSheet(BuildContext context, Restaurant restaurant,
-      String userId, String userName, String userFullName, String? userProfilePicturePath) {
+      String userId, String userName, String userFullName, int userAvatarIconCodePoint) {
     final selectedIds = <String>{};
 
     showModalBottomSheet(
@@ -387,7 +388,7 @@ class _PersonalOrderContentState extends ConsumerState<PersonalOrderContent> {
                                 await _saveOrder(context, userId, r.menu,
                                     userName: userName,
                                     userFullName: userFullName,
-                                    userProfilePicturePath: userProfilePicturePath);
+                                    userAvatarIconCodePoint: userAvatarIconCodePoint);
                               }
                             : null,
                         child: Padding(
@@ -407,7 +408,7 @@ class _PersonalOrderContentState extends ConsumerState<PersonalOrderContent> {
   }
 
   Future<void> _showAddCustomDishSheet(BuildContext context, Restaurant restaurant,
-      String userId, String userName, String userFullName, String? userProfilePicturePath) async {
+      String userId, String userName, String userFullName, int userAvatarIconCodePoint) async {
     final nameController = TextEditingController();
     final descController = TextEditingController();
     final numberController = TextEditingController();
@@ -539,7 +540,7 @@ class _PersonalOrderContentState extends ConsumerState<PersonalOrderContent> {
             entries: entries,
             userName: userName,
             userFullName: userFullName,
-            userProfilePicturePath: userProfilePicturePath,
+            userAvatarIconCodePoint: userAvatarIconCodePoint,
           );
 
       ref.invalidate(subOrdersForSessionProvider(widget.sessionId));
@@ -562,7 +563,7 @@ class _PersonalOrderContentState extends ConsumerState<PersonalOrderContent> {
   }
 
   Future<void> _saveOrder(BuildContext context, String userId, List<MenuItem> menuItems,
-      {bool silent = false, String? userName, String? userFullName, String? userProfilePicturePath}) async {
+      {bool silent = false, String? userName, String? userFullName, int? userAvatarIconCodePoint, int? userAvatarColorValue}) async {
     final entries = _quantities.entries
         .where((e) => e.value > 0)
         .map((e) {
@@ -583,7 +584,7 @@ class _PersonalOrderContentState extends ConsumerState<PersonalOrderContent> {
           entries: entries,
           userName: userName,
           userFullName: userFullName,
-          userProfilePicturePath: userProfilePicturePath,
+          userAvatarIconCodePoint: userAvatarIconCodePoint,
         );
 
     ref.invalidate(subOrdersForSessionProvider(widget.sessionId));
@@ -668,7 +669,8 @@ class _PersonalOrderContentState extends ConsumerState<PersonalOrderContent> {
       String userId,
       String userName,
       String userFullName,
-      String? userProfilePicturePath) {
+      int userAvatarIconCodePoint,
+      int userAvatarColorValue) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -718,7 +720,7 @@ class _PersonalOrderContentState extends ConsumerState<PersonalOrderContent> {
                         await _saveOrder(context, userId, restaurant.menu,
                             userName: userName,
                             userFullName: userFullName,
-                            userProfilePicturePath: userProfilePicturePath);
+                            userAvatarIconCodePoint: userAvatarIconCodePoint);
                       },
                     );
                   },

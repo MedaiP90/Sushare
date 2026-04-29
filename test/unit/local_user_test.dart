@@ -9,6 +9,7 @@ void main() {
         username: 'testuser',
         firstName: 'Test',
         lastName: 'User',
+        avatarIconCodePoint: 0xe25c,
         avatarColorValue: 0xFFE57373,
       );
 
@@ -16,8 +17,8 @@ void main() {
       expect(user.username, 'testuser');
       expect(user.firstName, 'Test');
       expect(user.lastName, 'User');
+      expect(user.avatarIconCodePoint, 0xe25c);
       expect(user.avatarColorValue, 0xFFE57373);
-      expect(user.profilePicturePath, isNull);
       expect(user.createdAt, isNull);
     });
 
@@ -27,7 +28,7 @@ void main() {
         'username': 'testuser',
         'firstName': 'Test',
         'lastName': 'User',
-        'profilePicturePath': '/path/to/photo.jpg',
+        'avatarIconCodePoint': 0xe25c,
         'avatarColorValue': 0xFFE57373,
         'createdAt': '2024-01-01T00:00:00.000',
       };
@@ -38,7 +39,7 @@ void main() {
       expect(user.username, 'testuser');
       expect(user.firstName, 'Test');
       expect(user.lastName, 'User');
-      expect(user.profilePicturePath, '/path/to/photo.jpg');
+      expect(user.avatarIconCodePoint, 0xe25c);
       expect(user.avatarColorValue, 0xFFE57373);
       expect(user.createdAt, isNotNull);
     });
@@ -49,6 +50,7 @@ void main() {
         username: 'testuser',
         firstName: 'Test',
         lastName: 'User',
+        avatarIconCodePoint: 0xe25c,
         avatarColorValue: 0xFFE57373,
       );
 
@@ -58,6 +60,7 @@ void main() {
       expect(json['username'], 'testuser');
       expect(json['firstName'], 'Test');
       expect(json['lastName'], 'User');
+      expect(json['avatarIconCodePoint'], 0xe25c);
       expect(json['avatarColorValue'], 0xFFE57373);
     });
 
@@ -67,6 +70,7 @@ void main() {
         username: 'testuser',
         firstName: 'Test',
         lastName: 'User',
+        avatarIconCodePoint: 0xe25c,
         avatarColorValue: 0xFFE57373,
       );
 

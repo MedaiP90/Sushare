@@ -3,7 +3,7 @@ class LocalUser {
   final String username;
   final String firstName;
   final String lastName;
-  final String? profilePicturePath;
+  final int avatarIconCodePoint;
   final int avatarColorValue;
   final DateTime? createdAt;
 
@@ -12,7 +12,7 @@ class LocalUser {
     required this.username,
     required this.firstName,
     required this.lastName,
-    this.profilePicturePath,
+    required this.avatarIconCodePoint,
     required this.avatarColorValue,
     this.createdAt,
   });
@@ -23,7 +23,7 @@ class LocalUser {
       username: json['username'] as String,
       firstName: json['firstName'] as String,
       lastName: json['lastName'] as String,
-      profilePicturePath: json['profilePicturePath'] as String?,
+      avatarIconCodePoint: json['avatarIconCodePoint'] as int,
       avatarColorValue: json['avatarColorValue'] as int,
       createdAt: json['createdAt'] != null
           ? DateTime.parse(json['createdAt'] as String)
@@ -37,7 +37,7 @@ class LocalUser {
       'username': username,
       'firstName': firstName,
       'lastName': lastName,
-      'profilePicturePath': profilePicturePath,
+      'avatarIconCodePoint': avatarIconCodePoint,
       'avatarColorValue': avatarColorValue,
       'createdAt': createdAt?.toIso8601String(),
     };
@@ -48,7 +48,7 @@ class LocalUser {
     String? username,
     String? firstName,
     String? lastName,
-    String? profilePicturePath,
+    int? avatarIconCodePoint,
     int? avatarColorValue,
     DateTime? createdAt,
   }) {
@@ -57,7 +57,7 @@ class LocalUser {
       username: username ?? this.username,
       firstName: firstName ?? this.firstName,
       lastName: lastName ?? this.lastName,
-      profilePicturePath: profilePicturePath ?? this.profilePicturePath,
+      avatarIconCodePoint: avatarIconCodePoint ?? this.avatarIconCodePoint,
       avatarColorValue: avatarColorValue ?? this.avatarColorValue,
       createdAt: createdAt ?? this.createdAt,
     );
