@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../viewmodels/profile_viewmodel.dart';
@@ -58,7 +59,7 @@ class _ProfileSetupPageState extends ConsumerState<ProfileSetupPage> {
             username: _usernameController.text.trim(),
             firstName: _firstNameController.text.trim(),
             lastName: _lastNameController.text.trim(),
-            avatarIconCodePoint: _avatarData.iconCodePoint,
+            avatarIconName: _avatarData.iconName,
             avatarColorValue: _avatarData.colorValue,
           );
       await ref.read(localeProvider.notifier).setLocale(_selectedLocale);
@@ -120,10 +121,12 @@ class _ProfileSetupPageState extends ConsumerState<ProfileSetupPage> {
                         shape: BoxShape.circle,
                         color: Color(_avatarData.colorValue),
                       ),
-                      child: Icon(
-                        IconData(_avatarData.iconCodePoint, fontFamily: 'MaterialIcons'),
-                        size: 60,
-                        color: Colors.white,
+                      child: Padding(
+                        padding: const EdgeInsets.all(26),
+                        child: SvgPicture.asset(
+                          'assets/profile_icons/${_avatarData.iconName}',
+                          colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                        ),
                       ),
                     ),
                   ),

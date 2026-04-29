@@ -16,7 +16,7 @@ class AppDatabase {
 
     return openDatabase(
       path,
-      version: 5,
+      version: 7,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -36,6 +36,21 @@ class AppDatabase {
     if (oldVersion < 5) {
       await db.execute('ALTER TABLE sessions ADD COLUMN host_address TEXT');
     }
+    if (oldVersion < 7) {
+      // These avatar columns may be missing if added to _onCreate without a
+      // migration, or if the device was at v6 before the full fix landed.
+      // Silently skip any that already exist.
+      for (final sql in [
+        'ALTER TABLE local_users ADD COLUMN avatar_color_value INTEGER',
+        'ALTER TABLE personal_sub_orders ADD COLUMN user_avatar_color_value INTEGER',
+        'ALTER TABLE local_users ADD COLUMN avatar_icon_name TEXT',
+        'ALTER TABLE personal_sub_orders ADD COLUMN user_avatar_icon_name TEXT',
+      ]) {
+        try {
+          await db.execute(sql);
+        } catch (_) {}
+      }
+    }
   }
 
   static Future<void> _onCreate(Database db, int version) async {
@@ -45,7 +60,7 @@ class AppDatabase {
         username TEXT NOT NULL,
         first_name TEXT NOT NULL,
         last_name TEXT NOT NULL,
-        avatar_icon_code_point INTEGER NOT NULL,
+        avatar_icon_name TEXT NOT NULL,
         avatar_color_value INTEGER NOT NULL,
         created_at TEXT
       )
@@ -86,7 +101,7 @@ class AppDatabase {
         user_id TEXT NOT NULL,
         user_name TEXT,
         user_full_name TEXT,
-        user_avatar_icon_code_point INTEGER,
+        user_avatar_icon_name TEXT,
         user_avatar_color_value INTEGER,
         entries_json TEXT NOT NULL,
         checklist_json TEXT NOT NULL,

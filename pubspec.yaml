@@ -41,6 +41,7 @@ dependencies:
   qr_flutter: ^4.1.0
   mobile_scanner: ^5.2.3
   shared_preferences: ^2.3.5
+  flutter_svg: ^2.0.7
 
 dev_dependencies:
   flutter_test:
@@ -53,6 +54,8 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   generate: true
+  assets:
+    - assets/profile_icons/
 
 flutter_icons:
   android: true
