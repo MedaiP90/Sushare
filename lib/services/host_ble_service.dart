@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:bluetooth_low_energy/bluetooth_low_energy.dart';
@@ -47,9 +48,37 @@ class HostBleService {
 
   StreamSubscription? _writesSub;
   StreamSubscription? _notifyStateSub;
+  StreamSubscription? _authorizeSub;
 
   final _msgCtrl = StreamController<SyncMessage>.broadcast();
   bool _isRunning = false;
+
+  HostBleService() {
+    _authorizeSub = _peripheral.stateChanged.listen((e) async {
+      if (e.state == BluetoothLowEnergyState.unauthorized &&
+          Platform.isAndroid) {
+        await _peripheral.authorize();
+      }
+    });
+  }
+
+  Future<bool> _waitForPoweredOn() async {
+    if (_peripheral.state == BluetoothLowEnergyState.poweredOn) return true;
+    if (_peripheral.state == BluetoothLowEnergyState.unauthorized &&
+        Platform.isAndroid) {
+      await _peripheral.authorize();
+      if (_peripheral.state == BluetoothLowEnergyState.poweredOn) return true;
+    }
+    try {
+      await _peripheral.stateChanged
+          .where((e) => e.state == BluetoothLowEnergyState.poweredOn)
+          .first
+          .timeout(const Duration(seconds: 15));
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
 
   bool get isRunning => _isRunning;
   Stream<SyncMessage> get messages => _msgCtrl.stream;
@@ -68,6 +97,7 @@ class HostBleService {
     required String hostName,
   }) async {
     if (_isRunning) return;
+    if (!await _waitForPoweredOn()) return;
 
     final txChar = GATTCharacteristic.mutable(
       uuid: _txUuid,
@@ -253,6 +283,7 @@ class HostBleService {
 
   void dispose() {
     stop();
+    _authorizeSub?.cancel();
     _msgCtrl.close();
   }
 }

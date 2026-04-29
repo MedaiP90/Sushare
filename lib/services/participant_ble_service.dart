@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:bluetooth_low_energy/bluetooth_low_energy.dart';
@@ -53,6 +54,7 @@ class ParticipantBleService {
   StreamSubscription? _discoveredSub;
   StreamSubscription? _connStateSub;
   StreamSubscription? _notifiedSub;
+  StreamSubscription? _authorizeSub;
 
   final _msgCtrl = StreamController<SyncMessage>.broadcast();
   final _connCtrl = StreamController<bool>.broadcast();
@@ -68,6 +70,37 @@ class ParticipantBleService {
   bool _isSessionClosed = false;
   bool _isDiscovering = false;
 
+  ParticipantBleService() {
+    // On Android, authorize() must be called when the manager enters the
+    // unauthorized state so the OS permission prompt is shown.
+    _authorizeSub = _central.stateChanged.listen((e) async {
+      if (e.state == BluetoothLowEnergyState.unauthorized &&
+          Platform.isAndroid) {
+        await _central.authorize();
+      }
+    });
+  }
+
+  /// Waits until the central radio is powered on (max 15 s).
+  /// On Android, proactively calls authorize() if the state is unauthorized.
+  Future<bool> _waitForPoweredOn() async {
+    if (_central.state == BluetoothLowEnergyState.poweredOn) return true;
+    if (_central.state == BluetoothLowEnergyState.unauthorized &&
+        Platform.isAndroid) {
+      await _central.authorize();
+      if (_central.state == BluetoothLowEnergyState.poweredOn) return true;
+    }
+    try {
+      await _central.stateChanged
+          .where((e) => e.state == BluetoothLowEnergyState.poweredOn)
+          .first
+          .timeout(const Duration(seconds: 15));
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   bool get isConnected => _isConnected;
   bool get isSessionClosed => _isSessionClosed;
 
@@ -79,6 +112,8 @@ class ParticipantBleService {
 
   Future<void> startDiscovery({String? myDeviceName}) async {
     if (_isDiscovering) return;
+    if (!await _waitForPoweredOn()) return;
+
     _discoveredSub = _central.discovered.listen(_onDiscovered);
     _connStateSub =
         _central.connectionStateChanged.listen(_onConnectionStateChanged);
@@ -267,6 +302,7 @@ class ParticipantBleService {
   void dispose() {
     disconnect();
     stopDiscovery();
+    _authorizeSub?.cancel();
     _connStateSub?.cancel();
     _notifiedSub?.cancel();
     _msgCtrl.close();
