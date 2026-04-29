@@ -44,8 +44,16 @@
   "@onboardingCreateDescription": {},
   "onboardingJoinTitle": "Rejoindre une Table",
   "@onboardingJoinTitle": {},
-  "onboardingJoinDescription": "Scannez un code QR ou entrez un code pour rejoindre la session de vos amis.",
+  "onboardingJoinDescription": "Connectez-vous via Bluetooth pour rejoindre la table de vos amis et partager les commandes.",
   "@onboardingJoinDescription": {},
+  "bluetoothWarningTitle": "Bluetooth Requis",
+  "@bluetoothWarningTitle": {},
+  "bluetoothWarningMessage": "Le Bluetooth est nécessaire pour rejoindre ou partager des tables. Vous pouvez toujours utiliser l'application en tant qu'utilisateur unique pour gérer vos propres commandes.",
+  "@bluetoothWarningMessage": {},
+  "bluetoothWarningOpenSettings": "Ouvrir les Paramètres",
+  "@bluetoothWarningOpenSettings": {},
+  "bluetoothWarningContinueAnyway": "Continuer Quand Même",
+  "@bluetoothWarningContinueAnyway": {},
   "onboardingEnjoyTitle": "Profitez du Repas",
   "@onboardingEnjoyTitle": {},
   "onboardingEnjoyDescription": "Passez votre commande, suivez la commande fusionnée et divisez l'addition équitablement.",
@@ -566,5 +574,39 @@
   "leave": "Quitter",
   "@leave": {},
   "personalOrderAddCustomDishTitle": "Ajouter un plat personnalisé",
-  "@personalOrderAddCustomDishTitle": {}
+  "@personalOrderAddCustomDishTitle": {},
+
+  "joinTableConnecting": "Connexion en cours…",
+  "@joinTableConnecting": {},
+  "joinTableNearbySessions": "Sessions à proximité",
+  "@joinTableNearbySessions": {},
+  "joinTableScanning": "Recherche de sessions à proximité…",
+  "@joinTableScanning": {},
+  "joinTableCrossPlatformNote": "La découverte BLE fonctionne entre appareils Android et iOS. Utilisez le code QR ou le code de session si la table n'apparaît pas automatiquement.",
+  "@joinTableCrossPlatformNote": {},
+  "joinTableSessionTileSubtitle": "Hôte : {hostName}  ·  Code : {shortId}",
+  "@joinTableSessionTileSubtitle": {
+    "placeholders": {
+      "hostName": { "type": "String" },
+      "shortId": { "type": "String" }
+    }
+  },
+  "joinTableErrorNoProfile": "Veuillez d'abord configurer votre profil.",
+  "@joinTableErrorNoProfile": {},
+  "joinTableErrorConnectFailed": "Connexion impossible. Assurez-vous d'être proche de l'appareil hôte.",
+  "@joinTableErrorConnectFailed": {},
+  "joinTableErrorSyncTimeout": "Délai d'attente dépassé pour les données de session de l'hôte.",
+  "@joinTableErrorSyncTimeout": {},
+  "joinTableErrorInvalidData": "Données invalides reçues de l'hôte.",
+  "@joinTableErrorInvalidData": {},
+  "joinTableErrorConnectionTimeout": "Délai de connexion dépassé.",
+  "@joinTableErrorConnectionTimeout": {},
+  "joinTableErrorNotFound": "Session \"{code}\" introuvable à proximité. Assurez-vous que l'hôte a le Bluetooth activé et que vous êtes à portée.",
+  "@joinTableErrorNotFound": {
+    "placeholders": { "code": { "type": "String" } }
+  },
+  "sessionReconnect": "Reconnecter",
+  "@sessionReconnect": {},
+  "sessionShareBleHint": "Assurez-vous que le Bluetooth est activé sur tous les appareils.",
+  "@sessionShareBleHint": {}
 }
