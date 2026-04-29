@@ -391,7 +391,7 @@ class MergedOrderContent extends ConsumerWidget {
 
     await ref.read(sessionsProvider.notifier).updateSession(updated);
 
-    final hostServer = ref.read(hostServerServiceProvider);
+    final hostServer = ref.read(hostBleServiceProvider);
     hostServer.setSession(updated);
     hostServer.clearSubOrders();
 
@@ -476,7 +476,7 @@ class MergedOrderContent extends ConsumerWidget {
 
     await ref.read(sessionsProvider.notifier).updateSession(updated);
 
-    final hostServer = ref.read(hostServerServiceProvider);
+    final hostServer = ref.read(hostBleServiceProvider);
     hostServer.setSession(updated);
     hostServer.clearSubOrders();
 

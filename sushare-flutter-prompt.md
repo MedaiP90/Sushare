@@ -13,8 +13,8 @@ Build **Sushare** — a Flutter mobile app that lets a group of friends collabor
 
 ### Key Architectural Principles
 
-- **No backend, no cloud:** all data lives on-device (SQLite via `drift`) or is exchanged over LAN.
-- **Distributed sessions:** the host device runs an embedded TCP server (`shelf` + `shelf_router`); participants connect over the same Wi-Fi or via Wi-Fi Direct.
+- **No backend, no cloud:** all data lives on-device (SQLite via `drift`) or is exchanged over BLE/Bluetooth P2P.
+- **Distributed sessions:** the host device advertises via BLE (`flutter_nearby_connections_plus`); participants connect directly over Bluetooth — no shared WiFi network required.
 - **Local identity:** users create a local profile (username, first name, last name, optional profile photo). Usernames are unique only within a session — enforced by the host at join time.
 - **Resilient local storage:** every device persists its own sub-order and session history regardless of connectivity.
 
@@ -26,10 +26,7 @@ Build **Sushare** — a Flutter mobile app that lets a group of friends collabor
 |---|---|
 | State management | `riverpod` (code-gen flavour: `flutter_riverpod` + `riverpod_annotation`) |
 | Local database | `drift` (SQLite wrapper with type-safe queries) |
-| Embedded HTTP server (host) | `shelf` + `shelf_router` + `shelf_web_socket` |
-| HTTP client (participant) | `dio` |
-| WebSocket client | `web_socket_channel` |
-| P2P discovery | `flutter_nearby_connections_plus` (Wi-Fi Direct + BLE; Android: Nearby Connections API; iOS: Multipeer Connectivity) |
+| BLE P2P transport (host + participant) | `flutter_nearby_connections_plus` (BLE + Bluetooth; Android: Nearby Connections API; iOS: MultipeerConnectivity) |
 | Camera / image pick | `image_picker` |
 | AI menu extraction | `anthropic_sdk_dart` (calls `claude-sonnet-4-20250514`) |
 | Navigation | `go_router` |
@@ -101,7 +98,7 @@ sushare/
 │   │
 │   ├── data/
 │   │   ├── database/              # Drift database definition, DAOs
-│   │   ├── network/               # Shelf server, Dio client, WS channel wrappers
+│   │   ├── network/               # NearbyConnectionsAdapter, BLE message codec
 │   │   └── repositories/          # Concrete repository implementations
 │   │
 │   ├── domain/
@@ -110,9 +107,9 @@ sushare/
 │   │   └── services/              # Abstract service interfaces
 │   │
 │   ├── services/                  # Concrete service implementations
-│   │   ├── nearby_service.dart    # P2P discovery wrapper
-│   │   ├── host_server_service.dart  # Embedded Shelf HTTP + WS server
-│   │   ├── session_client_service.dart  # Dio + WS client for participants
+│   │   ├── nearby_connections_adapter.dart  # Low-level Nearby Connections wrapper
+│   │   ├── host_ble_service.dart            # Host: advertise + accept + broadcast
+│   │   ├── participant_ble_service.dart     # Participant: scan + connect + push
 │   │   ├── camera_service.dart    # image_picker + compression
 │   │   └── menu_ai_service.dart   # Claude API integration
 │   │
@@ -414,49 +411,54 @@ Implement each interface in `lib/data/repositories/` using the corresponding Dri
 
 ## 8. Networking: Distributed Session Architecture
 
-A session is hosted entirely on one device. The host runs an embedded HTTP + WebSocket server; participants connect as HTTP + WebSocket clients.
+A session is hosted entirely on one device. The host uses standard Bluetooth Low Energy GATT via `bluetooth_low_energy` to advertise the session and exchange data with participants. **No shared WiFi network is required** — all communication runs over BLE.
 
-### 8.1 Session Discovery
+### 8.1 BLE Session Discovery
 
-Use `flutter_nearby_connections_plus` for zero-config device discovery on the local network:
-- **Host** advertises the service with a service type string `"sushare"` and a payload containing `{ sessionId, sessionName, hostName, port }`.
-- **Participant** browses for `"sushare"` services and displays a list of joinable sessions in the UI.
-- After discovery, the participant connects directly over TCP/IP to the host's IP and port — the nearby library is used only for discovery, not for data transfer.
+Use `bluetooth_low_energy` (`PeripheralManager` / `CentralManager`) for zero-config BLE device discovery and data transfer:
+- **Host** runs as a GATT peripheral: advertises service UUID `19B10000-E8F2-537E-4F6C-D104768A1214` and sets the local name to `"S|{8charId}|{sessionName≤16}|{hostName≤8}"` (≤ 36 chars).
+- **Participant** runs as a GATT central: scans filtered by the same service UUID; each discovered peripheral whose name matches the `"S|…"` format is shown as a joinable session card.
+- When a participant selects a session, `CentralManager.connect()` is called, GATT is discovered, the TX notify characteristic is subscribed, and a `userInfo` write is sent to the RX characteristic.
+- The host receives the write and immediately sends back an `initialSync` notification containing the full session snapshot.
 
-**Important:** `flutter_nearby_connections_plus` supports Android↔Android (Nearby Connections API) and iOS↔iOS (Multipeer Connectivity) but **not** cross-platform discovery. Document this limitation prominently. For mixed groups, provide a fallback: manual IP + port entry, and optionally a QR code (generated with `qr_flutter`, scanned with `mobile_scanner`).
+**Cross-platform note:** `bluetooth_low_energy` uses standard BLE GATT and supports **Android↔Android, iOS↔iOS, and Android↔iOS** connections — no cross-platform limitation. The QR-code / manual session-code join path (§10.4) is retained as a convenience when BLE discovery is slow or blocked by system permissions.
 
-### 8.2 Host: Embedded Server (`lib/services/host_server_service.dart`)
+### 8.2 Host: BLE P2P Service (`lib/services/host_ble_service.dart`)
+
+The host runs as a `PeripheralManager` GATT server. Two characteristics are exposed under the service UUID:
+
+| Characteristic UUID | Direction | Properties |
+|---|---|---|
+| `19B10001-…` (TX) | host → participant | Notify |
+| `19B10002-…` (RX) | participant → host | Write, WriteWithoutResponse |
 
 ```dart
-/// Runs an embedded Shelf HTTP + WebSocket server on a random available port.
-/// Manages connected participants and broadcasts session state changes.
-///
-/// Lifecycle: start() when a session is created, stop() when the app is closed
-/// or the session is marked closed.
-abstract class HostServerService {
-  Future<Result<int>> start(String sessionId);   // returns the bound port
+/// Manages the host-side BLE GATT peripheral.
+/// Lifecycle: start() when a session is created, stop() when the session is closed.
+class HostBleService {
+  Future<void> start({required String sessionId, required String sessionName, required String hostName});
   Future<void> stop();
-  Stream<NetworkEvent> get events;               // incoming messages from participants
-  Future<void> broadcast(NetworkMessage message); // send to all connected WS clients
-  Future<void> sendTo(String participantId, NetworkMessage message);
+  Stream<SyncMessage> get messages; // incoming writes from participants
+  void broadcast(SyncMessage msg);
+  void broadcastSessionUpdate(Session session);
+  void broadcastRestaurantUpdate(Restaurant restaurant);
+  void sendSessionClosedToGuests();
+  void setSession(Session session);
+  void setRestaurant(Restaurant restaurant);
+  void upsertSubOrder(PersonalSubOrder subOrder);
+  void clearSubOrders();
+  void dispose();
 }
 ```
 
-**REST endpoints** exposed by the host server:
+All inter-device messages are UTF-8 JSON bytes. Large payloads are split into 500-byte chunks by `chunkBytes()` in `lib/services/ble_framing.dart`; each chunk has a 4-byte header `[totalChunks:2][chunkIndex:2]`. The receiver uses `ChunkAssembler` to reassemble before parsing.
 
-| Method | Path | Purpose |
-|---|---|---|
-| `GET` | `/session` | Returns current session JSON snapshot |
-| `POST` | `/join` | Participant registers; host validates unique display name |
-| `GET` | `/menu` | Returns the restaurant's menu JSON |
-| `WS` | `/ws` | WebSocket channel for bidirectional live updates |
+### 8.3 BLE Message Protocol
 
-### 8.3 WebSocket Message Protocol
-
-All WS messages are JSON objects with a `type` discriminator:
+All P2P messages are JSON objects with a `type` discriminator:
 
 ```dart
-/// All possible WebSocket message types.
+/// All possible BLE P2P message types.
 enum WsMessageType {
   // Host → Participants
   sessionSnapshot,     // full session state on join or major change
@@ -485,20 +487,33 @@ class NetworkMessage with _$NetworkMessage {
 }
 ```
 
-### 8.4 Participant Client (`lib/services/session_client_service.dart`)
+### 8.4 Participant BLE Client (`lib/services/participant_ble_service.dart`)
+
+The participant runs as a `CentralManager`. Discovery is filtered by the Sushare service UUID; GATT connection flow: connect → discoverGATT → subscribe TX → write userInfo to RX → receive initialSync notify.
 
 ```dart
-/// Manages the connection from a participant device to the session host.
-abstract class SessionClientService {
-  Future<Result<Session>> join({
-    required String hostAddress,
-    required int port,
-    required LocalUser localUser,
+/// Manages the participant-side BLE GATT central connection to the session host.
+class ParticipantBleService {
+  Future<void> startDiscovery({String? myDeviceName});
+  Future<void> stopDiscovery();
+  Stream<List<DiscoveredSession>> get discoveredSessions;
+
+  /// Connect to [endpointId] (peripheral UUID), subscribe to notifications,
+  /// and send [userInfo] to register. Returns true on success.
+  Future<bool> connect({
+    required String endpointId,
+    required Map<String, dynamic> userInfo,
+    String? myDeviceName,
   });
   Future<void> disconnect();
-  Future<Result<void>> pushSubOrder(PersonalSubOrder subOrder);
-  Future<Result<void>> pushChecklistUpdate(List<ChecklistEntry> checklist);
-  Stream<NetworkMessage> get incomingMessages;
+  void pushSubOrderUpdate(PersonalSubOrder subOrder);
+  void markSessionClosed();
+  Stream<SyncMessage> get messages;
+  Stream<bool> get connectionStatus;
+  Stream<void> get sessionClosed;
+  bool get isConnected;
+  bool get isSessionClosed;
+  void dispose();
 }
 ```
 
@@ -555,17 +570,13 @@ abstract class CameraService {
 
 Use `image_picker` to capture/pick and `flutter_image_compress` to compress.
 
-### 9.3 Nearby Service (`lib/services/nearby_service.dart`)
+### 9.3 BLE P2P Transport (`lib/services/`)
 
-```dart
-abstract class NearbyDiscoveryService {
-  Future<void> startAdvertising(AdvertisePayload payload);
-  Future<void> stopAdvertising();
-  Future<void> startBrowsing();
-  Future<void> stopBrowsing();
-  Stream<DiscoveredSession> get discoveredSessions;
-}
-```
+Discovery and data transfer are unified in two services:
+- **`HostBleService`** (§8.2) — host advertising + accepting connections + sending/receiving messages.
+- **`ParticipantBleService`** (§8.4) — participant scanning + connecting + sending/receiving messages.
+
+Both use `bluetooth_low_energy` directly (`PeripheralManager` for host, `CentralManager` for participant). Shared framing logic (chunking + reassembly) lives in `lib/services/ble_framing.dart` and is imported by both services.
 
 ---
 
@@ -670,7 +681,7 @@ class SessionViewModel extends _$SessionViewModel {
   Future<void> loadSession(String sessionId);
   Future<void> createSession(String name, String restaurantId);
   Future<void> joinSession(DiscoveredSession discovered);
-  Future<void> joinSessionManually(String hostAddress, int port);
+  Future<void> joinSessionManually(String sessionCode);  // QR / manual code fallback
   Future<void> addParticipant(String userId);   // host only
   Future<void> sendOrder();                     // host only
   Future<void> addAdditionalOrder(List<SubOrderEntry> entries);
@@ -743,7 +754,7 @@ Three tabs: **Sessions**, **Restaurants**, **Settings**.
 
 #### `JoinSessionPage`
 - `AnimatedList` of `DiscoveredSessionTile` (auto-refreshes from Nearby scan).
-- "Enter IP Manually" bottom sheet with IP + port fields.
+- "Enter Code Manually" bottom sheet with a 6-character session code field.
 - QR scanner option via `mobile_scanner`.
 
 #### `SessionPage` (live session shell)
@@ -809,21 +820,21 @@ The host sees a "Send Order" `FloatingActionButton.extended` that triggers a con
 ## 11. Session Flow: Step-by-Step
 
 ### Host Flow
-1. Host creates session → `HostServerService.start()` → obtains port.
-2. `NearbyDiscoveryService.startAdvertising()` with `{ sessionId, sessionName, hostName, port }`.
-3. Each joining participant sends `POST /join` → host validates name uniqueness → appends to `participantIds` → broadcasts `participantJoined` WS event.
-4. Participants push sub-order updates via WS `subOrderPush` messages → host persists them.
+1. Host creates session → `HostBleService.start(AdvertisePayload)` → begins BLE advertising.
+2. For each `connectionRequested` event the host calls `acceptConnection(endpointId)`.
+3. On `connected` event → sends `sessionSnapshot` to the newly joined endpoint; broadcasts `participantJoined` to all others.
+4. Participants push BLE `subOrderPush` messages → host persists them.
 5. Host taps "Send Order" → `compute(aggregateSubOrders, allSubOrders, "Main Order")` → updates `session.mainOrder` → sets `status = sent` → broadcasts `sessionSent`.
-6. Any participant (including host) can add additional rounds: WS `additionalOrderAdded`.
-7. Each participant tracks arrivals locally; updates pushed via WS `checklistUpdate`.
+6. Any participant (including host) can add additional rounds; host broadcasts `additionalOrderAdded`.
+7. Each participant tracks arrivals locally; updates pushed via BLE `checklistUpdate`.
 
 ### Participant Flow
-1. Discovers session via Nearby scan or manual entry.
-2. Sends `POST /join` with `LocalUser` profile → receives initial `Session` snapshot.
-3. Opens WS channel → receives `sessionSnapshot` from host.
+1. Discovers session via BLE scan (`ParticipantBleService.startDiscovery()`) or enters the host's 6-character session code manually.
+2. Calls `ParticipantBleService.join(hostEndpointId, localUser)` → host accepts the BLE connection.
+3. Receives `sessionSnapshot` from host over the BLE channel.
 4. Edits personal sub-order → sends `subOrderPush` on every change (debounced 500 ms).
 5. On `sessionSent` event → navigates to `MergedOrderPage`.
-6. Updates checklist → sends `checklistUpdate` events.
+6. Updates checklist → sends `checklistUpdate` messages.
 
 ---
 
@@ -831,7 +842,7 @@ The host sees a "Send Order" `FloatingActionButton.extended` that triggers a con
 
 - The host device's `SessionRepository` is the source of truth for the session document.
 - Each participant's `PersonalSubOrderRepository` persists their own sub-order locally — so they can review their order even if disconnected.
-- All devices persist the final `mainOrder` and `additionalOrders` locally once received via WS, so session history is available offline.
+- All devices persist the final `mainOrder` and `additionalOrders` locally once received via BLE, so session history is available offline.
 - `RestaurantRepository` and `SavedOrderRepository` are purely local and never synced.
 
 ---
@@ -842,14 +853,15 @@ Request permissions at runtime with `permission_handler`, gracefully handling de
 
 | Permission | When needed | Platform |
 |---|---|---|
-| `nearbyWifiDevices` | Before starting session discovery | Android 13+ |
-| `locationWhenInUse` | Required by Nearby Connections API | Android |
-| `bluetooth` / `bluetoothScan` / `bluetoothAdvertise` | Nearby discovery | Android |
-| `localNetwork` | Connecting to host TCP server | iOS |
-| `camera` | Menu photo scan | Both |
+| `bluetooth` | BLE operations (legacy) | Android ≤ 11 |
+| `bluetoothScan` | Scanning for nearby sessions | Android 12+ |
+| `bluetoothAdvertise` | Hosting / advertising a session | Android 12+ |
+| `bluetoothConnect` | Connecting to a discovered host | Android 12+ |
+| `locationWhenInUse` | Required for BLE scanning | Android ≤ 11 |
+| `camera` | Menu photo scan + QR scanning | Both |
 | `photos` | Gallery menu pick | Both |
 
-Show a permission rationale `AlertDialog` before each system prompt.
+Show a permission rationale `AlertDialog` before each system prompt. On iOS, add `NSBluetoothAlwaysUsageDescription` and `NSBluetoothPeripheralUsageDescription` to `Info.plist`.
 
 ---
 
@@ -858,8 +870,8 @@ Show a permission rationale `AlertDialog` before each system prompt.
 - All repository and service methods return `Result<T>`.
 - ViewModels catch `Result.Err` and expose an error state consumed by the View.
 - Views show errors via `AppSnackBar.error(message)`.
-- Network errors (WS disconnection, host unreachable) are surfaced as a persistent `MaterialBanner` at the top of `SessionPage`.
-- The host server catches all Shelf exceptions and returns structured JSON error responses.
+- BLE disconnection (`connectionLost` event) is surfaced as a persistent `MaterialBanner` at the top of `SessionPage` with a "Reconnect" action that re-runs the join flow.
+- `HostBleService` and `ParticipantBleService` catch all plugin exceptions internally; upper layers receive typed `SyncMessage` events or boolean success/failure.
 
 ---
 
@@ -890,10 +902,10 @@ Implement in this sequence to enable early testing at each step:
 4. **Session host (no network)** — create session, embedded server stub, `SessionPage` state machine.
 5. **Order editing** — `PersonalOrderPage`, `QuantityStepper`, sub-order persistence.
 6. **Order aggregation** — `aggregateSubOrders` util + `MergedOrderPage`.
-7. **Embedded HTTP server** — `HostServerService` with Shelf, REST + WS endpoints.
-8. **Participant client** — Dio join flow, WS channel, `JoinSessionPage`.
-9. **Nearby discovery** — `NearbyDiscoveryService`, advertising + browsing.
-10. **Checklist** — `ChecklistPage`, arrival tracking, WS sync.
+7. **BLE host service** — `ble_framing.dart`, `HostBleService` (`PeripheralManager`), advertising GATT service, receiving writes, sending notify.
+8. **BLE participant client** — `ParticipantBleService` (`CentralManager`), discovery + connect + GATT subscribe + join flow, `JoinSessionPage`.
+9. **BLE message routing** — full round-trip: sub-order push → host aggregation → broadcast snapshot.
+10. **Checklist** — `ChecklistPage`, arrival tracking, BLE sync.
 11. **Additional rounds** — post-send order flow.
 12. **Saved orders** — save/load preset orders.
 13. **Menu scanning** — `CameraService`, `MenuAiService`, `ScanMenuPage`.
@@ -924,15 +936,8 @@ dependencies:
   json_annotation: ^4.9.0
   uuid: ^4.5.1
 
-  # Networking
-  shelf: ^1.4.2
-  shelf_router: ^1.1.4
-  shelf_web_socket: ^2.0.0
-  dio: ^5.8.0
-  web_socket_channel: ^3.0.1
-
-  # P2P Discovery
-  flutter_nearby_connections_plus: ^1.0.0
+  # BLE P2P via standard GATT (Android ↔ iOS cross-platform, no shared WiFi required)
+  bluetooth_low_energy: ^6.0.0
 
   # Navigation
   go_router: ^14.8.1
@@ -977,8 +982,11 @@ dev_dependencies:
 
 ## 18. Critical Limitations to Document
 
-1. **Cross-platform P2P discovery is not supported** by `flutter_nearby_connections_plus`. Android and iOS devices cannot discover each other via the Nearby layer. Provide the QR / manual IP fallback (§11) as the primary cross-platform join method; frame Nearby discovery as a convenience for homogeneous groups.
-2. **Anthropic API key management:** the key is stored locally in `flutter_secure_storage`. Clearly warn the user in the Settings screen that the key is not shared with other devices and is used exclusively for menu scanning.
-3. **Host device must remain awake** during an active session; instruct the user to disable auto-lock while hosting. Acquire a `WakeLock` (`wakelock_plus`) when hosting.
-4. **Session resilience:** if the host device disconnects, participants lose the live connection. Design the `SessionPage` to detect WS disconnection and show a reconnection banner with a "Try Reconnect" button.
-5. **No user accounts:** usernames are unique only within a session. The same person could appear under different names in different sessions. Profile data (username, name, photo) lives exclusively on the device and is never synced. This is by design and should be clearly communicated in onboarding.
+1. **Standard BLE GATT is cross-platform** — `bluetooth_low_energy` supports Android↔iOS connections. The QR-code / manual code join path is retained as a fallback for when BLE discovery is unavailable or slow (e.g. system permission denied, BT radio off).
+2. **No shared WiFi required** — all session data flows over standard BLE GATT. Devices do not need to be on the same network. Typical BLE range is 10–30 m; throughput is lower than WiFi.
+3. **Payload size and throughput** — large payloads (full menu JSON) are chunked into 500-byte BLE packets by `chunkBytes()` in `ble_framing.dart` (§8.2). Avoid sending raw image bytes over the channel. Send menu data only once on join, not on every sub-order update.
+4. **Android ≤ 11 requires location permission** for BLE scanning (OS restriction). On Android 12+ only `BLUETOOTH_SCAN` / `BLUETOOTH_ADVERTISE` / `BLUETOOTH_CONNECT` are needed.
+4. **Anthropic API key management:** the key is stored locally in `flutter_secure_storage`. Clearly warn the user in the Settings screen that the key is not shared with other devices and is used exclusively for menu scanning.
+5. **Host device must remain awake** during an active session; instruct the user to disable auto-lock while hosting. Acquire a `WakeLock` (`wakelock_plus`) when hosting.
+6. **Session resilience:** if the host device disconnects, participants lose the BLE connection. Design the `SessionPage` to detect Nearby endpoint disconnection and show a reconnection banner with a "Try Reconnect" button that re-runs the `ParticipantBleService.join` flow.
+7. **No user accounts:** usernames are unique only within a session. The same person could appear under different names in different sessions. Profile data (username, name, photo) lives exclusively on the device and is never synced. This is by design and should be clearly communicated in onboarding.
