@@ -1,11 +1,9 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../viewmodels/profile_viewmodel.dart';
+import '../../widgets/avatar_widget.dart';
 import '../../../services/menu_ai_service.dart';
 
 final themeModeProvider = StateNotifierProvider<ThemeModeNotifier, ThemeMode>((ref) {
@@ -103,17 +101,10 @@ class SettingsPage extends ConsumerWidget {
               return ListTile(
                 leading: CircleAvatar(
                   backgroundColor: Color(user.avatarColorValue),
-                  backgroundImage: user.profilePicturePath != null
-                      ? FileImage(File(user.profilePicturePath!))
-                      : null,
-                  child: user.profilePicturePath == null
-                      ? Text(
-                          user.firstName.isNotEmpty
-                              ? user.firstName[0].toUpperCase()
-                              : '?',
-                          style: const TextStyle(color: Colors.white),
-                        )
-                      : null,
+                  child: Icon(
+                    IconData(user.avatarIconCodePoint, fontFamily: 'MaterialIcons'),
+                    color: Colors.white,
+                  ),
                 ),
                 title: Text('${user.firstName} ${user.lastName}'),
                 subtitle: Text('@${user.username}'),
@@ -423,7 +414,7 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
   late final TextEditingController _usernameController;
   late final TextEditingController _firstNameController;
   late final TextEditingController _lastNameController;
-  String? _profilePicturePath;
+  late AvatarData _avatarData;
 
   @override
   void initState() {
@@ -431,7 +422,10 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
     _usernameController = TextEditingController(text: widget.user.username);
     _firstNameController = TextEditingController(text: widget.user.firstName);
     _lastNameController = TextEditingController(text: widget.user.lastName);
-    _profilePicturePath = widget.user.profilePicturePath;
+    _avatarData = AvatarData(
+      iconCodePoint: widget.user.avatarIconCodePoint,
+      colorValue: widget.user.avatarColorValue,
+    );
   }
 
   @override
@@ -442,15 +436,8 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
     super.dispose();
   }
 
-  Future<void> _pickImage() async {
-    final picker = ImagePicker();
-    final image = await picker.pickImage(source: ImageSource.gallery);
-    if (image != null) {
-      final appDir = await getApplicationDocumentsDirectory();
-      final fileName = 'profile_${DateTime.now().millisecondsSinceEpoch}.jpg';
-      final saved = await File(image.path).copy('${appDir.path}/$fileName');
-      setState(() => _profilePicturePath = saved.path);
-    }
+  void _onAvatarChanged(AvatarData data) {
+    setState(() => _avatarData = data);
   }
 
   @override
@@ -482,23 +469,17 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
             const SizedBox(height: 24),
             Center(
               child: GestureDetector(
-                onTap: _pickImage,
+                onTap: () => _showAvatarPicker(context),
                 child: Stack(
                   children: [
                     CircleAvatar(
                       radius: 50,
-                      backgroundColor: Color(widget.user.avatarColorValue),
-                      backgroundImage: _profilePicturePath != null
-                          ? FileImage(File(_profilePicturePath!))
-                          : null,
-                      child: _profilePicturePath == null
-                          ? Text(
-                              _firstNameController.text.isNotEmpty
-                                  ? _firstNameController.text[0].toUpperCase()
-                                  : '?',
-                              style: const TextStyle(fontSize: 36, color: Colors.white),
-                            )
-                          : null,
+                      backgroundColor: Color(_avatarData.colorValue),
+                      child: Icon(
+                        IconData(_avatarData.iconCodePoint, fontFamily: 'MaterialIcons'),
+                        size: 40,
+                        color: Colors.white,
+                      ),
                     ),
                     Positioned(
                       bottom: 0,
@@ -558,7 +539,8 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
                             username: _usernameController.text.trim(),
                             firstName: _firstNameController.text.trim(),
                             lastName: _lastNameController.text.trim(),
-                            profilePicturePath: _profilePicturePath,
+                            avatarIconCodePoint: _avatarData.iconCodePoint,
+                            avatarColorValue: _avatarData.colorValue,
                           );
                       if (context.mounted) {
                         Navigator.pop(context);
@@ -573,6 +555,27 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
               ],
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  void _showAvatarPicker(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.7,
+        minChildSize: 0.5,
+        maxChildSize: 0.9,
+        expand: false,
+        builder: (context, scrollController) => SingleChildScrollView(
+          controller: scrollController,
+          padding: const EdgeInsets.all(24),
+          child: AvatarSelector(
+            initialData: _avatarData,
+            onChanged: _onAvatarChanged,
+          ),
         ),
       ),
     );

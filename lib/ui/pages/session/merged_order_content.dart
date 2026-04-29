@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/providers.dart';
@@ -12,6 +11,7 @@ import '../../viewmodels/session_viewmodel.dart';
 import '../../viewmodels/profile_viewmodel.dart';
 import '../../viewmodels/restaurant_viewmodel.dart';
 import '../../viewmodels/personal_order_viewmodel.dart';
+import '../../widgets/avatar_widget.dart';
 
 class MergedOrderContent extends ConsumerWidget {
   final String sessionId;
@@ -127,26 +127,31 @@ class MergedOrderContent extends ConsumerWidget {
             final subOrder = subOrders.where((s) => s.userId == participantId).firstOrNull;
             final hasOrdered = subOrder != null && subOrder.entries.isNotEmpty;
             final displayName = subOrder?.userName ?? participantId.substring(0, 6);
-            final picturePath = subOrder?.userProfilePicturePath;
+            final avatarIconCodePoint = subOrder?.userAvatarIconCodePoint;
+            final avatarColorValue = subOrder?.userAvatarColorValue;
 
             return ActionChip(
-              avatar: CircleAvatar(
-                backgroundImage: picturePath != null ? FileImage(File(picturePath)) : null,
-                backgroundColor: hasOrdered
-                    ? Theme.of(context).colorScheme.primaryContainer
-                    : Theme.of(context).colorScheme.surfaceContainerHighest,
-                foregroundColor: hasOrdered
-                    ? Theme.of(context).colorScheme.onPrimaryContainer
-                    : Theme.of(context).colorScheme.onSurfaceVariant,
-                child: picturePath == null
-                    ? Text(displayName.substring(0, 1).toUpperCase())
-                    : null,
-              ),
+              avatar: avatarIconCodePoint != null && avatarColorValue != null
+                  ? AvatarCircle(
+                      iconCodePoint: avatarIconCodePoint,
+                      colorValue: avatarColorValue,
+                      size: 32,
+                      iconSize: 18,
+                    )
+                  : CircleAvatar(
+                      backgroundColor: hasOrdered
+                          ? Theme.of(context).colorScheme.primaryContainer
+                          : Theme.of(context).colorScheme.surfaceContainerHighest,
+                      foregroundColor: hasOrdered
+                          ? Theme.of(context).colorScheme.onPrimaryContainer
+                          : Theme.of(context).colorScheme.onSurfaceVariant,
+                      child: Text(displayName.substring(0, 1).toUpperCase()),
+                    ),
               label: Text(displayName),
               backgroundColor: hasOrdered
                   ? Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.5)
                   : Theme.of(context).colorScheme.surfaceContainerHighest,
-              onPressed: () => _showParticipantInfo(context, subOrder, displayName, subOrder?.userFullName, picturePath, hasOrdered),
+              onPressed: () => _showParticipantInfo(context, subOrder, displayName, subOrder?.userFullName, avatarIconCodePoint, avatarColorValue, hasOrdered),
             );
           }).toList(),
         ),
@@ -159,7 +164,8 @@ class MergedOrderContent extends ConsumerWidget {
     PersonalSubOrder? subOrder,
     String displayName,
     String? fullName,
-    String? picturePath,
+    int? avatarIconCodePoint,
+    int? avatarColorValue,
     bool hasOrdered,
   ) {
     showModalBottomSheet(
@@ -175,17 +181,22 @@ class MergedOrderContent extends ConsumerWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  CircleAvatar(
-                    radius: 40,
-                    backgroundImage: picturePath != null ? FileImage(File(picturePath)) : null,
-                    backgroundColor: Theme.of(sheetContext).colorScheme.primaryContainer,
-                    child: picturePath == null
-                        ? Text(
-                            displayName.substring(0, 1).toUpperCase(),
-                            style: Theme.of(sheetContext).textTheme.headlineMedium,
-                          )
-                        : null,
-                  ),
+                  if (avatarIconCodePoint != null && avatarColorValue != null)
+                    AvatarCircle(
+                      iconCodePoint: avatarIconCodePoint,
+                      colorValue: avatarColorValue,
+                      size: 80,
+                      iconSize: 40,
+                    )
+                  else
+                    CircleAvatar(
+                      radius: 40,
+                      backgroundColor: Theme.of(sheetContext).colorScheme.primaryContainer,
+                      child: Text(
+                        displayName.substring(0, 1).toUpperCase(),
+                        style: Theme.of(sheetContext).textTheme.headlineMedium,
+                      ),
+                    ),
                   const SizedBox(height: 16),
                   if (fullName != null && fullName.isNotEmpty)
                     Text(

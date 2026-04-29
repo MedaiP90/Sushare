@@ -290,6 +290,24 @@ abstract class AppLocalizations {
   /// **'Tap to add photo'**
   String get tapToAddPhoto;
 
+  /// No description provided for @tapToChooseAvatar.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap to choose avatar'**
+  String get tapToChooseAvatar;
+
+  /// No description provided for @chooseAvatarIcon.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose Icon'**
+  String get chooseAvatarIcon;
+
+  /// No description provided for @chooseAvatarColor.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose Color'**
+  String get chooseAvatarColor;
+
   /// No description provided for @labelUsername.
   ///
   /// In en, this message translates to:

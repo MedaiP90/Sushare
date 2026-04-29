@@ -26,7 +26,8 @@ class PersonalOrderNotifier extends FamilyAsyncNotifier<PersonalSubOrder?, Strin
     required List<SubOrderEntry> entries,
     String? userName,
     String? userFullName,
-    String? userProfilePicturePath,
+    int? userAvatarIconCodePoint,
+    int? userAvatarColorValue,
   }) async {
     final repo = ref.read(personalSubOrderRepositoryProvider);
     final existing = await repo.getSubOrder(sessionId, userId);
@@ -37,7 +38,8 @@ class PersonalOrderNotifier extends FamilyAsyncNotifier<PersonalSubOrder?, Strin
       userId: userId,
       userName: userName ?? existing?.userName,
       userFullName: userFullName ?? existing?.userFullName,
-      userProfilePicturePath: userProfilePicturePath ?? existing?.userProfilePicturePath,
+      userAvatarIconCodePoint: userAvatarIconCodePoint ?? existing?.userAvatarIconCodePoint,
+      userAvatarColorValue: userAvatarColorValue ?? existing?.userAvatarColorValue,
       entries: entries,
       checklist: [],
       locked: false,

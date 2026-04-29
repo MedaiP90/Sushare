@@ -56,7 +56,8 @@ class PersonalSubOrderRepository {
       'user_id': subOrder.userId,
       'user_name': subOrder.userName,
       'user_full_name': subOrder.userFullName,
-      'user_profile_picture_path': subOrder.userProfilePicturePath,
+      'user_avatar_icon_code_point': subOrder.userAvatarIconCodePoint,
+      'user_avatar_color_value': subOrder.userAvatarColorValue,
       'entries_json': jsonEncode(subOrder.entries.map((e) => e.toJson()).toList()),
       'checklist_json': jsonEncode(subOrder.checklist.map((e) => e.toJson()).toList()),
       'locked': subOrder.locked ? 1 : 0,
@@ -71,7 +72,8 @@ class PersonalSubOrderRepository {
       userId: row['user_id'] as String,
       userName: row['user_name'] as String?,
       userFullName: row['user_full_name'] as String?,
-      userProfilePicturePath: row['user_profile_picture_path'] as String?,
+      userAvatarIconCodePoint: row['user_avatar_icon_code_point'] as int?,
+      userAvatarColorValue: row['user_avatar_color_value'] as int?,
       entries: (jsonDecode(row['entries_json'] as String) as List)
           .map((e) => SubOrderEntry.fromJson(e))
           .toList(),

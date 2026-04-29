@@ -108,6 +108,15 @@ class AppLocalizationsFr extends AppLocalizations {
   String get tapToAddPhoto => 'Appuie pour ajouter une photo';
 
   @override
+  String get tapToChooseAvatar => 'Appuie pour choisir un avatar';
+
+  @override
+  String get chooseAvatarIcon => 'Choisir icône';
+
+  @override
+  String get chooseAvatarColor => 'Choisir couleur';
+
+  @override
   String get labelUsername => 'Nom d\'utilisateur';
 
   @override

@@ -45,7 +45,7 @@ class AppDatabase {
         username TEXT NOT NULL,
         first_name TEXT NOT NULL,
         last_name TEXT NOT NULL,
-        profile_picture_path TEXT,
+        avatar_icon_code_point INTEGER NOT NULL,
         avatar_color_value INTEGER NOT NULL,
         created_at TEXT
       )
@@ -86,7 +86,8 @@ class AppDatabase {
         user_id TEXT NOT NULL,
         user_name TEXT,
         user_full_name TEXT,
-        user_profile_picture_path TEXT,
+        user_avatar_icon_code_point INTEGER,
+        user_avatar_color_value INTEGER,
         entries_json TEXT NOT NULL,
         checklist_json TEXT NOT NULL,
         locked INTEGER NOT NULL DEFAULT 0,

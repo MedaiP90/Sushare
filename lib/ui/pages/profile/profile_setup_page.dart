@@ -1,12 +1,9 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:path_provider/path_provider.dart';
 import '../../../l10n/app_localizations.dart';
-import '../../../services/permission_service.dart';
 import '../../viewmodels/profile_viewmodel.dart';
+import '../../widgets/avatar_widget.dart';
 import '../home/settings_page.dart';
 
 class ProfileSetupPage extends ConsumerStatefulWidget {
@@ -21,9 +18,15 @@ class _ProfileSetupPageState extends ConsumerState<ProfileSetupPage> {
   final _usernameController = TextEditingController();
   final _firstNameController = TextEditingController();
   final _lastNameController = TextEditingController();
-  String? _profilePicturePath;
+  late AvatarData _avatarData;
   Locale? _selectedLocale;
   bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _avatarData = AvatarData.defaultAvatar;
+  }
 
   @override
   void dispose() {
@@ -33,17 +36,14 @@ class _ProfileSetupPageState extends ConsumerState<ProfileSetupPage> {
     super.dispose();
   }
 
-  Future<void> _pickImage() async {
-    final picker = ImagePicker();
-    final image = await picker.pickImage(source: ImageSource.gallery);
-    if (image != null) {
-      final hasPermission = await PermissionService.checkAndRequestPhotos(context);
-      if (!hasPermission) return;
-      final appDir = await getApplicationDocumentsDirectory();
-      final fileName = 'profile_${DateTime.now().millisecondsSinceEpoch}.jpg';
-      final savedImage = await File(image.path).copy('${appDir.path}/$fileName');
+  void _onAvatarChanged(AvatarData data) {
+    setState(() => _avatarData = data);
+  }
+
+  void _onUsernameChanged(String value) {
+    if (value.isNotEmpty && _usernameController.text == value) {
       setState(() {
-        _profilePicturePath = savedImage.path;
+        _avatarData = AvatarData.generateFromUsername(value);
       });
     }
   }
@@ -58,7 +58,8 @@ class _ProfileSetupPageState extends ConsumerState<ProfileSetupPage> {
             username: _usernameController.text.trim(),
             firstName: _firstNameController.text.trim(),
             lastName: _lastNameController.text.trim(),
-            profilePicturePath: _profilePicturePath,
+            avatarIconCodePoint: _avatarData.iconCodePoint,
+            avatarColorValue: _avatarData.colorValue,
           );
       await ref.read(localeProvider.notifier).setLocale(_selectedLocale);
       if (mounted) {
@@ -111,33 +112,25 @@ class _ProfileSetupPageState extends ConsumerState<ProfileSetupPage> {
                 const SizedBox(height: 48),
                 Center(
                   child: GestureDetector(
-                    onTap: _pickImage,
+                    onTap: () => _showAvatarPicker(context),
                     child: Container(
                       width: 120,
                       height: 120,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: colorScheme.primaryContainer,
-                        image: _profilePicturePath != null
-                            ? DecorationImage(
-                                image: FileImage(File(_profilePicturePath!)),
-                                fit: BoxFit.cover,
-                              )
-                            : null,
+                        color: Color(_avatarData.colorValue),
                       ),
-                      child: _profilePicturePath == null
-                          ? Icon(
-                              Icons.person,
-                              size: 60,
-                              color: colorScheme.onPrimaryContainer,
-                            )
-                          : null,
+                      child: Icon(
+                        IconData(_avatarData.iconCodePoint, fontFamily: 'MaterialIcons'),
+                        size: 60,
+                        color: Colors.white,
+                      ),
                     ),
                   ),
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  l10n.tapToAddPhoto,
+                  l10n.tapToChooseAvatar,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: colorScheme.onSurfaceVariant,
                       ),
@@ -146,6 +139,7 @@ class _ProfileSetupPageState extends ConsumerState<ProfileSetupPage> {
                 const SizedBox(height: 32),
                 TextFormField(
                   controller: _usernameController,
+                  onChanged: _onUsernameChanged,
                   decoration: InputDecoration(
                     labelText: l10n.labelUsername,
                     hintText: l10n.hintUsername,
@@ -249,6 +243,27 @@ class _ProfileSetupPageState extends ConsumerState<ProfileSetupPage> {
                 ),
               ],
             ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showAvatarPicker(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.7,
+        minChildSize: 0.5,
+        maxChildSize: 0.9,
+        expand: false,
+        builder: (context, scrollController) => SingleChildScrollView(
+          controller: scrollController,
+          padding: const EdgeInsets.all(24),
+          child: AvatarSelector(
+            initialData: _avatarData,
+            onChanged: _onAvatarChanged,
           ),
         ),
       ),
