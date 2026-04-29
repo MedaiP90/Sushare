@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:go_router/go_router.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../../services/permission_service.dart';
 
 class OnboardingPage extends ConsumerStatefulWidget {
   const OnboardingPage({super.key});
@@ -14,11 +15,27 @@ class OnboardingPage extends ConsumerStatefulWidget {
 class _OnboardingPageState extends ConsumerState<OnboardingPage> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
+  bool _hasCheckedBluetooth = false;
+  bool _bluetoothEnabled = true;
 
   @override
   void dispose() {
     _pageController.dispose();
     super.dispose();
+  }
+
+  Future<void> _checkBluetooth() async {
+    if (_hasCheckedBluetooth) return;
+    _hasCheckedBluetooth = true;
+    
+    final hasPermissions = await PermissionService.checkBluetoothPermissions();
+    final isEnabled = await PermissionService.isBluetoothEnabled();
+    
+    if (mounted) {
+      setState(() {
+        _bluetoothEnabled = hasPermissions && isEnabled;
+      });
+    }
   }
 
   Future<void> _completeOnboarding() async {
@@ -29,7 +46,15 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
     }
   }
 
-  void _nextPage() {
+  void _nextPage() async {
+    if (_currentPage == 1) {
+      await _checkBluetooth();
+      if (!_bluetoothEnabled && mounted) {
+        _showBluetoothWarning();
+        return;
+      }
+    }
+    
     if (_currentPage < 2) {
       _pageController.nextPage(
         duration: const Duration(milliseconds: 400),
@@ -38,6 +63,41 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
     } else {
       _completeOnboarding();
     }
+  }
+
+  void _showBluetoothWarning() {
+    final l10n = AppLocalizations.of(context)!;
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        icon: Icon(
+          Icons.bluetooth_disabled_rounded,
+          size: 48,
+          color: Theme.of(context).colorScheme.error,
+        ),
+        title: Text(l10n.bluetoothWarningTitle),
+        content: Text(l10n.bluetoothWarningMessage),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              PermissionService.openSettings();
+            },
+            child: Text(l10n.bluetoothWarningOpenSettings),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _pageController.nextPage(
+                duration: const Duration(milliseconds: 400),
+                curve: Curves.easeOutCubic,
+              );
+            },
+            child: Text(l10n.bluetoothWarningContinueAnyway),
+          ),
+        ],
+      ),
+    );
   }
 
   @override

@@ -70,7 +70,20 @@ class AppLocalizationsIt extends AppLocalizations {
 
   @override
   String get onboardingJoinDescription =>
-      'Scansiona un codice QR o inserisci un codice per unirti alla sessione dei tuoi amici.';
+      'Connettiti via Bluetooth per unirti al tavolo dei tuoi amici e condividere gli ordini.';
+
+  @override
+  String get bluetoothWarningTitle => 'Bluetooth Richiesto';
+
+  @override
+  String get bluetoothWarningMessage =>
+      'Il Bluetooth è necessario per unirti o condividere tavoli. Puoi comunque usare l\'app come utente singolo per gestire i tuoi ordini.';
+
+  @override
+  String get bluetoothWarningOpenSettings => 'Apri Impostazioni';
+
+  @override
+  String get bluetoothWarningContinueAnyway => 'Continua Comunque';
 
   @override
   String get onboardingEnjoyTitle => 'Goditi il Pasto';
@@ -830,4 +843,52 @@ class AppLocalizationsIt extends AppLocalizations {
   @override
   String get personalOrderAddCustomDishTitle =>
       'Aggiungi piatto personalizzato';
+
+  @override
+  String get joinTableConnecting => 'Connessione in corso…';
+
+  @override
+  String get joinTableNearbySessions => 'Sessioni nelle vicinanze';
+
+  @override
+  String get joinTableScanning => 'Ricerca sessioni nelle vicinanze…';
+
+  @override
+  String get joinTableCrossPlatformNote =>
+      'Il rilevamento BLE funziona tra dispositivi Android e iOS. Usa il codice QR o il codice sessione se il tavolo non appare automaticamente.';
+
+  @override
+  String joinTableSessionTileSubtitle(String hostName, String shortId) {
+    return 'Host: $hostName  ·  Codice: $shortId';
+  }
+
+  @override
+  String get joinTableErrorNoProfile => 'Configura prima il tuo profilo.';
+
+  @override
+  String get joinTableErrorConnectFailed =>
+      'Connessione fallita. Avvicinati al dispositivo host.';
+
+  @override
+  String get joinTableErrorSyncTimeout =>
+      'Timeout in attesa dei dati della sessione dall\'host.';
+
+  @override
+  String get joinTableErrorInvalidData =>
+      'Dati non validi ricevuti dall\'host.';
+
+  @override
+  String get joinTableErrorConnectionTimeout => 'Connessione scaduta.';
+
+  @override
+  String joinTableErrorNotFound(String code) {
+    return 'Sessione \"$code\" non trovata nelle vicinanze. Assicurati che l\'host abbia il Bluetooth attivo e che tu sia nel raggio d\'azione.';
+  }
+
+  @override
+  String get sessionReconnect => 'Riconnetti';
+
+  @override
+  String get sessionShareBleHint =>
+      'Assicurati che il Bluetooth sia attivo su tutti i dispositivi.';
 }

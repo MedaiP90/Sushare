@@ -33,6 +33,62 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.13.1"
+  bluetooth_low_energy:
+    dependency: "direct main"
+    description:
+      name: bluetooth_low_energy
+      sha256: ac70d6f95c54df943b40d58b0be6cce1ed49ae8b76219d03386cb6c56e06ba5a
+      url: "https://pub.dev"
+    source: hosted
+    version: "6.2.1"
+  bluetooth_low_energy_android:
+    dependency: transitive
+    description:
+      name: bluetooth_low_energy_android
+      sha256: "1a1ad8aa3016b6ae843eeaa86c0f4eab7eda6669c06066a6da2494ffe6350853"
+      url: "https://pub.dev"
+    source: hosted
+    version: "6.2.1"
+  bluetooth_low_energy_darwin:
+    dependency: transitive
+    description:
+      name: bluetooth_low_energy_darwin
+      sha256: "63243add2f57ad201f09d42878a31bad6e5b93291c6ae3c36de24b5213178a0d"
+      url: "https://pub.dev"
+    source: hosted
+    version: "6.2.1"
+  bluetooth_low_energy_linux:
+    dependency: transitive
+    description:
+      name: bluetooth_low_energy_linux
+      sha256: "95ae6d4f598595af61b73a32e1dc7a49d95081526c0c6b17205e852332845a5a"
+      url: "https://pub.dev"
+    source: hosted
+    version: "6.2.1"
+  bluetooth_low_energy_platform_interface:
+    dependency: transitive
+    description:
+      name: bluetooth_low_energy_platform_interface
+      sha256: "430a137fe0a662e2dd632390aa6e020a1c91335a5821ae07dacc9f319f9e590a"
+      url: "https://pub.dev"
+    source: hosted
+    version: "6.2.1"
+  bluetooth_low_energy_windows:
+    dependency: transitive
+    description:
+      name: bluetooth_low_energy_windows
+      sha256: a235b4e368f8e45ad1712c8c1c9a138b4edb2ff98a2f1fbf3208fffeb9a27e3a
+      url: "https://pub.dev"
+    source: hosted
+    version: "6.2.1"
+  bluez:
+    dependency: transitive
+    description:
+      name: bluez
+      sha256: "61a7204381925896a374301498f2f5399e59827c6498ae1e924aaa598751b545"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.8.3"
   boolean_selector:
     dependency: transitive
     description:
@@ -105,22 +161,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.0.7"
-  dio:
-    dependency: "direct main"
-    description:
-      name: dio
-      sha256: aff32c08f92787a557dd5c0145ac91536481831a01b4648136373cddb0e64f8c
-      url: "https://pub.dev"
-    source: hosted
-    version: "5.9.2"
-  dio_web_adapter:
+  dbus:
     dependency: transitive
     description:
-      name: dio_web_adapter
-      sha256: "2f9e64323a7c3c7ef69567d5c800424a11f8337b8b228bad02524c9fb3c1f340"
+      name: dbus
+      sha256: d0c98dcd4f5169878b6cf8f6e0a52403a9dff371a3e2f019697accbf6f44a270
       url: "https://pub.dev"
     source: hosted
-    version: "2.1.2"
+    version: "0.7.12"
   dynamic_color:
     dependency: "direct main"
     description:
@@ -407,14 +455,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.6.0"
-  http_methods:
-    dependency: transitive
-    description:
-      name: http_methods
-      sha256: "6bccce8f1ec7b5d701e7921dca35e202d425b57e317ba1a37f2638590e29e566"
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.1.1"
   http_parser:
     dependency: transitive
     description:
@@ -892,30 +932,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.4.1"
-  shelf:
-    dependency: "direct main"
-    description:
-      name: shelf
-      sha256: e7dd780a7ffb623c57850b33f43309312fc863fb6aa3d276a754bb299839ef12
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.4.2"
-  shelf_router:
-    dependency: "direct main"
-    description:
-      name: shelf_router
-      sha256: f5e5d492440a7fb165fe1e2e1a623f31f734d3370900070b2b1e0d0428d59864
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.1.4"
-  shelf_web_socket:
-    dependency: "direct main"
-    description:
-      name: shelf_web_socket
-      sha256: cc36c297b52866d203dbf9332263c94becc2fe0ceaa9681d07b6ef9807023b67
-      url: "https://pub.dev"
-    source: hosted
-    version: "2.0.1"
   sky_engine:
     dependency: transitive
     description: flutter
@@ -1105,22 +1121,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.1.1"
-  web_socket:
-    dependency: transitive
-    description:
-      name: web_socket
-      sha256: "34d64019aa8e36bf9842ac014bb5d2f5586ca73df5e4d9bf5c936975cae6982c"
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.0.1"
-  web_socket_channel:
-    dependency: "direct main"
-    description:
-      name: web_socket_channel
-      sha256: d645757fb0f4773d602444000a8131ff5d48c9e47adfe9772652dd1a4f2d45c8
-      url: "https://pub.dev"
-    source: hosted
-    version: "3.0.3"
   webdriver:
     dependency: transitive
     description:
