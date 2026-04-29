@@ -26,51 +26,19 @@ class _JoinSessionPageState extends ConsumerState<JoinSessionPage> {
   bool _isQrScanning = false;
   bool _isConnecting = false;
   String? _error;
-  String _filterCode = '';
-
-  StreamSubscription<List<DiscoveredSession>>? _discoverySub;
-  List<DiscoveredSession> _discovered = [];
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _startDiscovery());
-  }
+  String _enteredCode = '';
 
   @override
   void dispose() {
     _codeController.dispose();
-    _discoverySub?.cancel();
-    // Stop discovery only if we didn't just connect.
     final svc = ref.read(participantBleServiceProvider);
     if (!svc.isConnected) svc.stopDiscovery();
     super.dispose();
   }
 
-  Future<void> _startDiscovery() async {
-    if (!mounted) return;
-    final granted = await PermissionService.requestBluetooth(context);
-    if (!granted || !mounted) return;
-
-    final svc = ref.read(participantBleServiceProvider);
-    await svc.startDiscovery(
-      myDeviceName: ref.read(profileViewModelProvider).value?.username,
-    );
-
-    _discoverySub = svc.discoveredSessions.listen((list) {
-      if (mounted) setState(() => _discovered = list);
-    });
-
-    // Seed with sessions already discovered before this page was opened.
-    final existing = svc.currentDiscoveredSessions;
-    if (mounted && existing.isNotEmpty) {
-      setState(() => _discovered = existing);
-    }
-  }
-
   // ── Connection ──────────────────────────────────────────────────────────────
 
-  Future<void> _connectTo(DiscoveredSession session) async {
+  Future<void> _tryConnectByCode(String code) async {
     final l10n = AppLocalizations.of(context)!;
     final user = ref.read(profileViewModelProvider).value;
     if (user == null) {
@@ -83,13 +51,67 @@ class _JoinSessionPageState extends ConsumerState<JoinSessionPage> {
       _error = null;
     });
 
+    final granted = await PermissionService.requestBluetooth(context);
+    if (!granted || !mounted) {
+      if (mounted) setState(() => _isConnecting = false);
+      return;
+    }
+
+    final svc = ref.read(participantBleServiceProvider);
+    await svc.startDiscovery(myDeviceName: user.username);
+
+    // Check already-discovered sessions first, then wait for a new match.
+    final existingMatch = svc.currentDiscoveredSessions
+        .where((s) => s.shortId.toUpperCase().startsWith(code.toUpperCase()))
+        .firstOrNull;
+
+    DiscoveredSession? target = existingMatch;
+
+    if (target == null) {
+      final foundCompleter = Completer<DiscoveredSession?>();
+      StreamSubscription<List<DiscoveredSession>>? scanSub;
+      scanSub = svc.discoveredSessions.listen((list) {
+        final match = list
+            .where((s) =>
+                s.shortId.toUpperCase().startsWith(code.toUpperCase()))
+            .firstOrNull;
+        if (match != null && !foundCompleter.isCompleted) {
+          foundCompleter.complete(match);
+          scanSub?.cancel();
+        }
+      });
+
+      target = await foundCompleter.future.timeout(
+        const Duration(seconds: 20),
+        onTimeout: () {
+          scanSub?.cancel();
+          return null;
+        },
+      );
+    }
+
+    if (target == null) {
+      if (!svc.isConnected) await svc.stopDiscovery();
+      _setError(l10n.joinTableErrorNotFound(code));
+      return;
+    }
+
+    await _connectTo(target);
+  }
+
+  Future<void> _connectTo(DiscoveredSession session) async {
+    final l10n = AppLocalizations.of(context)!;
+    final user = ref.read(profileViewModelProvider).value;
+    if (user == null) {
+      _setError(l10n.joinTableErrorNoProfile);
+      return;
+    }
+
     try {
       final svc = ref.read(participantBleServiceProvider);
 
-      // Disconnect from any previous session before joining a new one.
       if (svc.isConnected) await svc.disconnect();
 
-      // Build user-info payload (profile picture is optional, adds latency).
       final userInfo = <String, dynamic>{
         'userId': user.id,
         'userName': user.username,
@@ -192,22 +214,11 @@ class _JoinSessionPageState extends ConsumerState<JoinSessionPage> {
       code = value.substring(0, 8);
     }
     if (code != null) {
-      // Use the first 8 chars as the short code to match against discovered sessions.
-      final shortCode = code.substring(0, code.length.clamp(0, 8)).toUpperCase();
+      final shortCode =
+          code.substring(0, code.length.clamp(0, 8)).toUpperCase();
       _codeController.text = shortCode;
-      setState(() => _filterCode = shortCode);
+      setState(() => _enteredCode = shortCode);
       _tryConnectByCode(shortCode);
-    }
-  }
-
-  void _tryConnectByCode(String code) {
-    final match = _discovered.where(
-      (s) => s.shortId.toUpperCase().startsWith(code.toUpperCase()),
-    ).firstOrNull;
-    if (match != null) {
-      _connectTo(match);
-    } else {
-      _setError(AppLocalizations.of(context)!.joinTableErrorNotFound(code));
     }
   }
 
@@ -222,13 +233,6 @@ class _JoinSessionPageState extends ConsumerState<JoinSessionPage> {
     final l10n = AppLocalizations.of(context)!;
 
     if (_isQrScanning) return _buildQrScanner(colorScheme, l10n);
-
-    final filtered = _filterCode.isEmpty
-        ? _discovered
-        : _discovered
-            .where((s) =>
-                s.shortId.toUpperCase().startsWith(_filterCode.toUpperCase()))
-            .toList();
 
     return Scaffold(
       appBar: AppBar(
@@ -251,66 +255,12 @@ class _JoinSessionPageState extends ConsumerState<JoinSessionPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text(l10n.joinTableHeading,
-                      style: Theme.of(context).textTheme.headlineMedium),
-                  const SizedBox(height: 8),
                   Text(
                     l10n.joinTableSubtitle,
                     style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                         color: colorScheme.onSurfaceVariant),
                   ),
                   const SizedBox(height: 24),
-
-                  // ── Nearby sessions ──────────────────────────────────────
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Row(
-                            children: [
-                              Icon(Icons.bluetooth_searching,
-                                  color: colorScheme.primary),
-                              const SizedBox(width: 8),
-                              Text(l10n.joinTableNearbySessions,
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .titleMedium),
-                              const Spacer(),
-                              if (_discovered.isEmpty)
-                                const SizedBox(
-                                  width: 16,
-                                  height: 16,
-                                  child: CircularProgressIndicator(
-                                      strokeWidth: 2),
-                                ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          if (filtered.isEmpty)
-                            Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 8),
-                              child: Text(
-                                l10n.joinTableScanning,
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .bodyMedium
-                                    ?.copyWith(
-                                        color: colorScheme.onSurfaceVariant),
-                              ),
-                            )
-                          else
-                            ...filtered.map((s) => _SessionTile(
-                                  session: s,
-                                  onTap: () => _connectTo(s),
-                                )),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
                   // ── QR scan ──────────────────────────────────────────────
                   Card(
                     child: Padding(
@@ -324,8 +274,9 @@ class _JoinSessionPageState extends ConsumerState<JoinSessionPage> {
                                   color: colorScheme.primary),
                               const SizedBox(width: 8),
                               Text(l10n.joinTableScanQr,
-                                  style:
-                                      Theme.of(context).textTheme.titleMedium),
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .titleMedium),
                             ],
                           ),
                           const SizedBox(height: 12),
@@ -349,11 +300,13 @@ class _JoinSessionPageState extends ConsumerState<JoinSessionPage> {
                         children: [
                           Row(
                             children: [
-                              Icon(Icons.keyboard, color: colorScheme.primary),
+                              Icon(Icons.keyboard,
+                                  color: colorScheme.primary),
                               const SizedBox(width: 8),
                               Text(l10n.joinTableEnterCode,
-                                  style:
-                                      Theme.of(context).textTheme.titleMedium),
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .titleMedium),
                             ],
                           ),
                           const SizedBox(height: 12),
@@ -368,7 +321,7 @@ class _JoinSessionPageState extends ConsumerState<JoinSessionPage> {
                             textCapitalization: TextCapitalization.characters,
                             maxLength: 8,
                             onChanged: (v) =>
-                                setState(() => _filterCode = v.trim()),
+                                setState(() => _enteredCode = v.trim()),
                           ),
                           if (_error != null) ...[
                             const SizedBox(height: 8),
@@ -378,9 +331,9 @@ class _JoinSessionPageState extends ConsumerState<JoinSessionPage> {
                           ],
                           const SizedBox(height: 8),
                           FilledButton(
-                            onPressed: _filterCode.isEmpty
+                            onPressed: _enteredCode.isEmpty
                                 ? null
-                                : () => _tryConnectByCode(_filterCode),
+                                : () => _tryConnectByCode(_enteredCode),
                             child: Text(l10n.joinTableJoin),
                           ),
                         ],
@@ -474,29 +427,6 @@ class _JoinSessionPageState extends ConsumerState<JoinSessionPage> {
           ),
         ],
       ),
-    );
-  }
-}
-
-class _SessionTile extends StatelessWidget {
-  final DiscoveredSession session;
-  final VoidCallback onTap;
-
-  const _SessionTile({required this.session, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    return ListTile(
-      leading: CircleAvatar(
-        backgroundColor: colorScheme.primaryContainer,
-        child: Icon(Icons.restaurant, color: colorScheme.onPrimaryContainer),
-      ),
-      title: Text(session.sessionName),
-      subtitle: Text(AppLocalizations.of(context)!.joinTableSessionTileSubtitle(session.hostName, session.shortId)),
-      trailing: Icon(Icons.bluetooth, color: colorScheme.primary),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      onTap: onTap,
     );
   }
 }
