@@ -608,20 +608,26 @@ M3 Expressive design directives to apply:
 - **Expressive FAB:** use `FloatingActionButton.extended` as the primary CTA on list screens; animate its label visibility with `AnimatedSize`.
 - **Physics-based motion:** use `SpringSimulation` or `CurvedAnimation` with `Curves.elasticOut` for card expansion and item insertions; use `Curves.easeInOutCubicEmphasized` for screen transitions (M3 spec).
 - **Dynamic colour tonal surfaces:** `ColorScheme.surfaceContainerLow`, `surfaceContainer`, `surfaceContainerHigh` for layered card elevation.
-- **Typography:** use `google_fonts` to load `Nunito` (display/headline — expressive, rounded) paired with `Source Serif 4` (body/label — readable, classic). Apply `fontVariations` for weight adjustments on headings.
+- **Typography:** use `google_fonts` to load `Source Serif 4` uniformly across all Material 3 text roles (display, headline, title, body, label) for a sophisticated serif look. Apply weight variations per role (w800 down to w400).
 - **Size contrast:** primary action buttons are visually larger than secondary ones (use `ButtonStyle` with custom `minimumSize`); key data (dish names, quantities) use `displaySmall` / `headlineMedium`.
 
 ```dart
-TextTheme buildTextTheme() => GoogleFonts.nunitoTextTheme().copyWith(
-  displayLarge:   GoogleFonts.nunito(fontWeight: FontWeight.w800),
-  displayMedium:  GoogleFonts.nunito(fontWeight: FontWeight.w700),
-  headlineLarge:  GoogleFonts.nunito(fontWeight: FontWeight.w700),
-  headlineMedium: GoogleFonts.nunito(fontWeight: FontWeight.w600),
-  titleLarge:     GoogleFonts.nunito(fontWeight: FontWeight.w600),
+TextTheme buildTextTheme() => GoogleFonts.sourceSerif4TextTheme().copyWith(
+  displayLarge:   GoogleFonts.sourceSerif4(fontWeight: FontWeight.w800),
+  displayMedium:  GoogleFonts.sourceSerif4(fontWeight: FontWeight.w700),
+  displaySmall:   GoogleFonts.sourceSerif4(fontWeight: FontWeight.w700),
+  headlineLarge:  GoogleFonts.sourceSerif4(fontWeight: FontWeight.w700),
+  headlineMedium: GoogleFonts.sourceSerif4(fontWeight: FontWeight.w600),
+  headlineSmall:  GoogleFonts.sourceSerif4(fontWeight: FontWeight.w600),
+  titleLarge:     GoogleFonts.sourceSerif4(fontWeight: FontWeight.w600),
+  titleMedium:    GoogleFonts.sourceSerif4(fontWeight: FontWeight.w600),
+  titleSmall:     GoogleFonts.sourceSerif4(fontWeight: FontWeight.w500),
   bodyLarge:      GoogleFonts.sourceSerif4(),
   bodyMedium:     GoogleFonts.sourceSerif4(),
   bodySmall:      GoogleFonts.sourceSerif4(),
-  labelLarge:     GoogleFonts.nunito(fontWeight: FontWeight.w600),
+  labelLarge:     GoogleFonts.sourceSerif4(fontWeight: FontWeight.w600),
+  labelMedium:    GoogleFonts.sourceSerif4(fontWeight: FontWeight.w500),
+  labelSmall:     GoogleFonts.sourceSerif4(fontWeight: FontWeight.w500),
 );
 ```
 
