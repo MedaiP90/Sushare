@@ -9,6 +9,9 @@ import '../domain/models/personal_sub_order.dart';
 import 'ble_framing.dart';
 import 'sync_message.dart';
 
+// Advertisements not seen within this window are pruned from the list.
+const _discoveryStalenessDuration = Duration(seconds: 10);
+
 // Must match the UUIDs declared in HostBleService.
 final _serviceUuid = UUID.fromString('19B10000-E8F2-537E-4F6C-D104768A1214');
 final _txUuid = UUID.fromString('19B10001-E8F2-537E-4F6C-D104768A1214');
@@ -20,13 +23,15 @@ class DiscoveredSession {
   final String shortId;
   final String sessionName;
   final String hostName;
+  final DateTime lastSeen;
 
-  const DiscoveredSession({
+  DiscoveredSession({
     required this.endpointId,
     required this.shortId,
     required this.sessionName,
     required this.hostName,
-  });
+    DateTime? lastSeen,
+  }) : lastSeen = lastSeen ?? DateTime.now();
 }
 
 /// Parses a Sushare host advertisement local name.
@@ -55,6 +60,7 @@ class ParticipantBleService {
   StreamSubscription? _connStateSub;
   StreamSubscription? _notifiedSub;
   StreamSubscription? _authorizeSub;
+  Timer? _pruneTimer;
 
   final _msgCtrl = StreamController<SyncMessage>.broadcast();
   final _connCtrl = StreamController<bool>.broadcast();
@@ -121,6 +127,22 @@ class ParticipantBleService {
         _central.characteristicNotified.listen(_onCharacteristicNotified);
     await _central.startDiscovery(serviceUUIDs: [_serviceUuid]);
     _isDiscovering = true;
+
+    // Periodically prune sessions whose advertisement has gone silent.
+    _pruneTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+      final cutoff = DateTime.now().subtract(_discoveryStalenessDuration);
+      final stale = _discoveredMap.keys
+          .where((id) => _discoveredMap[id]!.lastSeen.isBefore(cutoff))
+          .toList();
+      if (stale.isNotEmpty) {
+        for (final id in stale) {
+          _discoveredMap.remove(id);
+          _peripheralMap.remove(id);
+        }
+        _discoveredCtrl
+            .add(List.unmodifiable(_discoveredMap.values.toList()));
+      }
+    });
   }
 
   List<DiscoveredSession> get currentDiscoveredSessions =>
@@ -128,6 +150,8 @@ class ParticipantBleService {
 
   Future<void> stopDiscovery() async {
     if (!_isDiscovering) return;
+    _pruneTimer?.cancel();
+    _pruneTimer = null;
     _discoveredSub?.cancel();
     _discoveredSub = null;
     _connStateSub?.cancel();
@@ -147,8 +171,11 @@ class ParticipantBleService {
     final session = parseAdvertisement(id, e.advertisement.name);
     if (session == null) return;
     _peripheralMap[id] = e.peripheral;
-    if (_discoveredMap[id]?.sessionName != session.sessionName) {
-      _discoveredMap[id] = session;
+    final existing = _discoveredMap[id];
+    // Always update so lastSeen is refreshed (prevents stale-pruning of live
+    // sessions). Only emit when the entry is new or its displayed data changed.
+    _discoveredMap[id] = session;
+    if (existing == null || existing.sessionName != session.sessionName) {
       _discoveredCtrl
           .add(List.unmodifiable(_discoveredMap.values.toList()));
     }

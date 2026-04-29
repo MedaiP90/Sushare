@@ -130,7 +130,10 @@ class _SessionShellPageState extends ConsumerState<SessionShellPage> {
                       l10n.sessionCloseButton,
                     );
                     if (confirm == true && context.mounted) {
-                      ref.read(hostBleServiceProvider).sendSessionClosedToGuests();
+                      final hostSvc = ref.read(hostBleServiceProvider);
+                      hostSvc.sendSessionClosedToGuests();
+                      await hostSvc.stop();
+                      setState(() => _hostServiceStarted = false);
                       await ref
                           .read(sessionsProvider.notifier)
                           .closeSession(widget.sessionId);
@@ -144,7 +147,9 @@ class _SessionShellPageState extends ConsumerState<SessionShellPage> {
                       isDestructive: true,
                     );
                     if (confirm == true && context.mounted) {
-                      ref.read(hostBleServiceProvider).sendSessionClosedToGuests();
+                      final hostSvc = ref.read(hostBleServiceProvider);
+                      hostSvc.sendSessionClosedToGuests();
+                      await hostSvc.stop();
                       await ref
                           .read(sessionsProvider.notifier)
                           .deleteSession(widget.sessionId);
@@ -245,6 +250,23 @@ class _SessionShellPageState extends ConsumerState<SessionShellPage> {
     if (_hostServiceStarted) return;
 
     final hostSvc = ref.read(hostBleServiceProvider);
+
+    if (hostSvc.isRunning) {
+      if (hostSvc.currentSessionId == session.id) {
+        // Already advertising this session — just refresh in-memory refs.
+        hostSvc.setSession(session);
+        _lastKnownStatus = session.status;
+        final restaurantRepo = ref.read(restaurantRepositoryProvider);
+        final restaurant =
+            await restaurantRepo.getRestaurantById(session.restaurantId);
+        if (restaurant != null) hostSvc.setRestaurant(restaurant);
+        if (mounted) setState(() => _hostServiceStarted = true);
+        return;
+      }
+      // Different session — stop the old one before starting the new one.
+      await hostSvc.stop();
+    }
+
     try {
       await hostSvc.start(
         sessionId: session.id,

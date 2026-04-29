@@ -81,6 +81,7 @@ class HostBleService {
   }
 
   bool get isRunning => _isRunning;
+  String? get currentSessionId => _session?.id;
   Stream<SyncMessage> get messages => _msgCtrl.stream;
 
   void setSession(Session session) => _session = session;

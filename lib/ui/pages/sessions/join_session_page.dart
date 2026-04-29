@@ -1,6 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -97,13 +95,6 @@ class _JoinSessionPageState extends ConsumerState<JoinSessionPage> {
         'userName': user.username,
         'userFullName': '${user.firstName} ${user.lastName}'.trim(),
       };
-      if (user.profilePicturePath != null) {
-        final f = File(user.profilePicturePath!);
-        if (await f.exists()) {
-          userInfo['userProfilePictureBase64'] =
-              base64Encode(await f.readAsBytes());
-        }
-      }
 
       final connected = await svc.connect(
         endpointId: session.endpointId,
@@ -115,11 +106,44 @@ class _JoinSessionPageState extends ConsumerState<JoinSessionPage> {
         return;
       }
 
-      // Wait for initialSync from the host (contains session + restaurant data).
-      final initialSync = await svc.messages
+      // Race initialSync against sessionClosed so we can show the right error.
+      bool sessionWasClosed = false;
+      final syncCompleter = Completer<SyncMessage?>();
+      StreamSubscription<SyncMessage>? syncSub;
+      StreamSubscription<void>? closedSub;
+      syncSub = svc.messages
           .where((m) => m.type == SyncMessageType.initialSync)
-          .first
-          .timeout(const Duration(seconds: 15));
+          .listen((msg) {
+        if (!syncCompleter.isCompleted) {
+          syncCompleter.complete(msg);
+          syncSub?.cancel();
+          closedSub?.cancel();
+        }
+      });
+      closedSub = svc.sessionClosed.listen((_) {
+        if (!syncCompleter.isCompleted) {
+          sessionWasClosed = true;
+          syncCompleter.complete(null);
+          syncSub?.cancel();
+          closedSub?.cancel();
+        }
+      });
+      final syncResult = await syncCompleter.future.timeout(
+        const Duration(seconds: 15),
+        onTimeout: () {
+          syncSub?.cancel();
+          closedSub?.cancel();
+          return null;
+        },
+      );
+      if (syncResult == null) {
+        await svc.disconnect();
+        _setError(sessionWasClosed
+            ? l10n.joinTableClosedError
+            : l10n.joinTableErrorSyncTimeout);
+        return;
+      }
+      final initialSync = syncResult;
 
       final sessionRepo = ref.read(sessionRepositoryProvider);
       final restaurantRepo = ref.read(restaurantRepositoryProvider);
@@ -142,10 +166,6 @@ class _JoinSessionPageState extends ConsumerState<JoinSessionPage> {
       }
 
       if (mounted) context.go('/sessions/${remoteSession.id}');
-    } on TimeoutException {
-      // Disconnect so the service is in a clean state for a retry.
-      ref.read(participantBleServiceProvider).disconnect();
-      _setError(AppLocalizations.of(context)!.joinTableErrorSyncTimeout);
     } catch (_) {
       ref.read(participantBleServiceProvider).disconnect();
       _setError(AppLocalizations.of(context)!.joinTableErrorConnectionTimeout);
