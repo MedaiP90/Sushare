@@ -4,22 +4,22 @@ import 'package:google_fonts/google_fonts.dart';
 
 const Color fallbackSeed = Color(0xFFFF7E70);
 
-TextTheme buildTextTheme() => GoogleFonts.nunitoTextTheme().copyWith(
-  displayLarge: GoogleFonts.nunito(fontWeight: FontWeight.w800),
-  displayMedium: GoogleFonts.nunito(fontWeight: FontWeight.w700),
-  displaySmall: GoogleFonts.nunito(fontWeight: FontWeight.w700),
-  headlineLarge: GoogleFonts.nunito(fontWeight: FontWeight.w700),
-  headlineMedium: GoogleFonts.nunito(fontWeight: FontWeight.w600),
-  headlineSmall: GoogleFonts.nunito(fontWeight: FontWeight.w600),
-  titleLarge: GoogleFonts.nunito(fontWeight: FontWeight.w600),
-  titleMedium: GoogleFonts.nunito(fontWeight: FontWeight.w600),
-  titleSmall: GoogleFonts.nunito(fontWeight: FontWeight.w500),
+TextTheme buildTextTheme() => GoogleFonts.sourceSerif4TextTheme().copyWith(
+  displayLarge: GoogleFonts.sourceSerif4(fontWeight: FontWeight.w800),
+  displayMedium: GoogleFonts.sourceSerif4(fontWeight: FontWeight.w700),
+  displaySmall: GoogleFonts.sourceSerif4(fontWeight: FontWeight.w700),
+  headlineLarge: GoogleFonts.sourceSerif4(fontWeight: FontWeight.w700),
+  headlineMedium: GoogleFonts.sourceSerif4(fontWeight: FontWeight.w600),
+  headlineSmall: GoogleFonts.sourceSerif4(fontWeight: FontWeight.w600),
+  titleLarge: GoogleFonts.sourceSerif4(fontWeight: FontWeight.w600),
+  titleMedium: GoogleFonts.sourceSerif4(fontWeight: FontWeight.w600),
+  titleSmall: GoogleFonts.sourceSerif4(fontWeight: FontWeight.w500),
   bodyLarge: GoogleFonts.sourceSerif4(),
   bodyMedium: GoogleFonts.sourceSerif4(),
   bodySmall: GoogleFonts.sourceSerif4(),
-  labelLarge: GoogleFonts.nunito(fontWeight: FontWeight.w600),
-  labelMedium: GoogleFonts.nunito(fontWeight: FontWeight.w500),
-  labelSmall: GoogleFonts.nunito(fontWeight: FontWeight.w500),
+  labelLarge: GoogleFonts.sourceSerif4(fontWeight: FontWeight.w600),
+  labelMedium: GoogleFonts.sourceSerif4(fontWeight: FontWeight.w500),
+  labelSmall: GoogleFonts.sourceSerif4(fontWeight: FontWeight.w500),
 );
 
 const _subThemes = FlexSubThemesData(

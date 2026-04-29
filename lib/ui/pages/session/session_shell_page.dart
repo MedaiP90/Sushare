@@ -312,7 +312,7 @@ class _SessionShellPageState extends ConsumerState<SessionShellPage> {
           userId: userId,
           userName: msg.data['userName'] as String?,
           userFullName: msg.data['userFullName'] as String?,
-          userAvatarIconCodePoint: msg.data['userAvatarIconCodePoint'] as int? ?? existing?.userAvatarIconCodePoint,
+          userAvatarIconName: msg.data['userAvatarIconName'] as String? ?? existing?.userAvatarIconName,
           userAvatarColorValue: msg.data['userAvatarColorValue'] as int? ?? existing?.userAvatarColorValue,
           entries: existing?.entries ?? [],
           checklist: existing?.checklist ?? [],
@@ -342,7 +342,7 @@ class _SessionShellPageState extends ConsumerState<SessionShellPage> {
           await subOrderRepo.updateSubOrder(subOrder.copyWith(
             id: existing.id,
             checklist: existing.checklist,
-            userAvatarIconCodePoint: existing.userAvatarIconCodePoint,
+            userAvatarIconName: existing.userAvatarIconName,
             userAvatarColorValue: existing.userAvatarColorValue,
           ));
         } else {

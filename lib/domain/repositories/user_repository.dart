@@ -14,7 +14,7 @@ class UserRepository {
       username: row['username'] as String,
       firstName: row['first_name'] as String,
       lastName: row['last_name'] as String,
-      avatarIconCodePoint: row['avatar_icon_code_point'] as int,
+      avatarIconName: (row['avatar_icon_name'] as String?) ?? 'silverware.svg',
       avatarColorValue: row['avatar_color_value'] as int,
       createdAt: row['created_at'] != null 
           ? DateTime.parse(row['created_at'] as String)
@@ -31,7 +31,7 @@ class UserRepository {
         'username': user.username,
         'first_name': user.firstName,
         'last_name': user.lastName,
-        'avatar_icon_code_point': user.avatarIconCodePoint,
+        'avatar_icon_name': user.avatarIconName,
         'avatar_color_value': user.avatarColorValue,
         'created_at': user.createdAt?.toIso8601String(),
       },
@@ -47,7 +47,7 @@ class UserRepository {
         'username': user.username,
         'first_name': user.firstName,
         'last_name': user.lastName,
-        'avatar_icon_code_point': user.avatarIconCodePoint,
+        'avatar_icon_name': user.avatarIconName,
         'avatar_color_value': user.avatarColorValue,
       },
       where: 'id = ?',
