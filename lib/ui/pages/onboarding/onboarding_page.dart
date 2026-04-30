@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:go_router/go_router.dart';
+import '../../../core/providers.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../services/permission_service.dart';
 
@@ -22,6 +23,13 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
   void dispose() {
     _pageController.dispose();
     super.dispose();
+  }
+
+  Future<void> _requestBluetoothPermission() async {
+    // Reading the provider initializes CentralManager, which triggers the
+    // CoreBluetooth system authorization prompt on iOS.
+    ref.read(participantBleServiceProvider);
+    if (mounted) await PermissionService.requestBluetooth(context);
   }
 
   Future<void> _checkBluetooth() async {
@@ -133,7 +141,10 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
             Expanded(
               child: PageView.builder(
                 controller: _pageController,
-                onPageChanged: (index) => setState(() => _currentPage = index),
+                onPageChanged: (index) {
+                  setState(() => _currentPage = index);
+                  if (index == 1) _requestBluetoothPermission();
+                },
                 itemCount: pages.length,
                 itemBuilder: (context, index) => _OnboardingPageContent(data: pages[index]),
               ),
