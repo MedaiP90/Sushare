@@ -41,8 +41,6 @@ class _ScanMenuPageState extends ConsumerState<ScanMenuPage> {
   }
 
   Future<void> _pickImage() async {
-    final hasPermission = await PermissionService.checkAndRequestPhotos(context);
-    if (!hasPermission) return;
     final image = await ref.read(cameraServiceProvider).pickImageFromGallery();
     if (image != null && mounted) await _processImage(image);
   }
