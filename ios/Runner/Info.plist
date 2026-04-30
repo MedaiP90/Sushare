@@ -34,6 +34,8 @@
 	<string>Sushare uses Bluetooth to discover and connect to nearby devices for group ordering sessions.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>Sushare uses the camera to scan QR codes and join tables, or for menu scanning and importing</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Sushare accesses your photo library to import menu images for AI scanning.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

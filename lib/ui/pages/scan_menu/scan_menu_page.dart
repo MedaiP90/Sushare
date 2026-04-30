@@ -26,6 +26,20 @@ class _ScanMenuPageState extends ConsumerState<ScanMenuPage> {
   List<MenuItem> _parsedItems = [];
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _requestPermissions());
+  }
+
+  Future<void> _requestPermissions() async {
+    if (!mounted) return;
+    await PermissionService.requestCamera(context);
+    if (Platform.isIOS && mounted) {
+      await PermissionService.requestPhotoLibrary(context);
+    }
+  }
+
+  @override
   void dispose() {
     for (final f in _capturedImages) {
       f.delete().ignore();
@@ -41,6 +55,12 @@ class _ScanMenuPageState extends ConsumerState<ScanMenuPage> {
   }
 
   Future<void> _pickImage() async {
+    // Android uses the system Photo Picker (no permission needed).
+    // iOS requires explicit photo library permission.
+    if (Platform.isIOS) {
+      final hasPermission = await PermissionService.checkAndRequestPhotos(context);
+      if (!hasPermission) return;
+    }
     final image = await ref.read(cameraServiceProvider).pickImageFromGallery();
     if (image != null && mounted) await _processImage(image);
   }
