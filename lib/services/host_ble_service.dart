@@ -87,6 +87,12 @@ class HostBleService {
   void setSession(Session session) => _session = session;
   void setRestaurant(Restaurant restaurant) => _restaurant = restaurant;
 
+  Map<String, dynamic> _restaurantPayload(Restaurant r) {
+    final map = r.toJson();
+    map.remove('coverImagePath');
+    return map;
+  }
+
   void upsertSubOrder(PersonalSubOrder subOrder) =>
       _subOrders[subOrder.userId] = subOrder.copyWith(checklist: []);
 
@@ -189,7 +195,7 @@ class HostBleService {
             type: SyncMessageType.initialSync,
             data: {
               if (_session != null) 'session': _session!.toJson(),
-              if (_restaurant != null) 'restaurant': _restaurant!.toJson(),
+              if (_restaurant != null) 'restaurant': _restaurantPayload(_restaurant!),
               'subOrders':
                   _subOrders.values.map((o) => o.toJson()).toList(),
             },
@@ -222,7 +228,7 @@ class HostBleService {
             type: SyncMessageType.initialSync,
             data: {
               if (_session != null) 'session': _session!.toJson(),
-              if (_restaurant != null) 'restaurant': _restaurant!.toJson(),
+              if (_restaurant != null) 'restaurant': _restaurantPayload(_restaurant!),
               'subOrders':
                   _subOrders.values.map((o) => o.toJson()).toList(),
             },
@@ -283,7 +289,7 @@ class HostBleService {
     _restaurant = restaurant;
     broadcast(SyncMessage(
         type: SyncMessageType.restaurantUpdate,
-        data: restaurant.toJson()));
+        data: _restaurantPayload(restaurant)));
   }
 
   void sendSessionClosedToGuests() {
