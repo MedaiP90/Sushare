@@ -512,7 +512,7 @@ a:hover { text-decoration: underline; }
 }
 
 .badge__icon > img {
-  height: 1.5em;
+  height: 3.5rem;
   aspect-ratio: 1/1;
 }
 
