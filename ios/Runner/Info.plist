@@ -31,7 +31,7 @@
 	<key>NSBluetoothPeripheralUsageDescription</key>
 	<string>Sushare uses Bluetooth to host and join group ordering sessions with nearby devices.</string>
 	<key>NSBluetoothWhileInUseUsageDescription</key>
-	<string></string>
+	<string>Sushare uses Bluetooth to discover and connect to nearby devices for group ordering sessions.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>Sushare uses the camera to scan QR codes and join tables, or for menu scanning and importing</string>
 	<key>UIApplicationSceneManifest</key>
