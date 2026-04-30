@@ -218,8 +218,9 @@ a:hover { text-decoration: underline; }
 .mockup {
   width: 260px;
   background: #1a1a1a;
-  border-radius: 42px;
-  padding: 14px;
+  /*radius = mockup__screen.radius + padding*/
+  border-radius: 37px;
+  padding: 7px;
   box-shadow: var(--shadow-md), 0 32px 80px rgba(0,0,0,.18);
   position: relative;
   z-index: 1;
@@ -536,11 +537,16 @@ a:hover { text-decoration: underline; }
   padding: 40px 0;
 }
 
+.footer__start {
+  display: flex;
+  align-items: baseline;
+  gap: 24px;
+}
+
 .footer__inner {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  flex-wrap: wrap;
   gap: 16px;
 }
 
