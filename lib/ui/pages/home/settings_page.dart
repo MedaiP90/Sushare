@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../viewmodels/profile_viewmodel.dart';
@@ -65,6 +66,11 @@ class LocaleNotifier extends StateNotifier<Locale?> {
     }
   }
 }
+
+final _appVersionProvider = FutureProvider<String>((ref) async {
+  final info = await PackageInfo.fromPlatform();
+  return info.version;
+});
 
 final _selectedModelProvider = FutureProvider<String?>((ref) async {
   final service = MenuAiService();
@@ -154,7 +160,11 @@ class SettingsPage extends ConsumerWidget {
           ListTile(
             leading: const Icon(Icons.info_outline),
             title: Text(l10n.settingsAppVersion),
-            subtitle: const Text('1.0.0'),
+            subtitle: ref.watch(_appVersionProvider).when(
+              data: (v) => Text(v),
+              loading: () => const Text('…'),
+              error: (_, __) => const Text('—'),
+            ),
           ),
         ],
       ),
