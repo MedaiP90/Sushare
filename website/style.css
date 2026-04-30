@@ -202,6 +202,10 @@ a:hover { text-decoration: underline; }
   color: var(--ink);
 }
 
+.l-icon {
+  font-size: 1.2rem;
+}
+
 /* ── App mockup ──────────────────────────────────────────────────────────── */
 
 .hero__visual {
@@ -356,7 +360,7 @@ a:hover { text-decoration: underline; }
   align-items: center;
   justify-content: center;
   margin-bottom: 20px;
-  font-size: 1.5rem;
+  font-size: 1.7rem;
 }
 
 .feature-card__title {
@@ -442,7 +446,7 @@ a:hover { text-decoration: underline; }
 }
 
 .privacy-teaser__icon {
-  font-size: 3.5rem;
+  font-size: 5.5rem;
   flex-shrink: 0;
 }
 
