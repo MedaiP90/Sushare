@@ -199,9 +199,10 @@ class PermissionService {
       }
       return allGranted;
     }
-    // iOS: permissions are declared in Info.plist; request triggers system prompt.
-    final status = await Permission.bluetooth.request();
-    return status.isGranted;
+    // iOS: CoreBluetooth triggers the system prompt automatically when the
+    // CentralManager first scans. permission_handler cannot trigger it
+    // reliably — let bluetooth_low_energy handle authorization natively.
+    return true;
   }
 
   static Future<Map<Permission, PermissionStatus>> checkAllPermissions() async {
