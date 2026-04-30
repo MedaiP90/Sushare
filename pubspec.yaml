@@ -1,7 +1,7 @@
 name: Sushare
 description: Distributed group ordering app for restaurants
 publish_to: none
-version: 1.1.0+2
+version: 1.2.0+4
 
 environment:
   sdk: ^3.7.0
@@ -29,6 +29,7 @@ dependencies:
   google_fonts: ^6.2.1
 
   image_picker: ^1.1.2
+  image_picker_android: ^0.8.9
   flutter_image_compress: ^2.3.0
   path_provider: ^2.1.5
 
@@ -46,8 +47,6 @@ dependencies:
 
 dev_dependencies:
   flutter_test:
-    sdk: flutter
-  integration_test:
     sdk: flutter
   mocktail: ^1.0.4
   flutter_launcher_icons: ^0.13.1
