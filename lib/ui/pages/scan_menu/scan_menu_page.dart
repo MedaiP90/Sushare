@@ -26,20 +26,6 @@ class _ScanMenuPageState extends ConsumerState<ScanMenuPage> {
   List<MenuItem> _parsedItems = [];
 
   @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _requestPermissions());
-  }
-
-  Future<void> _requestPermissions() async {
-    if (!mounted) return;
-    await PermissionService.requestCamera(context);
-    if (Platform.isIOS && mounted) {
-      await PermissionService.requestPhotoLibrary(context);
-    }
-  }
-
-  @override
   void dispose() {
     for (final f in _capturedImages) {
       f.delete().ignore();
