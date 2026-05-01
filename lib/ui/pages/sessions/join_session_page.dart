@@ -186,7 +186,9 @@ class _JoinSessionPageState extends ConsumerState<JoinSessionPage> {
       final restaurantData =
           initialSync.data['restaurant'] as Map<String, dynamic>?;
       if (restaurantData != null) {
-        await restaurantRepo.saveRestaurant(Restaurant.fromJson(restaurantData));
+        final remote = Restaurant.fromJson(restaurantData);
+        final local = await restaurantRepo.getRestaurantById(remote.id);
+        await restaurantRepo.saveRestaurant(_mergeRestaurant(remote, local));
       }
 
       if (mounted) context.go('/sessions/${remoteSession.id}');
@@ -198,6 +200,21 @@ class _JoinSessionPageState extends ConsumerState<JoinSessionPage> {
 
   void _setError(String msg) {
     if (mounted) setState(() { _error = msg; _isConnecting = false; });
+  }
+
+  Restaurant _mergeRestaurant(Restaurant remote, Restaurant? local) {
+    if (local == null) return remote;
+    final localYummies = {
+      for (final item in local.menu)
+        if (item.isYummie) item.id: true,
+    };
+    return remote.copyWith(
+      coverImagePath: local.coverImagePath,
+      menu: remote.menu
+          .map((item) =>
+              item.copyWith(isYummie: localYummies[item.id] ?? item.isYummie))
+          .toList(),
+    );
   }
 
   // ── QR scanning ─────────────────────────────────────────────────────────────

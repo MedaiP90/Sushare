@@ -12,13 +12,35 @@ import '../../../l10n/app_localizations.dart';
 import '../../viewmodels/restaurant_viewmodel.dart';
 import '../../viewmodels/saved_order_viewmodel.dart';
 
-class RestaurantDetailPage extends ConsumerWidget {
+class RestaurantDetailPage extends ConsumerStatefulWidget {
   final String restaurantId;
 
   const RestaurantDetailPage({super.key, required this.restaurantId});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<RestaurantDetailPage> createState() => _RestaurantDetailPageState();
+}
+
+class _RestaurantDetailPageState extends ConsumerState<RestaurantDetailPage> {
+  bool _isSearchExpanded = false;
+  String _searchQuery = '';
+  late final TextEditingController _searchController;
+
+  @override
+  void initState() {
+    super.initState();
+    _searchController = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final String restaurantId = widget.restaurantId;
     final restaurantAsync = ref.watch(restaurantDetailProvider(restaurantId));
     final templatesAsync = ref.watch(savedOrdersForRestaurantProvider(restaurantId));
     final l10n = AppLocalizations.of(context)!;
@@ -38,6 +60,14 @@ class RestaurantDetailPage extends ConsumerWidget {
             if (!a.isYummie && b.isYummie) return 1;
             return (a.itemNumber ?? 0).compareTo(b.itemNumber ?? 0);
           });
+        final filteredMenu = _searchQuery.isEmpty
+            ? sortedMenu
+            : sortedMenu.where((item) {
+                final q = _searchQuery.toLowerCase();
+                return item.name.toLowerCase().contains(q) ||
+                    (item.description?.toLowerCase().contains(q) ?? false) ||
+                    (item.itemNumber?.toString().contains(q) ?? false);
+              }).toList();
 
         return Scaffold(
           body: CustomScrollView(
@@ -210,7 +240,7 @@ class RestaurantDetailPage extends ConsumerWidget {
               SliverList(
                 delegate: SliverChildBuilderDelegate(
                   (context, index) {
-                    final item = sortedMenu[index];
+                    final item = filteredMenu[index];
                     return ListTile(
                       leading: item.itemNumber != null
                           ? CircleAvatar(
@@ -252,15 +282,104 @@ class RestaurantDetailPage extends ConsumerWidget {
                       ),
                     );
                   },
-                  childCount: sortedMenu.length,
+                  childCount: filteredMenu.length,
                 ),
               ),
               const SliverToBoxAdapter(child: SizedBox(height: 80)),
             ],
           ),
-          floatingActionButton: FloatingActionButton(
-            onPressed: () => _showAddMenuItemSheet(context, ref, restaurant),
-            child: const Icon(Icons.add),
+          floatingActionButton: Builder(
+            builder: (context) {
+              final safeArea = MediaQuery.of(context).padding;
+              final expandedSearchWidth = MediaQuery.of(context).size.width
+                  - safeArea.left
+                  - safeArea.right
+                  - 16   // scaffold FAB right margin
+                  - 56   // add FAB width
+                  - 12   // gap between the two FABs
+                  - 16;  // left screen margin
+              return Row(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 250),
+                curve: Curves.easeInOut,
+                width: _isSearchExpanded ? expandedSearchWidth : 56,
+                height: 56,
+                clipBehavior: Clip.hardEdge,
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.primaryContainer,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.2),
+                      blurRadius: 6,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: _isSearchExpanded
+                    ? Row(
+                        children: [
+                          IconButton(
+                            onPressed: () => setState(() {
+                              _isSearchExpanded = false;
+                              _searchQuery = '';
+                              _searchController.clear();
+                            }),
+                            icon: Icon(
+                              Icons.close,
+                              color: Theme.of(context).colorScheme.onPrimaryContainer,
+                            ),
+                          ),
+                          Expanded(
+                            child: TextField(
+                              controller: _searchController,
+                              autofocus: true,
+                              style: TextStyle(
+                                color: Theme.of(context).colorScheme.onPrimaryContainer,
+                              ),
+                              decoration: InputDecoration(
+                                border: InputBorder.none,
+                                hintText: l10n.searchDishes,
+                                isDense: true,
+                                hintStyle: TextStyle(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onPrimaryContainer
+                                      .withValues(alpha: 0.6),
+                                ),
+                              ),
+                              onChanged: (v) => setState(() => _searchQuery = v),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                        ],
+                      )
+                    : Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(16),
+                          onTap: () => setState(() => _isSearchExpanded = true),
+                          child: Center(
+                            child: Icon(
+                              Icons.search,
+                              color: Theme.of(context).colorScheme.onPrimaryContainer,
+                            ),
+                          ),
+                        ),
+                      ),
+              ),
+              const SizedBox(width: 12),
+              FloatingActionButton(
+                heroTag: 'fab_add',
+                onPressed: () => _showAddMenuItemSheet(context, ref, restaurant),
+                child: const Icon(Icons.add),
+              ),
+            ],
+              );
+            },
           ),
         );
       },
@@ -378,7 +497,7 @@ class RestaurantDetailPage extends ConsumerWidget {
             coverImagePath: coverImagePath,
           );
           await ref.read(restaurantsProvider.notifier).updateRestaurant(updated);
-          ref.invalidate(restaurantDetailProvider(restaurantId));
+          ref.invalidate(restaurantDetailProvider(widget.restaurantId));
           if (context.mounted) Navigator.pop(context);
         },
       ),
@@ -403,7 +522,7 @@ class RestaurantDetailPage extends ConsumerWidget {
           );
           final updated = restaurant.copyWith(menu: [...restaurant.menu, newItem]);
           await ref.read(restaurantsProvider.notifier).updateRestaurant(updated);
-          ref.invalidate(restaurantDetailProvider(restaurantId));
+          ref.invalidate(restaurantDetailProvider(widget.restaurantId));
           if (context.mounted) Navigator.pop(context);
         },
       ),
@@ -432,7 +551,7 @@ class RestaurantDetailPage extends ConsumerWidget {
               restaurant.menu.map((i) => i.id == item.id ? updatedItem : i).toList();
           final updated = restaurant.copyWith(menu: updatedMenu);
           await ref.read(restaurantsProvider.notifier).updateRestaurant(updated);
-          ref.invalidate(restaurantDetailProvider(restaurantId));
+          ref.invalidate(restaurantDetailProvider(widget.restaurantId));
           if (context.mounted) Navigator.pop(context);
         },
       ),
@@ -444,7 +563,7 @@ class RestaurantDetailPage extends ConsumerWidget {
     ref.read(restaurantsProvider.notifier).updateRestaurant(
           restaurant.copyWith(menu: updatedMenu),
         );
-    ref.invalidate(restaurantDetailProvider(restaurantId));
+    ref.invalidate(restaurantDetailProvider(widget.restaurantId));
   }
 
   void _showAddTemplateSheet(
@@ -492,7 +611,9 @@ class _AddTemplateSheet extends StatefulWidget {
 
 class _AddTemplateSheetState extends State<_AddTemplateSheet> {
   late final TextEditingController _nameController;
+  late final TextEditingController _searchController;
   late final Set<String> _selectedIds;
+  String _searchQuery = '';
 
   @override
   void initState() {
@@ -500,6 +621,7 @@ class _AddTemplateSheetState extends State<_AddTemplateSheet> {
     _nameController = TextEditingController(
       text: widget.editingTemplate?.label ?? '',
     );
+    _searchController = TextEditingController();
     _selectedIds = widget.editingTemplate?.entries
             .map((e) => e.menuItemId)
             .toSet() ??
@@ -509,6 +631,7 @@ class _AddTemplateSheetState extends State<_AddTemplateSheet> {
   @override
   void dispose() {
     _nameController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -522,6 +645,14 @@ class _AddTemplateSheetState extends State<_AddTemplateSheet> {
         if (!a.isYummie && b.isYummie) return 1;
         return (a.itemNumber ?? 0).compareTo(b.itemNumber ?? 0);
       });
+    final filteredMenu = _searchQuery.isEmpty
+        ? sortedMenu
+        : sortedMenu.where((item) {
+            final q = _searchQuery.toLowerCase();
+            return item.name.toLowerCase().contains(q) ||
+                (item.description?.toLowerCase().contains(q) ?? false) ||
+                (item.itemNumber?.toString().contains(q) ?? false);
+          }).toList();
 
     return DraggableScrollableSheet(
       initialChildSize: 0.75,
@@ -562,13 +693,27 @@ class _AddTemplateSheetState extends State<_AddTemplateSheet> {
               ],
             ),
           ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+            child: TextField(
+              controller: _searchController,
+              decoration: InputDecoration(
+                hintText: l10n.searchDishes,
+                prefixIcon: const Icon(Icons.search),
+                border: const OutlineInputBorder(),
+                isDense: true,
+                contentPadding: const EdgeInsets.symmetric(vertical: 10),
+              ),
+              onChanged: (v) => setState(() => _searchQuery = v),
+            ),
+          ),
           const Divider(height: 1),
           Expanded(
             child: ListView.builder(
               controller: scrollController,
-              itemCount: sortedMenu.length,
+              itemCount: filteredMenu.length,
               itemBuilder: (context, index) {
-                final item = sortedMenu[index];
+                final item = filteredMenu[index];
                 return StatefulBuilder(
                   builder: (context, setItem) => CheckboxListTile(
                     value: _selectedIds.contains(item.id),

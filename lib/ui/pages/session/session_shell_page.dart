@@ -509,6 +509,9 @@ class _SessionShellPageState extends ConsumerState<SessionShellPage> {
         if (item.isYummie) item.id: true,
     };
     return remote.copyWith(
+      // coverImagePath is excluded from the sync payload (local path); keep
+      // whatever the guest has stored locally.
+      coverImagePath: local.coverImagePath,
       menu: remote.menu
           .map((item) =>
               item.copyWith(isYummie: localYummies[item.id] ?? item.isYummie))

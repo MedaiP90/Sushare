@@ -614,5 +614,7 @@
   "sessionReconnect": "Reconnect",
   "@sessionReconnect": {},
   "sessionShareBleHint": "Make sure Bluetooth is enabled on all devices.",
-  "@sessionShareBleHint": {}
+  "@sessionShareBleHint": {},
+  "searchDishes": "Search dishes...",
+  "@searchDishes": {}
 }
