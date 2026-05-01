@@ -903,4 +903,7 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get sessionShareBleHint =>
       'Assurez-vous que le Bluetooth est activé sur tous les appareils.';
+
+  @override
+  String get searchDishes => 'Rechercher des plats...';
 }

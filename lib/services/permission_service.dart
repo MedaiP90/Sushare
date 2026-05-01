@@ -27,7 +27,7 @@ class PermissionService {
         final shouldOpen = await _showSettingsDialog(
           context,
           'Camera Access Required',
-          'Camera access is needed to scan menus and take photos. Please enable it in settings.',
+          'Camera access was previously denied. Go to Settings → Privacy & Security → Camera and enable it for this app.',
         );
         if (shouldOpen) {
           openAppSettings();
@@ -35,28 +35,28 @@ class PermissionService {
       }
       return false;
     }
-    
+
     return false;
   }
 
   static Future<bool> requestPhotoLibrary(BuildContext context) async {
     final status = await Permission.photos.status;
-    
+
     if (status.isGranted || status.isLimited) {
       return true;
     }
-    
+
     if (status.isDenied) {
       final result = await Permission.photos.request();
       return result.isGranted || result.isLimited;
     }
-    
+
     if (status.isPermanentlyDenied) {
       if (context.mounted) {
         final shouldOpen = await _showSettingsDialog(
           context,
           'Photo Access Required',
-          'Photo library access is needed to select profile pictures and menu images. Please enable it in settings.',
+          'Photo library access was previously denied. Go to Settings → Privacy & Security → Photos and enable it for this app.',
         );
         if (shouldOpen) {
           openAppSettings();
@@ -86,27 +86,13 @@ class PermissionService {
   static Future<bool> checkAndRequestCamera(BuildContext context) async {
     final hasCamera = await Permission.camera.isGranted;
     if (hasCamera) return true;
-    
-    final hasPermission = await requestCamera(context);
-    if (!hasPermission) {
-      if (context.mounted) {
-        _showRationale(context);
-      }
-    }
-    return hasPermission;
+    return requestCamera(context);
   }
 
   static Future<bool> checkAndRequestPhotos(BuildContext context) async {
-    final hasPhotos = await Permission.photos.isGranted;
-    if (hasPhotos) return true;
-    
-    final hasPermission = await requestPhotoLibrary(context);
-    if (!hasPermission) {
-      if (context.mounted) {
-        _showRationale(context, 'To select profile pictures and menu images.');
-      }
-    }
-    return hasPermission;
+    final status = await Permission.photos.status;
+    if (status.isGranted || status.isLimited) return true;
+    return requestPhotoLibrary(context);
   }
 
   static Future<bool> checkAndRequestCameraQuiet() async {

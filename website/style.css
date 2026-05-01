@@ -357,6 +357,7 @@ a:hover { text-decoration: underline; }
   height: 52px;
   background: var(--coral-light);
   border-radius: var(--radius-md);
+  color: var(--coral-dark);
   display: flex;
   align-items: center;
   justify-content: center;
