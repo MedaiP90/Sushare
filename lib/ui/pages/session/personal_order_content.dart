@@ -133,7 +133,8 @@ class _PersonalOrderContentState extends ConsumerState<PersonalOrderContent> {
                             ),
                           )
                         : ListView(
-                      padding: const EdgeInsets.all(16),
+                      padding: EdgeInsets.fromLTRB(16, 16, 16,
+                          16 + 56 + 16 + MediaQuery.of(context).padding.bottom),
                       children: [
                         Row(
                           children: [
