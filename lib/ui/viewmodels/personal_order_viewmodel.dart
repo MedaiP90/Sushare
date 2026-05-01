@@ -41,8 +41,8 @@ class PersonalOrderNotifier extends FamilyAsyncNotifier<PersonalSubOrder?, Strin
       userAvatarIconName: userAvatarIconName ?? existing?.userAvatarIconName,
       userAvatarColorValue: userAvatarColorValue ?? existing?.userAvatarColorValue,
       entries: entries,
-      checklist: [],
-      locked: false,
+      checklist: existing?.checklist ?? [],
+      locked: existing?.locked ?? false,
       updatedAt: DateTime.now(),
     );
     
