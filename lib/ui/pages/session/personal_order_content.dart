@@ -288,6 +288,8 @@ class _PersonalOrderContentState extends ConsumerState<PersonalOrderContent> {
   void _showAddFromMenuSheet(BuildContext context, Restaurant restaurant,
       String userId, String userName, String userFullName, String userAvatarIconName) {
     final selectedIds = <String>{};
+    final searchController = TextEditingController();
+    var searchQuery = '';
 
     showModalBottomSheet(
       context: context,
@@ -309,6 +311,14 @@ class _PersonalOrderContentState extends ConsumerState<PersonalOrderContent> {
                   if (!a.isYummie && b.isYummie) return 1;
                   return (a.itemNumber ?? 0).compareTo(b.itemNumber ?? 0);
                 });
+              final filteredMenu = searchQuery.isEmpty
+                  ? sortedMenu
+                  : sortedMenu.where((item) {
+                      final q = searchQuery.toLowerCase();
+                      return item.name.toLowerCase().contains(q) ||
+                          (item.description?.toLowerCase().contains(q) ?? false) ||
+                          (item.itemNumber?.toString().contains(q) ?? false);
+                    }).toList();
 
               return Column(
                 children: [
@@ -329,12 +339,26 @@ class _PersonalOrderContentState extends ConsumerState<PersonalOrderContent> {
                     ),
                   ),
                   const Divider(),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+                    child: TextField(
+                      controller: searchController,
+                      decoration: InputDecoration(
+                        hintText: l10n.searchDishes,
+                        prefixIcon: const Icon(Icons.search),
+                        border: const OutlineInputBorder(),
+                        isDense: true,
+                        contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                      ),
+                      onChanged: (v) => setSheetState(() => searchQuery = v),
+                    ),
+                  ),
                   Expanded(
                     child: ListView.builder(
                       controller: scrollController,
-                      itemCount: sortedMenu.length,
+                      itemCount: filteredMenu.length,
                       itemBuilder: (sheetContext, index) {
-                        final item = sortedMenu[index];
+                        final item = filteredMenu[index];
                         final isSelected = selectedIds.contains(item.id);
 
                         return CheckboxListTile(

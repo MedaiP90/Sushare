@@ -1681,6 +1681,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Make sure Bluetooth is enabled on all devices.'**
   String get sessionShareBleHint;
+
+  /// No description provided for @searchDishes.
+  ///
+  /// In en, this message translates to:
+  /// **'Search dishes...'**
+  String get searchDishes;
 }
 
 class _AppLocalizationsDelegate
