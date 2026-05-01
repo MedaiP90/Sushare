@@ -288,55 +288,98 @@ class _RestaurantDetailPageState extends ConsumerState<RestaurantDetailPage> {
               const SliverToBoxAdapter(child: SizedBox(height: 80)),
             ],
           ),
-          floatingActionButton: Column(
+          floatingActionButton: Builder(
+            builder: (context) {
+              final safeArea = MediaQuery.of(context).padding;
+              final expandedSearchWidth = MediaQuery.of(context).size.width
+                  - safeArea.left
+                  - safeArea.right
+                  - 16   // scaffold FAB right margin
+                  - 56   // add FAB width
+                  - 12   // gap between the two FABs
+                  - 16;  // left screen margin
+              return Row(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              if (_isSearchExpanded)
-                Card(
-                  elevation: 6,
-                  margin: const EdgeInsets.only(bottom: 8),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
-                    child: SizedBox(
-                      width: 240,
-                      child: TextField(
-                        controller: _searchController,
-                        autofocus: true,
-                        decoration: InputDecoration(
-                          hintText: AppLocalizations.of(context)!.searchDishes,
-                          prefixIcon: const Icon(Icons.search),
-                          border: InputBorder.none,
-                          contentPadding: const EdgeInsets.symmetric(vertical: 12),
-                        ),
-                        onChanged: (v) => setState(() => _searchQuery = v),
-                      ),
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 250),
+                curve: Curves.easeInOut,
+                width: _isSearchExpanded ? expandedSearchWidth : 56,
+                height: 56,
+                clipBehavior: Clip.hardEdge,
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.primaryContainer,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.2),
+                      blurRadius: 6,
+                      offset: const Offset(0, 3),
                     ),
-                  ),
+                  ],
                 ),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  FloatingActionButton(
-                    heroTag: 'fab_search',
-                    onPressed: () => setState(() {
-                      _isSearchExpanded = !_isSearchExpanded;
-                      if (!_isSearchExpanded) {
-                        _searchQuery = '';
-                        _searchController.clear();
-                      }
-                    }),
-                    child: Icon(_isSearchExpanded ? Icons.close : Icons.search),
-                  ),
-                  const SizedBox(width: 12),
-                  FloatingActionButton(
-                    heroTag: 'fab_add',
-                    onPressed: () => _showAddMenuItemSheet(context, ref, restaurant),
-                    child: const Icon(Icons.add),
-                  ),
-                ],
+                child: _isSearchExpanded
+                    ? Row(
+                        children: [
+                          IconButton(
+                            onPressed: () => setState(() {
+                              _isSearchExpanded = false;
+                              _searchQuery = '';
+                              _searchController.clear();
+                            }),
+                            icon: Icon(
+                              Icons.close,
+                              color: Theme.of(context).colorScheme.onPrimaryContainer,
+                            ),
+                          ),
+                          Expanded(
+                            child: TextField(
+                              controller: _searchController,
+                              autofocus: true,
+                              style: TextStyle(
+                                color: Theme.of(context).colorScheme.onPrimaryContainer,
+                              ),
+                              decoration: InputDecoration(
+                                border: InputBorder.none,
+                                hintText: l10n.searchDishes,
+                                isDense: true,
+                                hintStyle: TextStyle(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onPrimaryContainer
+                                      .withValues(alpha: 0.6),
+                                ),
+                              ),
+                              onChanged: (v) => setState(() => _searchQuery = v),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                        ],
+                      )
+                    : Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(16),
+                          onTap: () => setState(() => _isSearchExpanded = true),
+                          child: Center(
+                            child: Icon(
+                              Icons.search,
+                              color: Theme.of(context).colorScheme.onPrimaryContainer,
+                            ),
+                          ),
+                        ),
+                      ),
+              ),
+              const SizedBox(width: 12),
+              FloatingActionButton(
+                heroTag: 'fab_add',
+                onPressed: () => _showAddMenuItemSheet(context, ref, restaurant),
+                child: const Icon(Icons.add),
               ),
             ],
+              );
+            },
           ),
         );
       },
