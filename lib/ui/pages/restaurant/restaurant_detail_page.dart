@@ -90,6 +90,19 @@ class _RestaurantDetailPageState extends ConsumerState<RestaurantDetailPage> {
                 expandedHeight: 200,
                 pinned: true,
                 centerTitle: true,
+                leading: isGlass
+                    ? Padding(
+                        padding: const EdgeInsets.only(left: 8),
+                        child: GlassIconButton(
+                          icon: Icon(Icons.arrow_back_ios_new, size: 18, color: iconColor),
+                          onPressed: () => Navigator.of(context).maybePop(),
+                          useOwnLayer: true,
+                          size: 36,
+                          settings: glassBarButtonSettings(isLight),
+                        ),
+                      )
+                    : null,
+                leadingWidth: 60,
                 backgroundColor: isGlass ? Colors.transparent : null,
                 surfaceTintColor: isGlass ? Colors.transparent : null,
                 elevation: isGlass ? 0 : null,
@@ -140,13 +153,16 @@ class _RestaurantDetailPageState extends ConsumerState<RestaurantDetailPage> {
                 ),
                 actions: [
                   if (isGlass)
-                    Builder(
-                      builder: (ctx) => GlassIconButton(
-                        icon: Icon(Icons.more_vert, size: 20, color: iconColor),
-                        onPressed: () => _showRestaurantMenu(ctx, ref, restaurant, l10n),
-                        useOwnLayer: true,
-                        size: 36,
-                        settings: glassBarButtonSettings(isLight),
+                    Padding(
+                      padding: const EdgeInsets.only(right: 12),
+                      child: Builder(
+                        builder: (ctx) => GlassIconButton(
+                          icon: Icon(Icons.more_vert, size: 20, color: iconColor),
+                          onPressed: () => _showRestaurantMenu(ctx, ref, restaurant, l10n),
+                          useOwnLayer: true,
+                          size: 36,
+                          settings: glassBarButtonSettings(isLight),
+                        ),
                       ),
                     )
                   else
@@ -349,15 +365,18 @@ class _RestaurantDetailPageState extends ConsumerState<RestaurantDetailPage> {
                             height: 56,
                             child: Row(
                               children: [
-                                GlassIconButton(
-                                  icon: Icon(Icons.close, color: iconColor, size: 20),
-                                  onPressed: () => setState(() {
-                                    _isSearchExpanded = false;
-                                    _searchQuery = '';
-                                    _searchController.clear();
-                                  }),
-                                  size: 36,
-                                  settings: glassSettings,
+                                Padding(
+                                  padding: const EdgeInsets.only(left: 12, right: 12),
+                                  child: GlassIconButton(
+                                    icon: Icon(Icons.close, color: iconColor, size: 20),
+                                    onPressed: () => setState(() {
+                                      _isSearchExpanded = false;
+                                      _searchQuery = '';
+                                      _searchController.clear();
+                                    }),
+                                    size: 36,
+                                    settings: glassSettings,
+                                  ),
                                 ),
                                 Expanded(
                                   child: TextField(
