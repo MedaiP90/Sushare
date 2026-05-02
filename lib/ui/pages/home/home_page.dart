@@ -44,10 +44,9 @@ class HomePage extends ConsumerWidget {
 
     if (isGlass) {
       final isLight = Theme.of(context).brightness == Brightness.light;
-      final iconColor =
-          isLight ? Colors.black87 : Colors.white;
-      final unselectedColor =
-          isLight ? Colors.black54 : Colors.white70;
+      final themeColor = Theme.of(context).colorScheme.primary;
+      final iconColor = isLight ? Colors.black87 : Colors.white;
+      final unselectedColor = isLight ? Colors.black54 : Colors.white70;
       return GlassAwareScaffold(
         body: child,
         bottomNavigationBar: Row(
@@ -78,7 +77,7 @@ class HomePage extends ConsumerWidget {
                     lightIntensity: 0.6,
                     chromaticAberration: 0.3,
                   ),
-                  selectedIconColor: iconColor,
+                  selectedIconColor: themeColor,
                   unselectedIconColor: unselectedColor,
                   selectedIndex: selectedIndex,
                   onTabSelected: (index) => _onDestinationSelected(context, index),

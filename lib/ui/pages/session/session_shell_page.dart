@@ -111,6 +111,7 @@ class _SessionShellPageState extends ConsumerState<SessionShellPage> {
         final isGlass =
             ref.watch(styleModeProvider) == AppStyleMode.liquidGlass;
         final isLight = Theme.of(context).brightness == Brightness.light;
+        final themeColor = Theme.of(context).colorScheme.primary;
         final actions = ref.watch(bottomActionsProvider);
         final glassButtonSettings = LiquidGlassSettings(
           blur: isLight ? 12 : 8,
@@ -224,7 +225,7 @@ class _SessionShellPageState extends ConsumerState<SessionShellPage> {
                             lightIntensity: 0.6,
                             chromaticAberration: 0.3,
                           ),
-                          selectedIconColor: iconColor,
+                          selectedIconColor: themeColor,
                           unselectedIconColor:
                               isLight ? Colors.black54 : Colors.white70,
                           selectedIndex: safeIndex,
