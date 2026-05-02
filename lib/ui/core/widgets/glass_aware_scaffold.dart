@@ -54,6 +54,7 @@ class GlassAwareScaffold extends ConsumerWidget {
 
     return Scaffold(
       extendBodyBehindAppBar: true,
+      extendBody: true,
       appBar: appBar,
       body: paddedBody,
       floatingActionButton: floatingActionButton,
