@@ -215,11 +215,9 @@ class _SessionShellPageState extends ConsumerState<SessionShellPage> {
                       Expanded(
                         child: GlassBottomBar(
                           glassSettings: LiquidGlassSettings(
-                            thickness: 30,
-                            blur: isLight ? 12 : 3,
-                            glassColor: isLight
-                                ? const Color(0x14000000)
-                                : const Color(0x3DFFFFFF),
+                            thickness: 25,
+                            blur: isLight ? 12 : 8,
+                            glassColor: isLight ? const Color(0x18000000) : const Color(0x30FFFFFF),
                             refractiveIndex: 1.59,
                             saturation: 0.7,
                             ambientStrength: isLight ? 0.3 : 1,
