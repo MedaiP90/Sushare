@@ -1,11 +1,15 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
+import '../../../core/style/app_style.dart';
 import '../../../domain/models/restaurant.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../services/camera_service.dart';
 import '../../../services/menu_ai_service.dart';
 import '../../../services/permission_service.dart';
+import '../../core/widgets/glass_aware_app_bar.dart';
+import '../../core/widgets/glass_aware_scaffold.dart';
 import '../../viewmodels/restaurant_viewmodel.dart';
 
 final cameraServiceProvider = Provider<CameraService>((ref) => CameraService());
@@ -383,17 +387,35 @@ class _ScanMenuPageState extends ConsumerState<ScanMenuPage> {
     final colorScheme = Theme.of(context).colorScheme;
     final hasContent = _capturedImages.isNotEmpty || _parsedItems.isNotEmpty;
 
-    return Scaffold(
-      appBar: AppBar(
+    final isGlass =
+        ref.watch(styleModeProvider) == AppStyleMode.liquidGlass;
+    final isLight = Theme.of(context).brightness == Brightness.light;
+
+    return GlassAwareScaffold(
+      appBar: GlassAwareAppBar(
         title: Text(l10n.scanMenuTitle),
         centerTitle: true,
         actions: [
           if (hasContent)
-            IconButton(
-              icon: const Icon(Icons.refresh),
-              tooltip: l10n.scanMenuStartOver,
-              onPressed: _reset,
-            ),
+            isGlass
+                ? GlassIconButton(
+                    icon: const Icon(Icons.refresh),
+                    onPressed: _reset,
+                    useOwnLayer: true,
+                    size: 36,
+                    settings: LiquidGlassSettings(
+                      blur: isLight ? 12 : 8,
+                      thickness: 25,
+                      glassColor: isLight
+                          ? const Color(0x18000000)
+                          : const Color(0x30FFFFFF),
+                    ),
+                  )
+                : IconButton(
+                    icon: const Icon(Icons.refresh),
+                    tooltip: l10n.scanMenuStartOver,
+                    onPressed: _reset,
+                  ),
         ],
       ),
       body: SingleChildScrollView(

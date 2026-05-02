@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
+import '../../../core/style/app_style.dart';
 import '../../../l10n/app_localizations.dart';
 
-class HomePage extends StatelessWidget {
+class HomePage extends ConsumerWidget {
   final Widget child;
 
   const HomePage({super.key, required this.child});
@@ -15,27 +18,91 @@ class HomePage extends StatelessWidget {
     return 0;
   }
 
+  void _onDestinationSelected(BuildContext context, int index) {
+    switch (index) {
+      case 0:
+        context.go('/home/sessions');
+        break;
+      case 1:
+        context.go('/home/restaurants');
+        break;
+      case 2:
+        context.go('/home/settings');
+        break;
+    }
+  }
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context)!;
+    final styleMode = ref.watch(styleModeProvider);
+    final selectedIndex = _calculateSelectedIndex(context);
+
+    if (styleMode == AppStyleMode.liquidGlass) {
+      final isLight = Theme.of(context).brightness == Brightness.light;
+      final iconColor =
+          isLight ? Colors.black87 : Colors.white;
+      final unselectedColor =
+          isLight ? Colors.black54 : Colors.white70;
+      return Scaffold(
+        body: child,
+        bottomNavigationBar: DecoratedBox(
+          decoration: BoxDecoration(
+            boxShadow: isLight
+                ? [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.10),
+                      blurRadius: 16,
+                      offset: const Offset(0, -2),
+                    ),
+                  ]
+                : [],
+          ),
+          child: GlassBottomBar(
+            glassSettings: LiquidGlassSettings(
+              thickness: 30,
+              blur: isLight ? 12 : 3,
+              glassColor: isLight
+                  ? const Color(0x14000000)
+                  : const Color(0x3DFFFFFF),
+              refractiveIndex: 1.59,
+              saturation: 0.7,
+              ambientStrength: isLight ? 0.3 : 1,
+              lightIntensity: 0.6,
+              chromaticAberration: 0.3,
+            ),
+            selectedIconColor: iconColor,
+            unselectedIconColor: unselectedColor,
+            selectedIndex: selectedIndex,
+            onTabSelected: (index) => _onDestinationSelected(context, index),
+            tabs: [
+              GlassBottomBarTab(
+                icon: const Icon(Icons.groups_outlined),
+                activeIcon: const Icon(Icons.groups),
+                label: l10n.navTables,
+              ),
+              GlassBottomBarTab(
+                icon: const Icon(Icons.restaurant_outlined),
+                activeIcon: const Icon(Icons.restaurant),
+                label: l10n.navRestaurants,
+              ),
+              GlassBottomBarTab(
+                icon: const Icon(Icons.settings_outlined),
+                activeIcon: const Icon(Icons.settings),
+                label: l10n.navSettings,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
 
     return Scaffold(
       body: child,
       bottomNavigationBar: NavigationBar(
-        selectedIndex: _calculateSelectedIndex(context),
-        onDestinationSelected: (index) {
-          switch (index) {
-            case 0:
-              context.go('/home/sessions');
-              break;
-            case 1:
-              context.go('/home/restaurants');
-              break;
-            case 2:
-              context.go('/home/settings');
-              break;
-          }
-        },
+        selectedIndex: selectedIndex,
+        onDestinationSelected: (index) =>
+            _onDestinationSelected(context, index),
         destinations: [
           NavigationDestination(
             icon: const Icon(Icons.groups_outlined),

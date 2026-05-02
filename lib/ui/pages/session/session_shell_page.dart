@@ -3,15 +3,19 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:uuid/uuid.dart';
 import '../../../core/providers.dart';
+import '../../../core/style/app_style.dart';
 import '../../../domain/models/local_user.dart';
 import '../../../domain/models/session.dart';
 import '../../../domain/models/personal_sub_order.dart';
 import '../../../domain/models/restaurant.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../services/sync_message.dart';
+import '../../core/widgets/glass_aware_app_bar.dart';
+import '../../core/widgets/glass_aware_scaffold.dart';
 import '../../viewmodels/session_viewmodel.dart';
 import '../../viewmodels/profile_viewmodel.dart';
 import '../../viewmodels/restaurant_viewmodel.dart';
@@ -60,8 +64,8 @@ class _SessionShellPageState extends ConsumerState<SessionShellPage> {
     return sessionAsync.when(
       data: (session) {
         if (session == null) {
-          return Scaffold(
-            appBar: AppBar(),
+          return GlassAwareScaffold(
+            appBar: GlassAwareAppBar(),
             body: Center(child: Text(l10n.sessionTableNotFound)),
           );
         }
@@ -103,68 +107,63 @@ class _SessionShellPageState extends ConsumerState<SessionShellPage> {
 
         final safeIndex = _currentIndex.clamp(0, tabs.length - 1);
 
-        return Scaffold(
-          appBar: AppBar(
+        final isGlass =
+            ref.watch(styleModeProvider) == AppStyleMode.liquidGlass;
+        final isLight = Theme.of(context).brightness == Brightness.light;
+        final glassButtonSettings = LiquidGlassSettings(
+          blur: isLight ? 12 : 8,
+          thickness: 25,
+          glassColor:
+              isLight ? const Color(0x18000000) : const Color(0x30FFFFFF),
+        );
+        final iconColor = isLight ? Colors.black87 : Colors.white;
+
+        return GlassAwareScaffold(
+          appBar: GlassAwareAppBar(
             title: Text(session.name),
             centerTitle: true,
-            leading: IconButton(
-              icon: const Icon(Icons.arrow_back),
-              onPressed: () => context.go('/home/sessions'),
-            ),
+            leading: isGlass
+                ? GlassIconButton(
+                    icon: Icon(Icons.arrow_back_ios_new, size: 18, color: iconColor),
+                    onPressed: () => context.go('/home/sessions'),
+                    useOwnLayer: true,
+                    size: 36,
+                    settings: glassButtonSettings,
+                  )
+                : IconButton(
+                    icon: const Icon(Icons.arrow_back),
+                    onPressed: () => context.go('/home/sessions'),
+                  ),
             actions: [
               if (isHost && session.status != SessionStatus.closed)
-                IconButton(
-                  onPressed: () => _showShareSheet(context, l10n),
-                  icon: const Icon(Icons.share),
-                  tooltip: l10n.sessionShareTooltip,
+                isGlass
+                    ? GlassIconButton(
+                        icon: Icon(Icons.share, size: 20, color: iconColor),
+                        onPressed: () => _showShareSheet(context, l10n),
+                        useOwnLayer: true,
+                        size: 36,
+                        settings: glassButtonSettings,
+                      )
+                    : IconButton(
+                        onPressed: () => _showShareSheet(context, l10n),
+                        icon: const Icon(Icons.share),
+                        tooltip: l10n.sessionShareTooltip,
+                      ),
+              if (isGlass)
+                Builder(
+                  builder: (ctx) => GlassIconButton(
+                    icon: Icon(Icons.more_vert, size: 20, color: iconColor),
+                    onPressed: () => _showActionsMenu(ctx, session, l10n),
+                    useOwnLayer: true,
+                    size: 36,
+                    settings: glassButtonSettings,
+                  ),
+                )
+              else
+                PopupMenuButton<String>(
+                  onSelected: (value) => _handleMenuSelection(value, session, l10n),
+                  itemBuilder: (context) => _sessionMenuItems(session, l10n),
                 ),
-              PopupMenuButton<String>(
-                onSelected: (value) async {
-                  if (value == 'close') {
-                    final confirm = await _showConfirmSheet(
-                      context,
-                      l10n.sessionCloseTitle,
-                      l10n.sessionCloseMessage,
-                      l10n.sessionCloseButton,
-                    );
-                    if (confirm == true && context.mounted) {
-                      final hostSvc = ref.read(hostBleServiceProvider);
-                      hostSvc.sendSessionClosedToGuests();
-                      await hostSvc.stop();
-                      setState(() => _hostServiceStarted = false);
-                      await ref
-                          .read(sessionsProvider.notifier)
-                          .closeSession(widget.sessionId);
-                    }
-                  } else if (value == 'delete') {
-                    final confirm = await _showConfirmSheet(
-                      context,
-                      l10n.sessionDeleteTitle,
-                      l10n.sessionDeleteMessage2,
-                      l10n.delete,
-                      isDestructive: true,
-                    );
-                    if (confirm == true && context.mounted) {
-                      final hostSvc = ref.read(hostBleServiceProvider);
-                      hostSvc.sendSessionClosedToGuests();
-                      await hostSvc.stop();
-                      await ref
-                          .read(sessionsProvider.notifier)
-                          .deleteSession(widget.sessionId);
-                      if (context.mounted) context.go('/home/sessions');
-                    }
-                  }
-                },
-                itemBuilder: (context) => [
-                  if (session.status != SessionStatus.closed)
-                    PopupMenuItem(
-                        value: 'close',
-                        child: Text(l10n.sessionLeaveTableMenu)),
-                  PopupMenuItem(
-                      value: 'delete',
-                      child: Text(l10n.sessionDeleteTableMenu)),
-                ],
-              ),
             ],
           ),
           body: Column(
@@ -194,52 +193,186 @@ class _SessionShellPageState extends ConsumerState<SessionShellPage> {
               Expanded(child: tabs[safeIndex]),
             ],
           ),
-          bottomNavigationBar: NavigationBar(
-            selectedIndex: safeIndex,
-            onDestinationSelected: (i) => setState(() => _currentIndex = i),
-            destinations: isHost
-                ? [
-                    NavigationDestination(
-                      icon: const Icon(Icons.person_outline),
-                      selectedIcon: const Icon(Icons.person),
-                      label: l10n.sessionTabMyOrder,
+          bottomNavigationBar: isGlass
+              ? DecoratedBox(
+                  decoration: BoxDecoration(
+                    boxShadow: isLight
+                        ? [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.10),
+                              blurRadius: 16,
+                              offset: const Offset(0, -2),
+                            ),
+                          ]
+                        : [],
+                  ),
+                  child: GlassBottomBar(
+                    glassSettings: LiquidGlassSettings(
+                      thickness: 30,
+                      blur: isLight ? 12 : 3,
+                      glassColor: isLight
+                          ? const Color(0x14000000)
+                          : const Color(0x3DFFFFFF),
+                      refractiveIndex: 1.59,
+                      saturation: 0.7,
+                      ambientStrength: isLight ? 0.3 : 1,
+                      lightIntensity: 0.6,
+                      chromaticAberration: 0.3,
                     ),
-                    NavigationDestination(
-                      icon: const Icon(Icons.groups_outlined),
-                      selectedIcon: const Icon(Icons.groups),
-                      label: l10n.sessionTabGroup,
-                    ),
-                    NavigationDestination(
-                      icon: const Icon(Icons.checklist_outlined),
-                      selectedIcon: const Icon(Icons.checklist),
-                      label: l10n.sessionTabChecklist,
-                    ),
-                  ]
-                : [
-                    NavigationDestination(
-                      icon: const Icon(Icons.person_outline),
-                      selectedIcon: const Icon(Icons.person),
-                      label: l10n.sessionTabMyOrder,
-                    ),
-                    NavigationDestination(
-                      icon: const Icon(Icons.checklist_outlined),
-                      selectedIcon: const Icon(Icons.checklist),
-                      label: l10n.sessionTabChecklist,
-                    ),
-                  ],
-          ),
+                    selectedIconColor: iconColor,
+                    unselectedIconColor:
+                        isLight ? Colors.black54 : Colors.white70,
+                    selectedIndex: safeIndex,
+                    onTabSelected: (i) => setState(() => _currentIndex = i),
+                    tabs: isHost
+                        ? [
+                            GlassBottomBarTab(
+                              icon: const Icon(Icons.person_outline),
+                              activeIcon: const Icon(Icons.person),
+                              label: l10n.sessionTabMyOrder,
+                            ),
+                            GlassBottomBarTab(
+                              icon: const Icon(Icons.groups_outlined),
+                              activeIcon: const Icon(Icons.groups),
+                              label: l10n.sessionTabGroup,
+                            ),
+                            GlassBottomBarTab(
+                              icon: const Icon(Icons.checklist_outlined),
+                              activeIcon: const Icon(Icons.checklist),
+                              label: l10n.sessionTabChecklist,
+                            ),
+                          ]
+                        : [
+                            GlassBottomBarTab(
+                              icon: const Icon(Icons.person_outline),
+                              activeIcon: const Icon(Icons.person),
+                              label: l10n.sessionTabMyOrder,
+                            ),
+                            GlassBottomBarTab(
+                              icon: const Icon(Icons.checklist_outlined),
+                              activeIcon: const Icon(Icons.checklist),
+                              label: l10n.sessionTabChecklist,
+                            ),
+                          ],
+                  ),
+                )
+              : NavigationBar(
+                  selectedIndex: safeIndex,
+                  onDestinationSelected: (i) =>
+                      setState(() => _currentIndex = i),
+                  destinations: isHost
+                      ? [
+                          NavigationDestination(
+                            icon: const Icon(Icons.person_outline),
+                            selectedIcon: const Icon(Icons.person),
+                            label: l10n.sessionTabMyOrder,
+                          ),
+                          NavigationDestination(
+                            icon: const Icon(Icons.groups_outlined),
+                            selectedIcon: const Icon(Icons.groups),
+                            label: l10n.sessionTabGroup,
+                          ),
+                          NavigationDestination(
+                            icon: const Icon(Icons.checklist_outlined),
+                            selectedIcon: const Icon(Icons.checklist),
+                            label: l10n.sessionTabChecklist,
+                          ),
+                        ]
+                      : [
+                          NavigationDestination(
+                            icon: const Icon(Icons.person_outline),
+                            selectedIcon: const Icon(Icons.person),
+                            label: l10n.sessionTabMyOrder,
+                          ),
+                          NavigationDestination(
+                            icon: const Icon(Icons.checklist_outlined),
+                            selectedIcon: const Icon(Icons.checklist),
+                            label: l10n.sessionTabChecklist,
+                          ),
+                        ],
+                ),
         );
       },
-      loading: () => Scaffold(
-          appBar: AppBar(),
+      loading: () => GlassAwareScaffold(
+          appBar: GlassAwareAppBar(),
           body: const Center(child: CircularProgressIndicator())),
-      error: (error, _) => Scaffold(
-        appBar: AppBar(),
+      error: (error, _) => GlassAwareScaffold(
+        appBar: GlassAwareAppBar(),
         body: Center(
             child: Text(
                 AppLocalizations.of(context)!.errorMessage(error.toString()))),
       ),
     );
+  }
+
+  // ── Popup menu ───────────────────────────────────────────────────────────
+
+  List<PopupMenuEntry<String>> _sessionMenuItems(
+      Session session, AppLocalizations l10n) {
+    return [
+      if (session.status != SessionStatus.closed)
+        PopupMenuItem(value: 'close', child: Text(l10n.sessionLeaveTableMenu)),
+      PopupMenuItem(value: 'delete', child: Text(l10n.sessionDeleteTableMenu)),
+    ];
+  }
+
+  Future<void> _handleMenuSelection(
+      String value, Session session, AppLocalizations l10n) async {
+    if (value == 'close') {
+      final confirm = await _showConfirmSheet(
+        context,
+        l10n.sessionCloseTitle,
+        l10n.sessionCloseMessage,
+        l10n.sessionCloseButton,
+      );
+      if (confirm == true && mounted) {
+        final hostSvc = ref.read(hostBleServiceProvider);
+        hostSvc.sendSessionClosedToGuests();
+        await hostSvc.stop();
+        setState(() => _hostServiceStarted = false);
+        await ref.read(sessionsProvider.notifier).closeSession(widget.sessionId);
+      }
+    } else if (value == 'delete') {
+      final confirm = await _showConfirmSheet(
+        context,
+        l10n.sessionDeleteTitle,
+        l10n.sessionDeleteMessage2,
+        l10n.delete,
+        isDestructive: true,
+      );
+      if (confirm == true && mounted) {
+        final hostSvc = ref.read(hostBleServiceProvider);
+        hostSvc.sendSessionClosedToGuests();
+        await hostSvc.stop();
+        await ref
+            .read(sessionsProvider.notifier)
+            .deleteSession(widget.sessionId);
+        if (mounted) context.go('/home/sessions');
+      }
+    }
+  }
+
+  Future<void> _showActionsMenu(
+      BuildContext ctx, Session session, AppLocalizations l10n) async {
+    final box = ctx.findRenderObject() as RenderBox;
+    final overlay =
+        Overlay.of(ctx).context.findRenderObject() as RenderBox;
+    final position = RelativeRect.fromRect(
+      Rect.fromPoints(
+        box.localToGlobal(Offset.zero, ancestor: overlay),
+        box.localToGlobal(
+            box.size.bottomRight(Offset.zero), ancestor: overlay),
+      ),
+      Offset.zero & overlay.size,
+    );
+    final value = await showMenu<String>(
+      context: ctx,
+      position: position,
+      items: _sessionMenuItems(session, l10n),
+    );
+    if (value != null && mounted) {
+      _handleMenuSelection(value, session, l10n);
+    }
   }
 
   // ── Host ─────────────────────────────────────────────────────────────────

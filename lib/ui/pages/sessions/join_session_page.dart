@@ -2,14 +2,18 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import '../../../core/providers.dart';
+import '../../../core/style/app_style.dart';
 import '../../../domain/models/restaurant.dart';
 import '../../../domain/models/session.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../services/participant_ble_service.dart';
 import '../../../services/permission_service.dart';
 import '../../../services/sync_message.dart';
+import '../../core/widgets/glass_aware_app_bar.dart';
+import '../../core/widgets/glass_aware_scaffold.dart';
 import '../../viewmodels/profile_viewmodel.dart';
 import '../../viewmodels/restaurant_viewmodel.dart';
 import '../../viewmodels/session_viewmodel.dart';
@@ -251,8 +255,8 @@ class _JoinSessionPageState extends ConsumerState<JoinSessionPage> {
 
     if (_isQrScanning) return _buildQrScanner(colorScheme, l10n);
 
-    return Scaffold(
-      appBar: AppBar(
+    return GlassAwareScaffold(
+      appBar: GlassAwareAppBar(
         title: Text(l10n.joinTableTitle),
         centerTitle: true,
       ),
@@ -400,13 +404,30 @@ class _JoinSessionPageState extends ConsumerState<JoinSessionPage> {
   }
 
   Widget _buildQrScanner(ColorScheme colorScheme, AppLocalizations l10n) {
-    return Scaffold(
-      appBar: AppBar(
+    final isGlass =
+        ref.read(styleModeProvider) == AppStyleMode.liquidGlass;
+    final isLight = Theme.of(context).brightness == Brightness.light;
+    return GlassAwareScaffold(
+      appBar: GlassAwareAppBar(
         title: Text(l10n.joinTableScanQr),
-        leading: IconButton(
-          icon: const Icon(Icons.close),
-          onPressed: _stopQrScanning,
-        ),
+        leading: isGlass
+            ? GlassIconButton(
+                icon: const Icon(Icons.close, size: 20),
+                onPressed: _stopQrScanning,
+                useOwnLayer: true,
+                size: 36,
+                settings: LiquidGlassSettings(
+                  blur: isLight ? 12 : 8,
+                  thickness: 25,
+                  glassColor: isLight
+                      ? const Color(0x18000000)
+                      : const Color(0x30FFFFFF),
+                ),
+              )
+            : IconButton(
+                icon: const Icon(Icons.close),
+                onPressed: _stopQrScanning,
+              ),
       ),
       body: Stack(
         children: [

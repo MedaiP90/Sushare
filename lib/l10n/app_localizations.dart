@@ -434,6 +434,24 @@ abstract class AppLocalizations {
   /// **'Language'**
   String get settingsLanguage;
 
+  /// No description provided for @settingsVisualStyle.
+  ///
+  /// In en, this message translates to:
+  /// **'Visual Style'**
+  String get settingsVisualStyle;
+
+  /// No description provided for @settingsVisualStyleMaterial.
+  ///
+  /// In en, this message translates to:
+  /// **'Material'**
+  String get settingsVisualStyleMaterial;
+
+  /// No description provided for @settingsVisualStyleLiquidGlass.
+  ///
+  /// In en, this message translates to:
+  /// **'Liquid Glass'**
+  String get settingsVisualStyleLiquidGlass;
+
   /// No description provided for @settingsGeminiApiKey.
   ///
   /// In en, this message translates to:

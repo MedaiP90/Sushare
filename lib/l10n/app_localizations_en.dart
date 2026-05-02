@@ -183,6 +183,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsLanguage => 'Language';
 
   @override
+  String get settingsVisualStyle => 'Visual Style';
+
+  @override
+  String get settingsVisualStyleMaterial => 'Material';
+
+  @override
+  String get settingsVisualStyleLiquidGlass => 'Liquid Glass';
+
+  @override
   String get settingsGeminiApiKey => 'Google Gemini API Key';
 
   @override

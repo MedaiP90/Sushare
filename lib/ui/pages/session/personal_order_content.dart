@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 import 'package:uuid/uuid.dart';
 import '../../../core/providers.dart';
+import '../../../core/style/app_style.dart';
 import '../../../domain/models/restaurant.dart';
 import '../../../domain/models/personal_sub_order.dart';
 import '../../../domain/models/saved_order.dart';
@@ -229,46 +231,149 @@ class _PersonalOrderContentState extends ConsumerState<PersonalOrderContent> {
                 ],
               ),
               floatingActionButton: isEditable
-                  ? Row(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        if (templates.isNotEmpty)
+                  ? Builder(builder: (ctx) {
+                      final isGlass = ref.watch(styleModeProvider) ==
+                          AppStyleMode.liquidGlass;
+                      final isLight =
+                          Theme.of(ctx).brightness == Brightness.light;
+                      final iconColor =
+                          isLight ? Colors.black87 : Colors.white;
+                      final glassSettings = LiquidGlassSettings(
+                        blur: isLight ? 12 : 8,
+                        thickness: 25,
+                        glassColor: isLight
+                            ? const Color(0x18000000)
+                            : const Color(0x30FFFFFF),
+                      );
+                      if (isGlass) {
+                        return Row(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            if (templates.isNotEmpty) ...[
+                              GlassButton(
+                                icon: Icon(Icons.bookmarks_outlined,
+                                    color: iconColor),
+                                onTap: () => _showUseTemplateSheet(
+                                    context,
+                                    ref,
+                                    templates,
+                                    restaurant,
+                                    user.id,
+                                    userName,
+                                    userFullName,
+                                    userAvatarIconName,
+                                    userAvatarColorValue),
+                                enabled: canAddDishes,
+                                useOwnLayer: true,
+                                settings: glassSettings,
+                              ),
+                              const SizedBox(width: 12),
+                            ],
+                            GlassButton(
+                              icon: Icon(Icons.restaurant_menu,
+                                  color: iconColor),
+                              onTap: () => _showAddFromMenuSheet(
+                                  context,
+                                  restaurant,
+                                  user.id,
+                                  userName,
+                                  userFullName,
+                                  userAvatarIconName),
+                              enabled: canAddDishes,
+                              useOwnLayer: true,
+                              settings: glassSettings,
+                            ),
+                            const SizedBox(width: 12),
+                            GlassButton.custom(
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.add, color: iconColor, size: 20),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    l10n.personalOrderCustomDish,
+                                    style: TextStyle(
+                                        color: iconColor,
+                                        fontWeight: FontWeight.w600),
+                                  ),
+                                ],
+                              ),
+                              onTap: () => _showAddCustomDishSheet(
+                                  context,
+                                  restaurant,
+                                  user.id,
+                                  userName,
+                                  userFullName,
+                                  userAvatarIconName),
+                              enabled: canAddDishes,
+                              width: 200,
+                              height: 56,
+                              shape: const LiquidRoundedSuperellipse(
+                                  borderRadius: 28),
+                              useOwnLayer: true,
+                              settings: glassSettings,
+                            ),
+                          ],
+                        );
+                      }
+                      return Row(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          if (templates.isNotEmpty)
+                            FloatingActionButton(
+                              heroTag: 'fab_use_template',
+                              onPressed: canAddDishes
+                                  ? () => _showUseTemplateSheet(
+                                      context,
+                                      ref,
+                                      templates,
+                                      restaurant,
+                                      user.id,
+                                      userName,
+                                      userFullName,
+                                      userAvatarIconName,
+                                      userAvatarColorValue)
+                                  : null,
+                              tooltip: l10n.personalOrderUseTemplate,
+                              child: const Icon(Icons.bookmarks_outlined),
+                            ),
+                          const SizedBox(width: 12),
                           FloatingActionButton(
-                            heroTag: 'fab_use_template',
+                            heroTag: 'fab_menu',
                             onPressed: canAddDishes
-                                ? () => _showUseTemplateSheet(
-                                    context, ref, templates, restaurant, user.id,
-                                    userName, userFullName, userAvatarIconName, userAvatarColorValue)
+                                ? () => _showAddFromMenuSheet(
+                                    context,
+                                    restaurant,
+                                    user.id,
+                                    userName,
+                                    userFullName,
+                                    userAvatarIconName)
                                 : null,
-                            tooltip: l10n.personalOrderUseTemplate,
-                            child: const Icon(Icons.bookmarks_outlined),
+                            tooltip: l10n.personalOrderFromMenu,
+                            child: const Icon(Icons.restaurant_menu),
                           ),
-                        const SizedBox(width: 12),
-                        FloatingActionButton(
-                          heroTag: 'fab_menu',
-                          onPressed: canAddDishes
-                              ? () => _showAddFromMenuSheet(
-                                  context, restaurant, user.id, userName,
-                                  userFullName, userAvatarIconName)
-                              : null,
-                          tooltip: l10n.personalOrderFromMenu,
-                          child: const Icon(Icons.restaurant_menu),
-                        ),
-                        const SizedBox(width: 12),
-                        FloatingActionButton.extended(
-                          heroTag: 'fab_custom_dish',
-                          onPressed: canAddDishes
-                              ? () => _showAddCustomDishSheet(
-                                  context, restaurant, user.id, userName,
-                                  userFullName, userAvatarIconName)
-                              : null,
-                          tooltip: l10n.personalOrderCustomDish,
-                          icon: const Icon(Icons.add),
-                          label: Text(l10n.personalOrderCustomDish),
-                        ),
-                      ],
-                    )
+                          const SizedBox(width: 12),
+                          FloatingActionButton.extended(
+                            heroTag: 'fab_custom_dish',
+                            onPressed: canAddDishes
+                                ? () => _showAddCustomDishSheet(
+                                    context,
+                                    restaurant,
+                                    user.id,
+                                    userName,
+                                    userFullName,
+                                    userAvatarIconName)
+                                : null,
+                            tooltip: l10n.personalOrderCustomDish,
+                            icon: const Icon(Icons.add),
+                            label: Text(l10n.personalOrderCustomDish),
+                          ),
+                        ],
+                      );
+                    })
                   : null,
             );
           },

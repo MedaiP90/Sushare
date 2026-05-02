@@ -3,7 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../../core/style/app_style.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../core/widgets/glass_aware_app_bar.dart';
+import '../../core/widgets/glass_aware_scaffold.dart';
 import '../../viewmodels/profile_viewmodel.dart';
 import '../../widgets/avatar_widget.dart';
 import '../../../services/menu_ai_service.dart';
@@ -88,9 +91,10 @@ class SettingsPage extends ConsumerWidget {
     final userAsync = ref.watch(profileViewModelProvider);
     final themeMode = ref.watch(themeModeProvider);
     final locale = ref.watch(localeProvider);
+    final styleMode = ref.watch(styleModeProvider);
 
-    return Scaffold(
-      appBar: AppBar(
+    return GlassAwareScaffold(
+      appBar: GlassAwareAppBar(
         title: Text(l10n.settingsTitle),
         centerTitle: true,
       ),
@@ -134,6 +138,13 @@ class SettingsPage extends ConsumerWidget {
             subtitle: Text(_getLocaleText(l10n, locale)),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => _showLanguageSheet(context, ref, l10n),
+          ),
+          ListTile(
+            leading: const Icon(Icons.auto_awesome),
+            title: Text(l10n.settingsVisualStyle),
+            subtitle: Text(_getStyleModeText(l10n, styleMode)),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => _showStyleSheet(context, ref, l10n),
           ),
           const Divider(),
           _SectionHeader(title: l10n.settingsSectionAiService),
@@ -198,6 +209,41 @@ class SettingsPage extends ConsumerWidget {
       default:
         return l10n.settingsThemeSystem;
     }
+  }
+
+  String _getStyleModeText(AppLocalizations l10n, AppStyleMode mode) {
+    switch (mode) {
+      case AppStyleMode.material:
+        return l10n.settingsVisualStyleMaterial;
+      case AppStyleMode.liquidGlass:
+        return l10n.settingsVisualStyleLiquidGlass;
+    }
+  }
+
+  void _showStyleSheet(BuildContext context, WidgetRef ref, AppLocalizations l10n) {
+    final currentMode = ref.read(styleModeProvider);
+
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => _PickerSheet(
+        title: l10n.settingsVisualStyle,
+        children: AppStyleMode.values.map((mode) {
+          final label = switch (mode) {
+            AppStyleMode.material => l10n.settingsVisualStyleMaterial,
+            AppStyleMode.liquidGlass => l10n.settingsVisualStyleLiquidGlass,
+          };
+          return RadioListTile<AppStyleMode>(
+            title: Text(label),
+            value: mode,
+            groupValue: currentMode,
+            onChanged: (value) {
+              ref.read(styleModeProvider.notifier).setStyle(value!);
+              Navigator.pop(context);
+            },
+          );
+        }).toList(),
+      ),
+    );
   }
 
   void _showThemeSheet(BuildContext context, WidgetRef ref, AppLocalizations l10n) {

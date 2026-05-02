@@ -183,6 +183,15 @@ class AppLocalizationsDe extends AppLocalizations {
   String get settingsLanguage => 'Sprache';
 
   @override
+  String get settingsVisualStyle => 'Visueller Stil';
+
+  @override
+  String get settingsVisualStyleMaterial => 'Material';
+
+  @override
+  String get settingsVisualStyleLiquidGlass => 'Liquid Glass';
+
+  @override
   String get settingsGeminiApiKey => 'Google Gemini API-Schlüssel';
 
   @override

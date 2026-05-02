@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../core/widgets/glass_aware_app_bar.dart';
+import '../../core/widgets/glass_aware_scaffold.dart';
 import '../../viewmodels/session_viewmodel.dart';
 import '../../viewmodels/restaurant_viewmodel.dart';
 import '../../viewmodels/profile_viewmodel.dart';
@@ -77,8 +79,8 @@ class _NewSessionPageState extends ConsumerState<NewSessionPage> {
     final colorScheme = Theme.of(context).colorScheme;
     final l10n = AppLocalizations.of(context)!;
 
-    return Scaffold(
-      appBar: AppBar(
+    return GlassAwareScaffold(
+      appBar: GlassAwareAppBar(
         title: Text(l10n.newTableTitle),
         centerTitle: true,
       ),

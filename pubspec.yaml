@@ -27,6 +27,7 @@ dependencies:
   dynamic_color: ^1.7.0
   flex_color_scheme: ^8.0.2
   google_fonts: ^6.2.1
+  liquid_glass_widgets: ^0.9.6
 
   image_picker: ^1.1.2
   image_picker_android: ^0.8.9

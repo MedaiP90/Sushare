@@ -4,14 +4,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker_android/image_picker_android.dart';
 import 'package:image_picker_platform_interface/image_picker_platform_interface.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 import 'core/theme/app_theme.dart';
 import 'core/router/app_router.dart';
 import 'ui/viewmodels/profile_viewmodel.dart';
 import 'ui/pages/home/settings_page.dart';
 import 'l10n/app_localizations.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await LiquidGlassWidgets.initialize();
   if (Platform.isAndroid) {
     final picker = ImagePickerPlatform.instance;
     if (picker is ImagePickerAndroid) {
@@ -19,8 +21,8 @@ void main() {
     }
   }
   runApp(
-    const ProviderScope(
-      child: SushareApp(),
+    LiquidGlassWidgets.wrap(
+      const ProviderScope(child: SushareApp()),
     ),
   );
 }

@@ -183,6 +183,15 @@ class AppLocalizationsIt extends AppLocalizations {
   String get settingsLanguage => 'Lingua';
 
   @override
+  String get settingsVisualStyle => 'Stile visivo';
+
+  @override
+  String get settingsVisualStyleMaterial => 'Material';
+
+  @override
+  String get settingsVisualStyleLiquidGlass => 'Liquid Glass';
+
+  @override
   String get settingsGeminiApiKey => 'Chiave API Google Gemini';
 
   @override

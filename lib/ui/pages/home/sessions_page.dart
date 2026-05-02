@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
+import '../../../core/style/app_style.dart';
 import '../../../domain/models/session.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../core/widgets/glass_aware_app_bar.dart';
+import '../../core/widgets/glass_aware_scaffold.dart';
 import '../../viewmodels/session_viewmodel.dart';
 import '../../viewmodels/restaurant_viewmodel.dart';
 import '../../viewmodels/profile_viewmodel.dart';
@@ -14,9 +18,17 @@ class SessionsPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final sessionsAsync = ref.watch(sessionsProvider);
     final l10n = AppLocalizations.of(context)!;
+    final isGlass = ref.watch(styleModeProvider) == AppStyleMode.liquidGlass;
+    final isLight = Theme.of(context).brightness == Brightness.light;
+    final iconColor = isLight ? Colors.black87 : Colors.white;
+    final glassSettings = LiquidGlassSettings(
+      blur: isLight ? 12 : 8,
+      thickness: 25,
+      glassColor: isLight ? const Color(0x18000000) : const Color(0x30FFFFFF),
+    );
 
-    return Scaffold(
-      appBar: AppBar(
+    return GlassAwareScaffold(
+      appBar: GlassAwareAppBar(
         title: Text(l10n.sessionsTitle),
         centerTitle: true,
       ),
@@ -65,27 +77,64 @@ class SessionsPage extends ConsumerWidget {
       floatingActionButton: Row(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          FloatingActionButton(
-            heroTag: 'join',
-            onPressed: () async {
-              await context.push('/sessions/join');
-              ref.invalidate(sessionsProvider);
-            },
-            tooltip: l10n.sessionsJoinTooltip,
-            child: const Icon(Icons.qr_code_scanner),
-          ),
-          const SizedBox(width: 12),
-          FloatingActionButton.extended(
-            heroTag: 'new',
-            onPressed: () async {
-              await context.push('/sessions/new');
-              ref.invalidate(sessionsProvider);
-            },
-            icon: const Icon(Icons.add),
-            label: Text(l10n.sessionsNewTable),
-          ),
-        ],
+        children: isGlass
+            ? [
+                GlassButton(
+                  icon: Icon(Icons.qr_code_scanner, color: iconColor),
+                  onTap: () async {
+                    await context.push('/sessions/join');
+                    ref.invalidate(sessionsProvider);
+                  },
+                  useOwnLayer: true,
+                  settings: glassSettings,
+                ),
+                const SizedBox(width: 12),
+                GlassButton.custom(
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.add, color: iconColor, size: 20),
+                      const SizedBox(width: 8),
+                      Text(
+                        l10n.sessionsNewTable,
+                        style: TextStyle(
+                            color: iconColor, fontWeight: FontWeight.w600),
+                      ),
+                    ],
+                  ),
+                  onTap: () async {
+                    await context.push('/sessions/new');
+                    ref.invalidate(sessionsProvider);
+                  },
+                  width: 180,
+                  height: 56,
+                  shape: const LiquidRoundedSuperellipse(borderRadius: 28),
+                  useOwnLayer: true,
+                  settings: glassSettings,
+                ),
+              ]
+            : [
+                FloatingActionButton(
+                  heroTag: 'join',
+                  onPressed: () async {
+                    await context.push('/sessions/join');
+                    ref.invalidate(sessionsProvider);
+                  },
+                  tooltip: l10n.sessionsJoinTooltip,
+                  child: const Icon(Icons.qr_code_scanner),
+                ),
+                const SizedBox(width: 12),
+                FloatingActionButton.extended(
+                  heroTag: 'new',
+                  onPressed: () async {
+                    await context.push('/sessions/new');
+                    ref.invalidate(sessionsProvider);
+                  },
+                  icon: const Icon(Icons.add),
+                  label: Text(l10n.sessionsNewTable),
+                ),
+              ],
       ),
     );
   }

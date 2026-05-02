@@ -3,9 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 import 'package:path_provider/path_provider.dart';
+import '../../../core/style/app_style.dart';
 import '../../../domain/models/restaurant.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../core/widgets/glass_aware_app_bar.dart';
+import '../../core/widgets/glass_aware_scaffold.dart';
 import '../../viewmodels/restaurant_viewmodel.dart';
 import '../../viewmodels/saved_order_viewmodel.dart';
 import '../restaurant/restaurant_detail_page.dart';
@@ -17,9 +21,17 @@ class RestaurantsPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final restaurantsAsync = ref.watch(restaurantsProvider);
     final l10n = AppLocalizations.of(context)!;
+    final isGlass = ref.watch(styleModeProvider) == AppStyleMode.liquidGlass;
+    final isLight = Theme.of(context).brightness == Brightness.light;
+    final iconColor = isLight ? Colors.black87 : Colors.white;
+    final glassSettings = LiquidGlassSettings(
+      blur: isLight ? 12 : 8,
+      thickness: 25,
+      glassColor: isLight ? const Color(0x18000000) : const Color(0x30FFFFFF),
+    );
 
-    return Scaffold(
-      appBar: AppBar(
+    return GlassAwareScaffold(
+      appBar: GlassAwareAppBar(
         title: Text(l10n.restaurantsTitle),
         centerTitle: true,
       ),
@@ -166,11 +178,33 @@ class RestaurantsPage extends ConsumerWidget {
           ),
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showAddRestaurantSheet(context, ref, l10n),
-        icon: const Icon(Icons.add),
-        label: Text(l10n.restaurantsAdd),
-      ),
+      floatingActionButton: isGlass
+          ? GlassButton.custom(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.add, color: iconColor, size: 20),
+                  const SizedBox(width: 8),
+                  Text(
+                    l10n.restaurantsAdd,
+                    style: TextStyle(
+                        color: iconColor, fontWeight: FontWeight.w600),
+                  ),
+                ],
+              ),
+              onTap: () => _showAddRestaurantSheet(context, ref, l10n),
+              width: 200,
+              height: 56,
+              shape: const LiquidRoundedSuperellipse(borderRadius: 28),
+              useOwnLayer: true,
+              settings: glassSettings,
+            )
+          : FloatingActionButton.extended(
+              onPressed: () => _showAddRestaurantSheet(context, ref, l10n),
+              icon: const Icon(Icons.add),
+              label: Text(l10n.restaurantsAdd),
+            ),
     );
   }
 
