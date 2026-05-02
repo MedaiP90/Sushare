@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 import '../../../core/providers.dart';
 import '../../../core/style/app_style.dart';
+import '../../../core/style/bottom_actions_provider.dart';
 import '../../../domain/models/session.dart';
 import '../../../domain/models/personal_sub_order.dart';
 import '../../../domain/models/order.dart';
@@ -15,16 +16,98 @@ import '../../viewmodels/restaurant_viewmodel.dart';
 import '../../viewmodels/personal_order_viewmodel.dart';
 import '../../widgets/avatar_widget.dart';
 
-class MergedOrderContent extends ConsumerWidget {
+class MergedOrderContent extends ConsumerStatefulWidget {
   final String sessionId;
 
   const MergedOrderContent({super.key, required this.sessionId});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final sessionAsync = ref.watch(sessionDetailProvider(sessionId));
+  ConsumerState<MergedOrderContent> createState() => _MergedOrderContentState();
+}
+
+class _MergedOrderContentState extends ConsumerState<MergedOrderContent> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _updateBottomActions();
+    });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(bottomActionsProvider.notifier).clear();
+    });
+    super.dispose();
+  }
+
+  void _updateBottomActions() {
+    final sessionAsync = ref.read(sessionDetailProvider(widget.sessionId));
+    final session = sessionAsync.valueOrNull;
+    if (session == null) return;
+
+    final user = ref.read(profileViewModelProvider).value;
+    if (user == null) return;
+
+    final isHost = user.id == session.hostUserId;
+    if (!isHost) {
+      ref.read(bottomActionsProvider.notifier).clear();
+      return;
+    }
+
+    final isGlass = ref.read(styleModeProvider) == AppStyleMode.liquidGlass;
+    if (!isGlass) {
+      ref.read(bottomActionsProvider.notifier).clear();
+      return;
+    }
+
+    final subOrdersAsync = ref.read(subOrdersForSessionProvider(widget.sessionId));
+    final subOrders = subOrdersAsync.valueOrNull ?? [];
+    final activeOrders = subOrders.where((o) => o.entries.isNotEmpty).toList();
+
+    final isLight = Theme.of(context).brightness == Brightness.light;
+    final iconColor = isLight ? Colors.black87 : Colors.white;
+    final glassSettings = LiquidGlassSettings(
+      blur: isLight ? 12 : 8,
+      thickness: 25,
+      glassColor: isLight ? const Color(0x18000000) : const Color(0x30FFFFFF),
+    );
+    final l10n = AppLocalizations.of(context)!;
+
+    final actions = <Widget>[];
+    if (session.status == SessionStatus.sent) {
+      actions.add(
+        GlassButton(
+          icon: Icon(Icons.add, color: iconColor),
+          onTap: () => _showOpenRoundSheet(context, ref, session, activeOrders),
+          useOwnLayer: true,
+          settings: glassSettings,
+        ),
+      );
+    }
+    if (session.status == SessionStatus.open && activeOrders.isNotEmpty) {
+      actions.add(
+        GlassButton(
+          icon: Icon(Icons.send, color: iconColor),
+          onTap: () => _sendOrder(context, ref, session, activeOrders),
+          useOwnLayer: true,
+          settings: glassSettings,
+        ),
+      );
+    }
+    ref.read(bottomActionsProvider.notifier).setActions(actions);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final sessionAsync = ref.watch(sessionDetailProvider(widget.sessionId));
     final user = ref.watch(profileViewModelProvider).value;
     final l10n = AppLocalizations.of(context)!;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _updateBottomActions();
+    });
 
     return sessionAsync.when(
       data: (session) {
@@ -33,7 +116,7 @@ class MergedOrderContent extends ConsumerWidget {
         }
 
         final isHost = user?.id == session.hostUserId;
-        final subOrdersAsync = ref.watch(subOrdersForSessionProvider(sessionId));
+        final subOrdersAsync = ref.watch(subOrdersForSessionProvider(widget.sessionId));
         final restaurantAsync = ref.watch(restaurantDetailProvider(session.restaurantId));
 
         return subOrdersAsync.when(
@@ -48,6 +131,8 @@ class MergedOrderContent extends ConsumerWidget {
             for (int i = 0; i < session.additionalOrders.length; i++) {
               allOrders.add(_OrderWithLabel(session.additionalOrders[i], 'Order ${i + 2}'));
             }
+
+            final isGlass = ref.watch(styleModeProvider) == AppStyleMode.liquidGlass;
 
             return Scaffold(
               body: ListView(
@@ -69,109 +154,33 @@ class MergedOrderContent extends ConsumerWidget {
                   const SizedBox(height: 100),
                 ],
               ),
-              floatingActionButton: !isHost
+              floatingActionButton: isGlass || !isHost
                   ? null
-                  : Builder(builder: (ctx) {
-                      final isGlass = ref.watch(styleModeProvider) ==
-                          AppStyleMode.liquidGlass;
-                      final isLight =
-                          Theme.of(ctx).brightness == Brightness.light;
-                      final iconColor =
-                          isLight ? Colors.black87 : Colors.white;
-                      final glassSettings = LiquidGlassSettings(
-                        blur: isLight ? 12 : 8,
-                        thickness: 25,
-                        glassColor: isLight
-                            ? const Color(0x18000000)
-                            : const Color(0x30FFFFFF),
-                      );
-                      if (isGlass) {
-                        return Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            if (session.status == SessionStatus.sent)
-                              GlassButton.custom(
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(Icons.add,
-                                        color: iconColor, size: 20),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      l10n.mergedOrderOpenRound,
-                                      style: TextStyle(
-                                          color: iconColor,
-                                          fontWeight: FontWeight.w600),
-                                    ),
-                                  ],
-                                ),
-                                onTap: () => _showOpenRoundSheet(
-                                    context, ref, session, activeOrders),
-                                width: 200,
-                                height: 56,
-                                shape: const LiquidRoundedSuperellipse(
-                                    borderRadius: 28),
-                                useOwnLayer: true,
-                                settings: glassSettings,
-                              ),
-                            if (session.status == SessionStatus.sent)
-                              const SizedBox(height: 12),
-                            if (session.status == SessionStatus.open &&
-                                activeOrders.isNotEmpty)
-                              GlassButton.custom(
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(Icons.send,
-                                        color: iconColor, size: 20),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      l10n.mergedOrderSend,
-                                      style: TextStyle(
-                                          color: iconColor,
-                                          fontWeight: FontWeight.w600),
-                                    ),
-                                  ],
-                                ),
-                                onTap: () => _sendOrder(
-                                    context, ref, session, activeOrders),
-                                width: 200,
-                                height: 56,
-                                shape: const LiquidRoundedSuperellipse(
-                                    borderRadius: 28),
-                                useOwnLayer: true,
-                                settings: glassSettings,
-                              ),
-                          ],
-                        );
-                      }
-                      return Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          if (session.status == SessionStatus.sent)
-                            FloatingActionButton.extended(
-                              heroTag: 'openRound',
-                              onPressed: () => _showOpenRoundSheet(
-                                  context, ref, session, activeOrders),
-                              icon: const Icon(Icons.add),
-                              label: Text(l10n.mergedOrderOpenRound),
-                            ),
-                          if (session.status == SessionStatus.sent)
-                            const SizedBox(height: 12),
-                          if (session.status == SessionStatus.open &&
-                              activeOrders.isNotEmpty)
-                            FloatingActionButton.extended(
-                              heroTag: 'sendOrder',
-                              onPressed: () => _sendOrder(
-                                  context, ref, session, activeOrders),
-                              icon: const Icon(Icons.send),
-                              label: Text(l10n.mergedOrderSend),
-                            ),
-                        ],
-                      );
-                    }),
+                  : Row(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        if (session.status == SessionStatus.sent)
+                          FloatingActionButton.extended(
+                            heroTag: 'openRound',
+                            onPressed: () => _showOpenRoundSheet(
+                                context, ref, session, activeOrders),
+                            icon: const Icon(Icons.add),
+                            label: Text(l10n.mergedOrderOpenRound),
+                          ),
+                        if (session.status == SessionStatus.sent && session.status == SessionStatus.open && activeOrders.isNotEmpty)
+                          const SizedBox(width: 12),
+                        if (session.status == SessionStatus.open &&
+                            activeOrders.isNotEmpty)
+                          FloatingActionButton.extended(
+                            heroTag: 'sendOrder',
+                            onPressed: () => _sendOrder(
+                                context, ref, session, activeOrders),
+                            icon: const Icon(Icons.send),
+                            label: Text(l10n.mergedOrderSend),
+                          ),
+                      ],
+                    ),
             );
           },
           loading: () => const Center(child: CircularProgressIndicator()),

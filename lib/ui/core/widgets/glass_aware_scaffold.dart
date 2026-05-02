@@ -40,23 +40,11 @@ class GlassAwareScaffold extends ConsumerWidget {
       );
     }
 
-    final statusBarHeight = MediaQuery.paddingOf(context).top;
-    final barHeight = appBar?.preferredSize.height ?? 0.0;
-    final topInset = statusBarHeight + barHeight;
-
-    // Inject extra top padding so SafeArea / scroll views start below the bar.
-    final paddedBody = MediaQuery(
-      data: MediaQuery.of(context).copyWith(
-        padding: MediaQuery.paddingOf(context).copyWith(top: topInset),
-      ),
-      child: body,
-    );
-
-    return Scaffold(
+return Scaffold(
       extendBodyBehindAppBar: true,
       extendBody: true,
       appBar: appBar,
-      body: paddedBody,
+      body: body,
       floatingActionButton: floatingActionButton,
       bottomNavigationBar: bottomNavigationBar,
       resizeToAvoidBottomInset: resizeToAvoidBottomInset,

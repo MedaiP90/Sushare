@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 import '../../../core/style/app_style.dart';
+import '../../../core/style/bottom_actions_provider.dart';
 import '../../../domain/models/session.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../core/widgets/glass_aware_app_bar.dart';
@@ -11,14 +12,37 @@ import '../../viewmodels/session_viewmodel.dart';
 import '../../viewmodels/restaurant_viewmodel.dart';
 import '../../viewmodels/profile_viewmodel.dart';
 
-class SessionsPage extends ConsumerWidget {
+class SessionsPage extends ConsumerStatefulWidget {
   const SessionsPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final sessionsAsync = ref.watch(sessionsProvider);
-    final l10n = AppLocalizations.of(context)!;
-    final isGlass = ref.watch(styleModeProvider) == AppStyleMode.liquidGlass;
+  ConsumerState<SessionsPage> createState() => _SessionsPageState();
+}
+
+class _SessionsPageState extends ConsumerState<SessionsPage> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _updateBottomActions();
+    });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(bottomActionsProvider.notifier).clear();
+    });
+    super.dispose();
+  }
+
+  void _updateBottomActions() {
+    final isGlass = ref.read(styleModeProvider) == AppStyleMode.liquidGlass;
+    if (!isGlass) {
+      ref.read(bottomActionsProvider.notifier).clear();
+      return;
+    }
+
     final isLight = Theme.of(context).brightness == Brightness.light;
     final iconColor = isLight ? Colors.black87 : Colors.white;
     final glassSettings = LiquidGlassSettings(
@@ -26,6 +50,40 @@ class SessionsPage extends ConsumerWidget {
       thickness: 25,
       glassColor: isLight ? const Color(0x18000000) : const Color(0x30FFFFFF),
     );
+    final l10n = AppLocalizations.of(context)!;
+
+    ref.read(bottomActionsProvider.notifier).setActions([
+      GlassButton(
+        icon: Icon(Icons.qr_code_scanner, color: iconColor),
+        onTap: () async {
+          await context.push('/sessions/join');
+          ref.invalidate(sessionsProvider);
+        },
+        useOwnLayer: true,
+        settings: glassSettings,
+      ),
+      const SizedBox(width: 8),
+      GlassButton(
+        icon: Icon(Icons.add, color: iconColor),
+        onTap: () async {
+          await context.push('/sessions/new');
+          ref.invalidate(sessionsProvider);
+        },
+        useOwnLayer: true,
+        settings: glassSettings,
+      ),
+    ]);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final sessionsAsync = ref.watch(sessionsProvider);
+    final l10n = AppLocalizations.of(context)!;
+    final isGlass = ref.watch(styleModeProvider) == AppStyleMode.liquidGlass;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _updateBottomActions();
+    });
 
     return GlassAwareScaffold(
       appBar: GlassAwareAppBar(
@@ -74,47 +132,12 @@ class SessionsPage extends ConsumerWidget {
           ),
         ),
       ),
-      floatingActionButton: Row(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: isGlass
-            ? [
-                GlassButton(
-                  icon: Icon(Icons.qr_code_scanner, color: iconColor),
-                  onTap: () async {
-                    await context.push('/sessions/join');
-                    ref.invalidate(sessionsProvider);
-                  },
-                  useOwnLayer: true,
-                  settings: glassSettings,
-                ),
-                const SizedBox(width: 12),
-                GlassButton.custom(
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.add, color: iconColor, size: 20),
-                      const SizedBox(width: 8),
-                      Text(
-                        l10n.sessionsNewTable,
-                        style: TextStyle(
-                            color: iconColor, fontWeight: FontWeight.w600),
-                      ),
-                    ],
-                  ),
-                  onTap: () async {
-                    await context.push('/sessions/new');
-                    ref.invalidate(sessionsProvider);
-                  },
-                  width: 180,
-                  height: 56,
-                  shape: const LiquidRoundedSuperellipse(borderRadius: 28),
-                  useOwnLayer: true,
-                  settings: glassSettings,
-                ),
-              ]
-            : [
+      floatingActionButton: isGlass
+          ? null
+          : Row(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
                 FloatingActionButton(
                   heroTag: 'join',
                   onPressed: () async {
@@ -135,7 +158,7 @@ class SessionsPage extends ConsumerWidget {
                   label: Text(l10n.sessionsNewTable),
                 ),
               ],
-      ),
+            ),
     );
   }
 

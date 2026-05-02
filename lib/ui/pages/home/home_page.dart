@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 import '../../../core/style/app_style.dart';
+import '../../../core/style/bottom_actions_provider.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../core/widgets/glass_aware_scaffold.dart';
 
 class HomePage extends ConsumerWidget {
   final Widget child;
@@ -37,67 +39,77 @@ class HomePage extends ConsumerWidget {
     final l10n = AppLocalizations.of(context)!;
     final styleMode = ref.watch(styleModeProvider);
     final selectedIndex = _calculateSelectedIndex(context);
+    final isGlass = styleMode == AppStyleMode.liquidGlass;
+    final actions = ref.watch(bottomActionsProvider);
 
-    if (styleMode == AppStyleMode.liquidGlass) {
+    if (isGlass) {
       final isLight = Theme.of(context).brightness == Brightness.light;
       final iconColor =
           isLight ? Colors.black87 : Colors.white;
       final unselectedColor =
           isLight ? Colors.black54 : Colors.white70;
-      return Scaffold(
+      return GlassAwareScaffold(
         body: child,
-        bottomNavigationBar: DecoratedBox(
-          decoration: BoxDecoration(
-            boxShadow: isLight
-                ? [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.10),
-                      blurRadius: 16,
-                      offset: const Offset(0, -2),
+        bottomNavigationBar: Row(
+            mainAxisSize: MainAxisSize.max,
+            children: [
+              if (actions.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      for (int i = 0; i < actions.length; i++) ...[
+                        actions[i],
+                        if (i < actions.length - 1) const SizedBox(width: 8),
+                      ],
+                    ],
+                  ),
+                ),
+              Expanded(
+                child: GlassBottomBar(
+                  glassSettings: LiquidGlassSettings(
+                    thickness: 30,
+                    blur: isLight ? 12 : 3,
+                    glassColor: isLight
+                        ? const Color(0x14000000)
+                        : const Color(0x3DFFFFFF),
+                    refractiveIndex: 1.59,
+                    saturation: 0.7,
+                    ambientStrength: isLight ? 0.3 : 1,
+                    lightIntensity: 0.6,
+                    chromaticAberration: 0.3,
+                  ),
+                  selectedIconColor: iconColor,
+                  unselectedIconColor: unselectedColor,
+                  selectedIndex: selectedIndex,
+                  onTabSelected: (index) => _onDestinationSelected(context, index),
+                  tabs: [
+                    GlassBottomBarTab(
+                      icon: const Icon(Icons.groups_outlined),
+                      activeIcon: const Icon(Icons.groups),
+                      label: l10n.navTables,
                     ),
-                  ]
-                : [],
-          ),
-          child: GlassBottomBar(
-            glassSettings: LiquidGlassSettings(
-              thickness: 30,
-              blur: isLight ? 12 : 3,
-              glassColor: isLight
-                  ? const Color(0x14000000)
-                  : const Color(0x3DFFFFFF),
-              refractiveIndex: 1.59,
-              saturation: 0.7,
-              ambientStrength: isLight ? 0.3 : 1,
-              lightIntensity: 0.6,
-              chromaticAberration: 0.3,
-            ),
-            selectedIconColor: iconColor,
-            unselectedIconColor: unselectedColor,
-            selectedIndex: selectedIndex,
-            onTabSelected: (index) => _onDestinationSelected(context, index),
-            tabs: [
-              GlassBottomBarTab(
-                icon: const Icon(Icons.groups_outlined),
-                activeIcon: const Icon(Icons.groups),
-                label: l10n.navTables,
-              ),
-              GlassBottomBarTab(
-                icon: const Icon(Icons.restaurant_outlined),
-                activeIcon: const Icon(Icons.restaurant),
-                label: l10n.navRestaurants,
-              ),
-              GlassBottomBarTab(
-                icon: const Icon(Icons.settings_outlined),
-                activeIcon: const Icon(Icons.settings),
-                label: l10n.navSettings,
+                    GlassBottomBarTab(
+                      icon: const Icon(Icons.restaurant_outlined),
+                      activeIcon: const Icon(Icons.restaurant),
+                      label: l10n.navRestaurants,
+                    ),
+                    GlassBottomBarTab(
+                      icon: const Icon(Icons.settings_outlined),
+                      activeIcon: const Icon(Icons.settings),
+                      label: l10n.navSettings,
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
-        ),
       );
     }
 
-    return Scaffold(
+    ref.read(bottomActionsProvider.notifier).clear();
+    return GlassAwareScaffold(
       body: child,
       bottomNavigationBar: NavigationBar(
         selectedIndex: selectedIndex,

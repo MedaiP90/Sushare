@@ -115,8 +115,26 @@ class _GlassBar extends StatelessWidget implements PreferredSizeWidget {
       shadowColor: Colors.transparent,
       surfaceTintColor: Colors.transparent,
       title: glassTitle,
-      leading: effectiveLeading,
-      actions: actions,
+      titleSpacing: 8,
+      leading: effectiveLeading != null
+          ? Padding(
+              padding: const EdgeInsets.only(left: 8),
+              child: effectiveLeading,
+            )
+          : null,
+      leadingWidth: 60,
+      actions: actions == null
+          ? null
+          : [
+              for (int i = 0; i < actions!.length; i++)
+                Padding(
+                  padding: EdgeInsets.only(
+                    left: 4,
+                    right: i == actions!.length - 1 ? 12 : 4,
+                  ),
+                  child: actions![i],
+                ),
+            ],
       centerTitle: centerTitle,
       automaticallyImplyLeading: false,
     );

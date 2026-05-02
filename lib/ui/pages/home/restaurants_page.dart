@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 import 'package:path_provider/path_provider.dart';
 import '../../../core/style/app_style.dart';
+import '../../../core/style/bottom_actions_provider.dart';
 import '../../../domain/models/restaurant.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../core/widgets/glass_aware_app_bar.dart';
@@ -14,14 +15,37 @@ import '../../viewmodels/restaurant_viewmodel.dart';
 import '../../viewmodels/saved_order_viewmodel.dart';
 import '../restaurant/restaurant_detail_page.dart';
 
-class RestaurantsPage extends ConsumerWidget {
+class RestaurantsPage extends ConsumerStatefulWidget {
   const RestaurantsPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final restaurantsAsync = ref.watch(restaurantsProvider);
-    final l10n = AppLocalizations.of(context)!;
-    final isGlass = ref.watch(styleModeProvider) == AppStyleMode.liquidGlass;
+  ConsumerState<RestaurantsPage> createState() => _RestaurantsPageState();
+}
+
+class _RestaurantsPageState extends ConsumerState<RestaurantsPage> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _updateBottomActions();
+    });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(bottomActionsProvider.notifier).clear();
+    });
+    super.dispose();
+  }
+
+  void _updateBottomActions() {
+    final isGlass = ref.read(styleModeProvider) == AppStyleMode.liquidGlass;
+    if (!isGlass) {
+      ref.read(bottomActionsProvider.notifier).clear();
+      return;
+    }
+
     final isLight = Theme.of(context).brightness == Brightness.light;
     final iconColor = isLight ? Colors.black87 : Colors.white;
     final glassSettings = LiquidGlassSettings(
@@ -29,6 +53,27 @@ class RestaurantsPage extends ConsumerWidget {
       thickness: 25,
       glassColor: isLight ? const Color(0x18000000) : const Color(0x30FFFFFF),
     );
+    final l10n = AppLocalizations.of(context)!;
+
+    ref.read(bottomActionsProvider.notifier).setActions([
+      GlassButton(
+        icon: Icon(Icons.add, color: iconColor),
+        onTap: () => _showAddRestaurantSheet(context, ref, l10n),
+        useOwnLayer: true,
+        settings: glassSettings,
+      ),
+    ]);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final restaurantsAsync = ref.watch(restaurantsProvider);
+    final l10n = AppLocalizations.of(context)!;
+    final isGlass = ref.watch(styleModeProvider) == AppStyleMode.liquidGlass;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _updateBottomActions();
+    });
 
     return GlassAwareScaffold(
       appBar: GlassAwareAppBar(
@@ -179,27 +224,7 @@ class RestaurantsPage extends ConsumerWidget {
         ),
       ),
       floatingActionButton: isGlass
-          ? GlassButton.custom(
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.add, color: iconColor, size: 20),
-                  const SizedBox(width: 8),
-                  Text(
-                    l10n.restaurantsAdd,
-                    style: TextStyle(
-                        color: iconColor, fontWeight: FontWeight.w600),
-                  ),
-                ],
-              ),
-              onTap: () => _showAddRestaurantSheet(context, ref, l10n),
-              width: 200,
-              height: 56,
-              shape: const LiquidRoundedSuperellipse(borderRadius: 28),
-              useOwnLayer: true,
-              settings: glassSettings,
-            )
+          ? null
           : FloatingActionButton.extended(
               onPressed: () => _showAddRestaurantSheet(context, ref, l10n),
               icon: const Icon(Icons.add),

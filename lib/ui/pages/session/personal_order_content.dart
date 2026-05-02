@@ -4,6 +4,7 @@ import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 import 'package:uuid/uuid.dart';
 import '../../../core/providers.dart';
 import '../../../core/style/app_style.dart';
+import '../../../core/style/bottom_actions_provider.dart';
 import '../../../domain/models/restaurant.dart';
 import '../../../domain/models/personal_sub_order.dart';
 import '../../../domain/models/saved_order.dart';
@@ -29,10 +30,118 @@ class _PersonalOrderContentState extends ConsumerState<PersonalOrderContent> {
   DateTime? _lastLoadedAt;
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _updateBottomActions();
+    });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(bottomActionsProvider.notifier).clear();
+    });
+    super.dispose();
+  }
+
+  void _updateBottomActions() {
+    final sessionAsync = ref.read(sessionDetailProvider(widget.sessionId));
+    final session = sessionAsync.valueOrNull;
+    if (session == null) return;
+
+    final restaurantAsync = ref.read(restaurantDetailProvider(session.restaurantId));
+    final restaurant = restaurantAsync.valueOrNull;
+    if (restaurant == null) return;
+
+    final isGlass = ref.read(styleModeProvider) == AppStyleMode.liquidGlass;
+    final isEditable = session.status != SessionStatus.closed;
+    final canAddDishes = session.status == SessionStatus.open;
+
+    if (!isGlass || !isEditable) {
+      ref.read(bottomActionsProvider.notifier).clear();
+      return;
+    }
+
+    final isLight = Theme.of(context).brightness == Brightness.light;
+    final iconColor = isLight ? Colors.black87 : Colors.white;
+    final glassSettings = LiquidGlassSettings(
+      blur: isLight ? 12 : 8,
+      thickness: 25,
+      glassColor: isLight ? const Color(0x18000000) : const Color(0x30FFFFFF),
+    );
+    final templatesAsync = ref.read(savedOrdersForRestaurantProvider(session.restaurantId));
+    final templates = templatesAsync.valueOrNull ?? [];
+
+    final user = ref.read(profileViewModelProvider).value;
+    if (user == null) return;
+
+    final String userName = user.username;
+    final String userFullName = '${user.firstName} ${user.lastName}'.trim();
+    final String userAvatarIconName = user.avatarIconName;
+
+    final actions = <Widget>[];
+    if (templates.isNotEmpty && canAddDishes) {
+      actions.add(
+        GlassButton(
+          icon: Icon(Icons.bookmarks_outlined, color: iconColor),
+          onTap: () => _showUseTemplateSheet(
+              context,
+              ref,
+              templates,
+              restaurant,
+              user.id,
+              userName,
+              userFullName,
+              userAvatarIconName,
+              user.avatarColorValue),
+          useOwnLayer: true,
+          settings: glassSettings,
+        ),
+      );
+    }
+    if (canAddDishes) {
+      actions.add(
+        GlassButton(
+          icon: Icon(Icons.restaurant_menu, color: iconColor),
+          onTap: () => _showAddFromMenuSheet(
+              context,
+              restaurant,
+              user.id,
+              userName,
+              userFullName,
+              userAvatarIconName),
+          useOwnLayer: true,
+          settings: glassSettings,
+        ),
+      );
+      actions.add(
+        GlassButton(
+          icon: Icon(Icons.add, color: iconColor),
+          onTap: () => _showAddCustomDishSheet(
+              context,
+              restaurant,
+              user.id,
+              userName,
+              userFullName,
+              userAvatarIconName),
+          useOwnLayer: true,
+          settings: glassSettings,
+        ),
+      );
+    }
+    ref.read(bottomActionsProvider.notifier).setActions(actions);
+  }
+
+  @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final sessionAsync = ref.watch(sessionDetailProvider(widget.sessionId));
     final user = ref.watch(profileViewModelProvider).value;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _updateBottomActions();
+    });
 
     if (user == null) {
       return Center(child: Text(l10n.personalOrderLogin));
@@ -86,7 +195,6 @@ class _PersonalOrderContentState extends ConsumerState<PersonalOrderContent> {
 
             final totalItems = _quantities.values.fold(0, (a, b) => a + b);
             final isEditable = session.status != SessionStatus.closed;
-            final canAddDishes = session.status == SessionStatus.open;
             final isSent = session.status == SessionStatus.sent;
             final templates = templatesAsync.valueOrNull ?? [];
 
@@ -94,6 +202,8 @@ class _PersonalOrderContentState extends ConsumerState<PersonalOrderContent> {
             final String userFullName = '${user.firstName} ${user.lastName}'.trim();
             final String userAvatarIconName = user.avatarIconName;
             final int userAvatarColorValue = user.avatarColorValue;
+
+            final isGlass = ref.watch(styleModeProvider) == AppStyleMode.liquidGlass;
 
             return Scaffold(
               body: Column(
@@ -230,31 +340,17 @@ class _PersonalOrderContentState extends ConsumerState<PersonalOrderContent> {
                   ),
                 ],
               ),
-              floatingActionButton: isEditable
-                  ? Builder(builder: (ctx) {
-                      final isGlass = ref.watch(styleModeProvider) ==
-                          AppStyleMode.liquidGlass;
-                      final isLight =
-                          Theme.of(ctx).brightness == Brightness.light;
-                      final iconColor =
-                          isLight ? Colors.black87 : Colors.white;
-                      final glassSettings = LiquidGlassSettings(
-                        blur: isLight ? 12 : 8,
-                        thickness: 25,
-                        glassColor: isLight
-                            ? const Color(0x18000000)
-                            : const Color(0x30FFFFFF),
-                      );
-                      if (isGlass) {
-                        return Row(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            if (templates.isNotEmpty) ...[
-                              GlassButton(
-                                icon: Icon(Icons.bookmarks_outlined,
-                                    color: iconColor),
-                                onTap: () => _showUseTemplateSheet(
+              floatingActionButton: isGlass || !isEditable
+                  ? null
+                  : Row(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        if (templates.isNotEmpty)
+                          FloatingActionButton(
+                            heroTag: 'fab_use_template',
+                            onPressed: session.status == SessionStatus.open
+                                ? () => _showUseTemplateSheet(
                                     context,
                                     ref,
                                     templates,
@@ -263,118 +359,44 @@ class _PersonalOrderContentState extends ConsumerState<PersonalOrderContent> {
                                     userName,
                                     userFullName,
                                     userAvatarIconName,
-                                    userAvatarColorValue),
-                                enabled: canAddDishes,
-                                useOwnLayer: true,
-                                settings: glassSettings,
-                              ),
-                              const SizedBox(width: 12),
-                            ],
-                            GlassButton(
-                              icon: Icon(Icons.restaurant_menu,
-                                  color: iconColor),
-                              onTap: () => _showAddFromMenuSheet(
+                                    userAvatarColorValue)
+                                : null,
+                            tooltip: l10n.personalOrderUseTemplate,
+                            child: const Icon(Icons.bookmarks_outlined),
+                          ),
+                        const SizedBox(width: 12),
+                        FloatingActionButton(
+                          heroTag: 'fab_menu',
+                          onPressed: session.status == SessionStatus.open
+                              ? () => _showAddFromMenuSheet(
                                   context,
                                   restaurant,
                                   user.id,
                                   userName,
                                   userFullName,
-                                  userAvatarIconName),
-                              enabled: canAddDishes,
-                              useOwnLayer: true,
-                              settings: glassSettings,
-                            ),
-                            const SizedBox(width: 12),
-                            GlassButton.custom(
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(Icons.add, color: iconColor, size: 20),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    l10n.personalOrderCustomDish,
-                                    style: TextStyle(
-                                        color: iconColor,
-                                        fontWeight: FontWeight.w600),
-                                  ),
-                                ],
-                              ),
-                              onTap: () => _showAddCustomDishSheet(
+                                  userAvatarIconName)
+                              : null,
+                          tooltip: l10n.personalOrderFromMenu,
+                          child: const Icon(Icons.restaurant_menu),
+                        ),
+                        const SizedBox(width: 12),
+                        FloatingActionButton.extended(
+                          heroTag: 'fab_custom_dish',
+                          onPressed: session.status == SessionStatus.open
+                              ? () => _showAddCustomDishSheet(
                                   context,
                                   restaurant,
                                   user.id,
                                   userName,
                                   userFullName,
-                                  userAvatarIconName),
-                              enabled: canAddDishes,
-                              width: 200,
-                              height: 56,
-                              shape: const LiquidRoundedSuperellipse(
-                                  borderRadius: 28),
-                              useOwnLayer: true,
-                              settings: glassSettings,
-                            ),
-                          ],
-                        );
-                      }
-                      return Row(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          if (templates.isNotEmpty)
-                            FloatingActionButton(
-                              heroTag: 'fab_use_template',
-                              onPressed: canAddDishes
-                                  ? () => _showUseTemplateSheet(
-                                      context,
-                                      ref,
-                                      templates,
-                                      restaurant,
-                                      user.id,
-                                      userName,
-                                      userFullName,
-                                      userAvatarIconName,
-                                      userAvatarColorValue)
-                                  : null,
-                              tooltip: l10n.personalOrderUseTemplate,
-                              child: const Icon(Icons.bookmarks_outlined),
-                            ),
-                          const SizedBox(width: 12),
-                          FloatingActionButton(
-                            heroTag: 'fab_menu',
-                            onPressed: canAddDishes
-                                ? () => _showAddFromMenuSheet(
-                                    context,
-                                    restaurant,
-                                    user.id,
-                                    userName,
-                                    userFullName,
-                                    userAvatarIconName)
-                                : null,
-                            tooltip: l10n.personalOrderFromMenu,
-                            child: const Icon(Icons.restaurant_menu),
-                          ),
-                          const SizedBox(width: 12),
-                          FloatingActionButton.extended(
-                            heroTag: 'fab_custom_dish',
-                            onPressed: canAddDishes
-                                ? () => _showAddCustomDishSheet(
-                                    context,
-                                    restaurant,
-                                    user.id,
-                                    userName,
-                                    userFullName,
-                                    userAvatarIconName)
-                                : null,
-                            tooltip: l10n.personalOrderCustomDish,
-                            icon: const Icon(Icons.add),
-                            label: Text(l10n.personalOrderCustomDish),
-                          ),
-                        ],
-                      );
-                    })
-                  : null,
+                                  userAvatarIconName)
+                              : null,
+                          tooltip: l10n.personalOrderCustomDish,
+                          icon: const Icon(Icons.add),
+                          label: Text(l10n.personalOrderCustomDish),
+                        ),
+                      ],
+                    ),
             );
           },
           loading: () => const Center(child: CircularProgressIndicator()),

@@ -3,12 +3,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
+import '../../../core/style/app_style.dart';
+import '../../core/widgets/glass_aware_scaffold.dart';
 import '../../../domain/models/restaurant.dart';
 import '../../../domain/models/saved_order.dart';
 import '../../../domain/models/personal_sub_order.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../core/widgets/glass_aware_app_bar.dart';
 import '../../viewmodels/restaurant_viewmodel.dart';
 import '../../viewmodels/saved_order_viewmodel.dart';
 
@@ -47,11 +51,20 @@ class _RestaurantDetailPageState extends ConsumerState<RestaurantDetailPage> {
 
     return restaurantAsync.when(
       data: (restaurant) {
+        final isGlass = ref.watch(styleModeProvider) == AppStyleMode.liquidGlass;
+        final isLight = Theme.of(context).brightness == Brightness.light;
+        final iconColor = isLight ? Colors.black87 : Colors.white;
+
         if (restaurant == null) {
-          return Scaffold(
-            appBar: AppBar(),
-            body: Center(child: Text(l10n.restaurantNotFound)),
-          );
+          return isGlass
+              ? GlassAwareScaffold(
+                  appBar: GlassAwareAppBar(),
+                  body: Center(child: Text(l10n.restaurantNotFound)),
+                )
+              : Scaffold(
+                  appBar: AppBar(),
+                  body: Center(child: Text(l10n.restaurantNotFound)),
+                );
         }
 
         final sortedMenu = List<MenuItem>.from(restaurant.menu)
@@ -70,15 +83,27 @@ class _RestaurantDetailPageState extends ConsumerState<RestaurantDetailPage> {
               }).toList();
 
         return Scaffold(
+          extendBodyBehindAppBar: isGlass,
           body: CustomScrollView(
             slivers: [
               SliverAppBar(
                 expandedHeight: 200,
                 pinned: true,
                 centerTitle: true,
+                backgroundColor: isGlass ? Colors.transparent : null,
+                surfaceTintColor: isGlass ? Colors.transparent : null,
+                elevation: isGlass ? 0 : null,
                 flexibleSpace: FlexibleSpaceBar(
                   centerTitle: true,
-                  title: Text(restaurant.name),
+                  title: isGlass
+                      ? GlassContainer(
+                          useOwnLayer: true,
+                          settings: glassBarButtonSettings(isLight),
+                          shape: const LiquidRoundedSuperellipse(borderRadius: 20),
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                          child: Text(restaurant.name, style: TextStyle(color: iconColor, fontSize: 16, fontWeight: FontWeight.w600)),
+                        )
+                      : Text(restaurant.name),
                   collapseMode: CollapseMode.parallax,
                   background: restaurant.coverImagePath != null
                       ? ShaderMask(
@@ -114,44 +139,55 @@ class _RestaurantDetailPageState extends ConsumerState<RestaurantDetailPage> {
                         ),
                 ),
                 actions: [
-                  PopupMenuButton<String>(
-                    onSelected: (value) async {
-                      if (value == 'edit') {
-                        _showEditSheet(context, ref, restaurant);
-                      } else if (value == 'delete') {
-                        final confirm = await showDialog<bool>(
-                          context: context,
-                          builder: (context) => AlertDialog(
-                            title: Text(l10n.restaurantDeleteTitle),
-                            content: Text(l10n.restaurantDeleteMessage(restaurant.name)),
-                            actions: [
-                              TextButton(
-                                onPressed: () => Navigator.pop(context, false),
-                                child: Text(l10n.cancel),
-                              ),
-                              FilledButton(
-                                onPressed: () => Navigator.pop(context, true),
-                                style: FilledButton.styleFrom(
-                                  backgroundColor: Theme.of(context).colorScheme.error,
+                  if (isGlass)
+                    Builder(
+                      builder: (ctx) => GlassIconButton(
+                        icon: Icon(Icons.more_vert, size: 20, color: iconColor),
+                        onPressed: () => _showRestaurantMenu(ctx, ref, restaurant, l10n),
+                        useOwnLayer: true,
+                        size: 36,
+                        settings: glassBarButtonSettings(isLight),
+                      ),
+                    )
+                  else
+                    PopupMenuButton<String>(
+                      onSelected: (value) async {
+                        if (value == 'edit') {
+                          _showEditSheet(context, ref, restaurant);
+                        } else if (value == 'delete') {
+                          final confirm = await showDialog<bool>(
+                            context: context,
+                            builder: (context) => AlertDialog(
+                              title: Text(l10n.restaurantDeleteTitle),
+                              content: Text(l10n.restaurantDeleteMessage(restaurant.name)),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(context, false),
+                                  child: Text(l10n.cancel),
                                 ),
-                                child: Text(l10n.delete),
-                              ),
-                            ],
-                          ),
-                        );
-                        if (confirm == true && context.mounted) {
-                          await ref
-                              .read(restaurantsProvider.notifier)
-                              .deleteRestaurant(restaurantId);
-                          if (context.mounted) context.pop();
+                                FilledButton(
+                                  onPressed: () => Navigator.pop(context, true),
+                                  style: FilledButton.styleFrom(
+                                    backgroundColor: Theme.of(context).colorScheme.error,
+                                  ),
+                                  child: Text(l10n.delete),
+                                ),
+                              ],
+                            ),
+                          );
+                          if (confirm == true && context.mounted) {
+                            await ref
+                                .read(restaurantsProvider.notifier)
+                                .deleteRestaurant(restaurantId);
+                            if (context.mounted) context.pop();
+                          }
                         }
-                      }
-                    },
-                    itemBuilder: (context) => [
-                      PopupMenuItem(value: 'edit', child: Text(l10n.edit)),
-                      PopupMenuItem(value: 'delete', child: Text(l10n.delete)),
-                    ],
-                  ),
+                      },
+                      itemBuilder: (context) => [
+                        PopupMenuItem(value: 'edit', child: Text(l10n.edit)),
+                        PopupMenuItem(value: 'delete', child: Text(l10n.delete)),
+                      ],
+                    ),
                 ],
               ),
               if (restaurant.address != null)
@@ -294,10 +330,69 @@ class _RestaurantDetailPageState extends ConsumerState<RestaurantDetailPage> {
               final expandedSearchWidth = MediaQuery.of(context).size.width
                   - safeArea.left
                   - safeArea.right
-                  - 16   // scaffold FAB right margin
-                  - 56   // add FAB width
-                  - 12   // gap between the two FABs
-                  - 16;  // left screen margin
+                  - 16
+                  - 56
+                  - 12
+                  - 16;
+              final glassSettings = glassBarButtonSettings(isLight);
+              if (isGlass) {
+                return Row(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    _isSearchExpanded
+                        ? GlassContainer(
+                            useOwnLayer: true,
+                            settings: glassSettings,
+                            shape: const LiquidRoundedSuperellipse(borderRadius: 28),
+                            width: expandedSearchWidth,
+                            height: 56,
+                            child: Row(
+                              children: [
+                                GlassIconButton(
+                                  icon: Icon(Icons.close, color: iconColor, size: 20),
+                                  onPressed: () => setState(() {
+                                    _isSearchExpanded = false;
+                                    _searchQuery = '';
+                                    _searchController.clear();
+                                  }),
+                                  size: 36,
+                                  settings: glassSettings,
+                                ),
+                                Expanded(
+                                  child: TextField(
+                                    controller: _searchController,
+                                    autofocus: true,
+                                    style: TextStyle(color: iconColor),
+                                    decoration: InputDecoration(
+                                      border: InputBorder.none,
+                                      hintText: l10n.searchDishes,
+                                      isDense: true,
+                                      hintStyle: TextStyle(color: iconColor.withValues(alpha: 0.6)),
+                                    ),
+                                    onChanged: (v) => setState(() => _searchQuery = v),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                              ],
+                            ),
+                          )
+                        : GlassButton(
+                            icon: Icon(Icons.search, color: iconColor),
+                            onTap: () => setState(() => _isSearchExpanded = true),
+                            useOwnLayer: true,
+                            settings: glassSettings,
+                          ),
+                    const SizedBox(width: 12),
+                    GlassButton(
+                      icon: Icon(Icons.add, color: iconColor),
+                      onTap: () => _showAddMenuItemSheet(context, ref, restaurant),
+                      useOwnLayer: true,
+                      settings: glassSettings,
+                    ),
+                  ],
+                );
+              }
               return Row(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.end,
@@ -383,14 +478,30 @@ class _RestaurantDetailPageState extends ConsumerState<RestaurantDetailPage> {
           ),
         );
       },
-      loading: () => Scaffold(
-        appBar: AppBar(),
-        body: const Center(child: CircularProgressIndicator()),
-      ),
-      error: (error, stack) => Scaffold(
-        appBar: AppBar(),
-        body: Center(child: Text(AppLocalizations.of(context)!.errorMessage(error.toString()))),
-      ),
+      loading: () {
+        final isGlass = ref.watch(styleModeProvider) == AppStyleMode.liquidGlass;
+        return isGlass
+            ? GlassAwareScaffold(
+                appBar: GlassAwareAppBar(),
+                body: const Center(child: CircularProgressIndicator()),
+              )
+            : Scaffold(
+                appBar: AppBar(),
+                body: const Center(child: CircularProgressIndicator()),
+              );
+      },
+      error: (error, stack) {
+        final isGlass = ref.watch(styleModeProvider) == AppStyleMode.liquidGlass;
+        return isGlass
+            ? GlassAwareScaffold(
+                appBar: GlassAwareAppBar(),
+                body: Center(child: Text(AppLocalizations.of(context)!.errorMessage(error.toString()))),
+              )
+            : Scaffold(
+                appBar: AppBar(),
+                body: Center(child: Text(AppLocalizations.of(context)!.errorMessage(error.toString()))),
+              );
+      },
     );
   }
 
@@ -401,6 +512,72 @@ class _RestaurantDetailPageState extends ConsumerState<RestaurantDetailPage> {
     ref.read(restaurantsProvider.notifier).updateRestaurant(
           restaurant.copyWith(menu: updatedMenu),
         );
+  }
+
+  List<PopupMenuEntry<String>> _restaurantMenuItems(
+      Restaurant restaurant, AppLocalizations l10n) {
+    return [
+      PopupMenuItem(value: 'edit', child: Text(l10n.edit)),
+      PopupMenuItem(
+          value: 'delete',
+          child: Text(l10n.delete,
+              style: TextStyle(color: Theme.of(context).colorScheme.error))),
+    ];
+  }
+
+  Future<void> _handleRestaurantMenuSelection(
+      String value, Restaurant restaurant, AppLocalizations l10n) async {
+    if (value == 'edit') {
+      _showEditSheet(context, ref, restaurant);
+    } else if (value == 'delete') {
+      final confirm = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text(l10n.restaurantDeleteTitle),
+          content: Text(l10n.restaurantDeleteMessage(restaurant.name)),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: Text(l10n.cancel),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              style: FilledButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.error,
+              ),
+              child: Text(l10n.delete),
+            ),
+          ],
+        ),
+      );
+      if (confirm == true && context.mounted) {
+        await ref
+            .read(restaurantsProvider.notifier)
+            .deleteRestaurant(restaurant.id);
+        if (context.mounted) context.pop();
+      }
+    }
+  }
+
+  Future<void> _showRestaurantMenu(
+      BuildContext ctx, WidgetRef ref, Restaurant restaurant, AppLocalizations l10n) async {
+    final box = ctx.findRenderObject() as RenderBox;
+    final overlay = Overlay.of(ctx).context.findRenderObject() as RenderBox;
+    final position = RelativeRect.fromRect(
+      Rect.fromPoints(
+        box.localToGlobal(Offset.zero, ancestor: overlay),
+        box.localToGlobal(box.size.bottomRight(Offset.zero), ancestor: overlay),
+      ),
+      Offset.zero & overlay.size,
+    );
+    final value = await showMenu<String>(
+      context: ctx,
+      position: position,
+      items: _restaurantMenuItems(restaurant, l10n),
+    );
+    if (value != null && mounted) {
+      _handleRestaurantMenuSelection(value, restaurant, l10n);
+    }
   }
 
   Future<void> _deleteTemplate(BuildContext context, WidgetRef ref,

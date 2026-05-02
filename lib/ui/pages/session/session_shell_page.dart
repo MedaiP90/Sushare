@@ -8,6 +8,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'package:uuid/uuid.dart';
 import '../../../core/providers.dart';
 import '../../../core/style/app_style.dart';
+import '../../../core/style/bottom_actions_provider.dart';
 import '../../../domain/models/local_user.dart';
 import '../../../domain/models/session.dart';
 import '../../../domain/models/personal_sub_order.dart';
@@ -110,6 +111,7 @@ class _SessionShellPageState extends ConsumerState<SessionShellPage> {
         final isGlass =
             ref.watch(styleModeProvider) == AppStyleMode.liquidGlass;
         final isLight = Theme.of(context).brightness == Brightness.light;
+        final actions = ref.watch(bottomActionsProvider);
         final glassButtonSettings = LiquidGlassSettings(
           blur: isLight ? 12 : 8,
           thickness: 25,
@@ -194,110 +196,120 @@ class _SessionShellPageState extends ConsumerState<SessionShellPage> {
             ],
           ),
           bottomNavigationBar: isGlass
-              ? DecoratedBox(
-                  decoration: BoxDecoration(
-                    boxShadow: isLight
-                        ? [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.10),
-                              blurRadius: 16,
-                              offset: const Offset(0, -2),
-                            ),
-                          ]
-                        : [],
-                  ),
-                  child: GlassBottomBar(
-                    glassSettings: LiquidGlassSettings(
-                      thickness: 30,
-                      blur: isLight ? 12 : 3,
-                      glassColor: isLight
-                          ? const Color(0x14000000)
-                          : const Color(0x3DFFFFFF),
-                      refractiveIndex: 1.59,
-                      saturation: 0.7,
-                      ambientStrength: isLight ? 0.3 : 1,
-                      lightIntensity: 0.6,
-                      chromaticAberration: 0.3,
-                    ),
-                    selectedIconColor: iconColor,
-                    unselectedIconColor:
-                        isLight ? Colors.black54 : Colors.white70,
+              ? Row(
+                    mainAxisSize: MainAxisSize.max,
+                    children: [
+                      if (actions.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              for (int i = 0; i < actions.length; i++) ...[
+                                actions[i],
+                                if (i < actions.length - 1) const SizedBox(width: 8),
+                              ],
+                            ],
+                          ),
+                        ),
+                      Expanded(
+                        child: GlassBottomBar(
+                          glassSettings: LiquidGlassSettings(
+                            thickness: 30,
+                            blur: isLight ? 12 : 3,
+                            glassColor: isLight
+                                ? const Color(0x14000000)
+                                : const Color(0x3DFFFFFF),
+                            refractiveIndex: 1.59,
+                            saturation: 0.7,
+                            ambientStrength: isLight ? 0.3 : 1,
+                            lightIntensity: 0.6,
+                            chromaticAberration: 0.3,
+                          ),
+                          selectedIconColor: iconColor,
+                          unselectedIconColor:
+                              isLight ? Colors.black54 : Colors.white70,
+                          selectedIndex: safeIndex,
+                          onTabSelected: (i) => setState(() => _currentIndex = i),
+                          tabs: isHost
+                              ? [
+                                  GlassBottomBarTab(
+                                    icon: const Icon(Icons.person_outline),
+                                    activeIcon: const Icon(Icons.person),
+                                    label: l10n.sessionTabMyOrder,
+                                  ),
+                                  GlassBottomBarTab(
+                                    icon: const Icon(Icons.groups_outlined),
+                                    activeIcon: const Icon(Icons.groups),
+                                    label: l10n.sessionTabGroup,
+                                  ),
+                                  GlassBottomBarTab(
+                                    icon: const Icon(Icons.checklist_outlined),
+                                    activeIcon: const Icon(Icons.checklist),
+                                    label: l10n.sessionTabChecklist,
+                                  ),
+                                ]
+                              : [
+                                  GlassBottomBarTab(
+                                    icon: const Icon(Icons.person_outline),
+                                    activeIcon: const Icon(Icons.person),
+                                    label: l10n.sessionTabMyOrder,
+                                  ),
+                                  GlassBottomBarTab(
+                                    icon: const Icon(Icons.checklist_outlined),
+                                    activeIcon: const Icon(Icons.checklist),
+                                    label: l10n.sessionTabChecklist,
+                                  ),
+                                ],
+                        ),
+                      ),
+                    ],
+                  )
+              : (() {
+                  ref.read(bottomActionsProvider.notifier).clear();
+                  return NavigationBar(
                     selectedIndex: safeIndex,
-                    onTabSelected: (i) => setState(() => _currentIndex = i),
-                    tabs: isHost
+                    onDestinationSelected: (i) =>
+                        setState(() => _currentIndex = i),
+                    destinations: isHost
                         ? [
-                            GlassBottomBarTab(
+                            NavigationDestination(
                               icon: const Icon(Icons.person_outline),
-                              activeIcon: const Icon(Icons.person),
+                              selectedIcon: const Icon(Icons.person),
                               label: l10n.sessionTabMyOrder,
                             ),
-                            GlassBottomBarTab(
+                            NavigationDestination(
                               icon: const Icon(Icons.groups_outlined),
-                              activeIcon: const Icon(Icons.groups),
+                              selectedIcon: const Icon(Icons.groups),
                               label: l10n.sessionTabGroup,
                             ),
-                            GlassBottomBarTab(
+                            NavigationDestination(
                               icon: const Icon(Icons.checklist_outlined),
-                              activeIcon: const Icon(Icons.checklist),
+                              selectedIcon: const Icon(Icons.checklist),
                               label: l10n.sessionTabChecklist,
                             ),
                           ]
                         : [
-                            GlassBottomBarTab(
+                            NavigationDestination(
                               icon: const Icon(Icons.person_outline),
-                              activeIcon: const Icon(Icons.person),
+                              selectedIcon: const Icon(Icons.person),
                               label: l10n.sessionTabMyOrder,
                             ),
-                            GlassBottomBarTab(
+                            NavigationDestination(
                               icon: const Icon(Icons.checklist_outlined),
-                              activeIcon: const Icon(Icons.checklist),
+                              selectedIcon: const Icon(Icons.checklist),
                               label: l10n.sessionTabChecklist,
                             ),
                           ],
-                  ),
-                )
-              : NavigationBar(
-                  selectedIndex: safeIndex,
-                  onDestinationSelected: (i) =>
-                      setState(() => _currentIndex = i),
-                  destinations: isHost
-                      ? [
-                          NavigationDestination(
-                            icon: const Icon(Icons.person_outline),
-                            selectedIcon: const Icon(Icons.person),
-                            label: l10n.sessionTabMyOrder,
-                          ),
-                          NavigationDestination(
-                            icon: const Icon(Icons.groups_outlined),
-                            selectedIcon: const Icon(Icons.groups),
-                            label: l10n.sessionTabGroup,
-                          ),
-                          NavigationDestination(
-                            icon: const Icon(Icons.checklist_outlined),
-                            selectedIcon: const Icon(Icons.checklist),
-                            label: l10n.sessionTabChecklist,
-                          ),
-                        ]
-                      : [
-                          NavigationDestination(
-                            icon: const Icon(Icons.person_outline),
-                            selectedIcon: const Icon(Icons.person),
-                            label: l10n.sessionTabMyOrder,
-                          ),
-                          NavigationDestination(
-                            icon: const Icon(Icons.checklist_outlined),
-                            selectedIcon: const Icon(Icons.checklist),
-                            label: l10n.sessionTabChecklist,
-                          ),
-                        ],
-                ),
+                      );
+                })(),
         );
       },
-      loading: () => GlassAwareScaffold(
-          appBar: GlassAwareAppBar(),
+      loading: () => const GlassAwareScaffold(
+          appBar: const GlassAwareAppBar(),
           body: const Center(child: CircularProgressIndicator())),
       error: (error, _) => GlassAwareScaffold(
-        appBar: GlassAwareAppBar(),
+        appBar: const GlassAwareAppBar(),
         body: Center(
             child: Text(
                 AppLocalizations.of(context)!.errorMessage(error.toString()))),
