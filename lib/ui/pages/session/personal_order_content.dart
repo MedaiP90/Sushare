@@ -518,6 +518,7 @@ class _PersonalOrderContentState extends ConsumerState<PersonalOrderContent> {
     );
 
     if (result != null && mounted) {
+      // ignore: use_build_context_synchronously
       final l10n = AppLocalizations.of(context)!;
       final dishId = const Uuid().v4();
       final currentRestaurantForNum =
@@ -580,6 +581,7 @@ class _PersonalOrderContentState extends ConsumerState<PersonalOrderContent> {
       }
 
       if (mounted) {
+        // ignore: use_build_context_synchronously
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(l10n.personalOrderCustomDishAdded(newItem.name))),
         );
@@ -588,7 +590,7 @@ class _PersonalOrderContentState extends ConsumerState<PersonalOrderContent> {
   }
 
   Future<void> _saveOrder(BuildContext context, String userId, List<MenuItem> menuItems,
-      {bool silent = false, String? userName, String? userFullName, String? userAvatarIconName, int? userAvatarColorValue}) async {
+      {bool silent = false, String? userName, String? userFullName, String? userAvatarIconName}) async {
     final entries = _quantities.entries
         .where((e) => e.value > 0)
         .map((e) {

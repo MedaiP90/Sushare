@@ -452,6 +452,7 @@ class _RestaurantDetailPageState extends ConsumerState<RestaurantDetailPage> {
                 label: label,
                 entries: entries,
               );
+          if (!sheetContext.mounted) return;
           final confirmDelete = await showDialog<bool>(
             context: sheetContext,
             builder: (ctx) => AlertDialog(

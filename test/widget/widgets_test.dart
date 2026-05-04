@@ -115,12 +115,12 @@ void main() {
             useMaterial3: true,
             colorSchemeSeed: Colors.red,
           ),
-          home: Scaffold(
+          home: const Scaffold(
             body: Card(
               child: Padding(
-                padding: const EdgeInsets.all(16),
+                padding: EdgeInsets.all(16),
                 child: Column(
-                  children: const [
+                  children: [
                     Text('Title'),
                     Text('Subtitle'),
                   ],
