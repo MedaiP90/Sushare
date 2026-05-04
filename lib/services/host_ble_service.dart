@@ -88,7 +88,10 @@ class HostBleService {
   void setRestaurant(Restaurant restaurant) => _restaurant = restaurant;
 
   Map<String, dynamic> _restaurantPayload(Restaurant r) {
-    final map = r.toJson();
+    final cleaned = r.copyWith(
+      menu: r.menu.map((item) => item.copyWith(isYummie: false)).toList(),
+    );
+    final map = cleaned.toJson();
     map.remove('coverImagePath');
     return map;
   }

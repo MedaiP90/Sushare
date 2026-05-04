@@ -88,7 +88,14 @@ a:hover { text-decoration: underline; }
   color: var(--ink);
   display: flex;
   align-items: center;
-  /*gap: 8px;*/
+}
+
+.nav__logo img {
+  height: 32px;
+  width: 32px;
+  object-fit: contain;
+  border-radius: 8px;
+  margin-right: 8px;
 }
 
 .nav__logo span {
@@ -555,7 +562,9 @@ a:hover { text-decoration: underline; }
   font-family: 'Source Serif 4', serif;
   font-weight: 700;
   font-size: 1.1rem;
-  color: rgba(255,255,255,.7);
+  color: var(--coral-light);
+  display: flex;
+  align-items: center;
 }
 
 .footer__logo span { color: var(--coral); }

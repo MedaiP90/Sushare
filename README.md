@@ -4,6 +4,12 @@ A distributed, serverless Flutter mobile app that enables groups of friends to c
 
 ---
 
+Available on:
+
+- Android: [Sushare on Play Store](https://play.google.com/store/apps/details?id=com.medai.sushishare)
+
+---
+
 ## Overview
 
 **Sushare** is designed for all-you-can-eat sushi restaurants where groups want to combine their individual orders. The app operates **entirely offline and peer-to-peer** — no backend, no cloud database, no login required.

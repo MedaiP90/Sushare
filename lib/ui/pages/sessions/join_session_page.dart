@@ -216,7 +216,7 @@ class _JoinSessionPageState extends ConsumerState<JoinSessionPage> {
       coverImagePath: local.coverImagePath,
       menu: remote.menu
           .map((item) =>
-              item.copyWith(isYummie: localYummies[item.id] ?? item.isYummie))
+              item.copyWith(isYummie: localYummies[item.id] ?? false))
           .toList(),
     );
   }
