@@ -4,18 +4,21 @@ import '../../domain/models/personal_sub_order.dart';
 import 'session_viewmodel.dart';
 
 final personalOrderProvider = AsyncNotifierProvider.family<PersonalOrderNotifier, PersonalSubOrder?, String>(
-  () => PersonalOrderNotifier(),
+  (arg) => PersonalOrderNotifier(arg),
 );
 
-class PersonalOrderNotifier extends FamilyAsyncNotifier<PersonalSubOrder?, String> {
+class PersonalOrderNotifier extends AsyncNotifier<PersonalSubOrder?> {
+  PersonalOrderNotifier(this._combinedId);
+  final String _combinedId;
+
   @override
-  Future<PersonalSubOrder?> build(String arg) async {
-    final parts = arg.split(':');
+  Future<PersonalSubOrder?> build() async {
+    final parts = _combinedId.split(':');
     final sessionId = parts[0];
     final userId = parts.length > 1 ? parts[1] : '';
-    
+
     if (userId.isEmpty) return null;
-    
+
     final repo = ref.read(personalSubOrderRepositoryProvider);
     return repo.getSubOrder(sessionId, userId);
   }

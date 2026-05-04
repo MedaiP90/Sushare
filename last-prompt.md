@@ -2,4 +2,4 @@ android studio is telling me thate the following libraries use 4kb memory pages,
 
 what can be done to solve this problem?
 
-i'm now using the unbundled version of mlkit, but libimage_processing_util_jni is still in the apk
+i've switched to the unbundled version of mlkit and solved the issue for libbarhopper, but libimage_processing_util_jni is still in the apk and still causing the incompatibility.

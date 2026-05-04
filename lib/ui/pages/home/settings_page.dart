@@ -8,16 +8,16 @@ import '../../viewmodels/profile_viewmodel.dart';
 import '../../widgets/avatar_widget.dart';
 import '../../../services/menu_ai_service.dart';
 
-final themeModeProvider = StateNotifierProvider<ThemeModeNotifier, ThemeMode>((ref) {
-  return ThemeModeNotifier();
-});
+final themeModeProvider = NotifierProvider<ThemeModeNotifier, ThemeMode>(ThemeModeNotifier.new);
 
-class ThemeModeNotifier extends StateNotifier<ThemeMode> {
-  ThemeModeNotifier() : super(ThemeMode.system) {
-    _loadTheme();
-  }
-
+class ThemeModeNotifier extends Notifier<ThemeMode> {
   static const _key = 'theme_mode';
+
+  @override
+  ThemeMode build() {
+    Future.microtask(_loadTheme);
+    return ThemeMode.system;
+  }
 
   Future<void> _loadTheme() async {
     final prefs = await SharedPreferences.getInstance();
@@ -37,16 +37,16 @@ class ThemeModeNotifier extends StateNotifier<ThemeMode> {
   }
 }
 
-final localeProvider = StateNotifierProvider<LocaleNotifier, Locale?>((ref) {
-  return LocaleNotifier();
-});
+final localeProvider = NotifierProvider<LocaleNotifier, Locale?>(LocaleNotifier.new);
 
-class LocaleNotifier extends StateNotifier<Locale?> {
-  LocaleNotifier() : super(null) {
-    _loadLocale();
-  }
-
+class LocaleNotifier extends Notifier<Locale?> {
   static const _key = 'locale';
+
+  @override
+  Locale? build() {
+    Future.microtask(_loadLocale);
+    return null;
+  }
 
   Future<void> _loadLocale() async {
     final prefs = await SharedPreferences.getInstance();

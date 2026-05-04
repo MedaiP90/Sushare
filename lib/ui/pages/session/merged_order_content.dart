@@ -37,7 +37,7 @@ class MergedOrderContent extends ConsumerWidget {
         return subOrdersAsync.when(
           data: (subOrders) {
             final activeOrders = subOrders.where((o) => o.entries.isNotEmpty).toList();
-            final restaurant = restaurantAsync.valueOrNull;
+            final restaurant = restaurantAsync.value;
 
             final allOrders = <_OrderWithLabel>[];
             if (session.mainOrder != null) {
