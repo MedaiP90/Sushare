@@ -86,12 +86,14 @@ class PermissionService {
   static Future<bool> checkAndRequestCamera(BuildContext context) async {
     final hasCamera = await Permission.camera.isGranted;
     if (hasCamera) return true;
+    if (!context.mounted) return false;
     return requestCamera(context);
   }
 
   static Future<bool> checkAndRequestPhotos(BuildContext context) async {
     final status = await Permission.photos.status;
     if (status.isGranted || status.isLimited) return true;
+    if (!context.mounted) return false;
     return requestPhotoLibrary(context);
   }
 
@@ -142,22 +144,6 @@ class PermissionService {
       ),
     );
     return result ?? false;
-  }
-
-  static void _showRationale(BuildContext context, [String reason = '']) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          reason.isEmpty 
-              ? 'Camera permission is required for this feature.'
-              : 'Photo permission is required $reason',
-        ),
-        action: SnackBarAction(
-          label: 'Settings',
-          onPressed: () => openAppSettings(),
-        ),
-      ),
-    );
   }
 
   /// Requests all permissions required for standard BLE (bluetooth_low_energy).

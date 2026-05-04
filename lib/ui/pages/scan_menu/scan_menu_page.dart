@@ -156,7 +156,7 @@ class _ScanMenuPageState extends ConsumerState<ScanMenuPage> {
       if (item.itemNumber != null) {
         numbered.add(item);
       } else {
-        while (usedInBatch.contains(nextNumber)) nextNumber++;
+        while (usedInBatch.contains(nextNumber)) { nextNumber++; }
         usedInBatch.add(nextNumber);
         numbered.add(item.copyWith(itemNumber: nextNumber++));
       }
