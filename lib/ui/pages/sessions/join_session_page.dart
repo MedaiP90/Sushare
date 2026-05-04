@@ -198,7 +198,10 @@ class _JoinSessionPageState extends ConsumerState<JoinSessionPage> {
       if (mounted) context.go('/sessions/${remoteSession.id}');
     } catch (_) {
       ref.read(participantBleServiceProvider).disconnect();
-      _setError(AppLocalizations.of(context)!.joinTableErrorConnectionTimeout);
+      if (mounted) {
+        // ignore: use_build_context_synchronously
+        _setError(AppLocalizations.of(context)!.joinTableErrorConnectionTimeout);
+      }
     }
   }
 
