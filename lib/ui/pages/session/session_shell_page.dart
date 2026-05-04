@@ -266,6 +266,12 @@ class _SessionShellPageState extends ConsumerState<SessionShellPage> {
     }
 
     try {
+      // Load restaurant before advertising so any guest that connects
+      // immediately after start() already finds _restaurant populated.
+      final restaurantRepo = ref.read(restaurantRepositoryProvider);
+      final restaurant =
+          await restaurantRepo.getRestaurantById(session.restaurantId);
+
       await hostSvc.start(
         sessionId: session.id,
         sessionName: session.name,
@@ -274,9 +280,6 @@ class _SessionShellPageState extends ConsumerState<SessionShellPage> {
       hostSvc.setSession(session);
       _lastKnownStatus = session.status;
 
-      final restaurantRepo = ref.read(restaurantRepositoryProvider);
-      final restaurant =
-          await restaurantRepo.getRestaurantById(session.restaurantId);
       if (restaurant != null) hostSvc.setRestaurant(restaurant);
 
       final subOrderRepo = ref.read(personalSubOrderRepositoryProvider);
@@ -413,7 +416,10 @@ class _SessionShellPageState extends ConsumerState<SessionShellPage> {
               msg.data['restaurant'] as Map<String, dynamic>);
           final local = await restaurantRepo.getRestaurantById(remote.id);
           await restaurantRepo.saveRestaurant(_mergeRestaurant(remote, local));
-          if (mounted) ref.invalidate(restaurantDetailProvider(remote.id));
+          if (mounted) {
+            ref.invalidate(restaurantsProvider);
+            ref.invalidate(restaurantDetailProvider(remote.id));
+          }
         }
         final subOrdersJson =
             msg.data['subOrders'] as List<dynamic>? ?? [];
@@ -468,7 +474,10 @@ class _SessionShellPageState extends ConsumerState<SessionShellPage> {
         final remote = Restaurant.fromJson(msg.data);
         final local = await restaurantRepo.getRestaurantById(remote.id);
         await restaurantRepo.saveRestaurant(_mergeRestaurant(remote, local));
-        if (mounted) ref.invalidate(restaurantDetailProvider(remote.id));
+        if (mounted) {
+          ref.invalidate(restaurantsProvider);
+          ref.invalidate(restaurantDetailProvider(remote.id));
+        }
 
       case SyncMessageType.sessionClosed:
         final participantSvc = ref.read(participantBleServiceProvider);

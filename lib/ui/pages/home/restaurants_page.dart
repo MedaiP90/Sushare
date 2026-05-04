@@ -62,7 +62,7 @@ class RestaurantsPage extends ConsumerWidget {
               final restaurant = restaurants[index];
               final templatesAsync =
                   ref.watch(savedOrdersForRestaurantProvider(restaurant.id));
-              final templateCount = templatesAsync.valueOrNull?.length ?? 0;
+              final templateCount = templatesAsync.value?.length ?? 0;
               return Card(
                 margin: const EdgeInsets.only(bottom: 16),
                 clipBehavior: Clip.antiAlias,

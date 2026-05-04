@@ -86,7 +86,7 @@ class _PersonalOrderContentState extends ConsumerState<PersonalOrderContent> {
             final isEditable = session.status != SessionStatus.closed;
             final canAddDishes = session.status == SessionStatus.open;
             final isSent = session.status == SessionStatus.sent;
-            final templates = templatesAsync.valueOrNull ?? [];
+            final templates = templatesAsync.value ?? [];
 
             final String userName = user.username;
             final String userFullName = '${user.firstName} ${user.lastName}'.trim();
@@ -305,7 +305,7 @@ class _PersonalOrderContentState extends ConsumerState<PersonalOrderContent> {
             expand: false,
             builder: (sheetContext, scrollController) {
               final currentRestaurant =
-                  ref.read(restaurantDetailProvider(restaurant.id)).valueOrNull ?? restaurant;
+                  ref.read(restaurantDetailProvider(restaurant.id)).value ?? restaurant;
               final sortedMenu = List<MenuItem>.from(currentRestaurant.menu)
                 ..sort((a, b) {
                   if (a.isYummie && !b.isYummie) return -1;
@@ -408,7 +408,7 @@ class _PersonalOrderContentState extends ConsumerState<PersonalOrderContent> {
                                 });
                                 final r = ref
                                         .read(restaurantDetailProvider(restaurant.id))
-                                        .valueOrNull ??
+                                        .value ??
                                     restaurant;
                                 await _saveOrder(context, userId, r.menu,
                                     userName: userName,
@@ -521,7 +521,7 @@ class _PersonalOrderContentState extends ConsumerState<PersonalOrderContent> {
       final l10n = AppLocalizations.of(context)!;
       final dishId = const Uuid().v4();
       final currentRestaurantForNum =
-          ref.read(restaurantDetailProvider(restaurant.id)).valueOrNull ?? restaurant;
+          ref.read(restaurantDetailProvider(restaurant.id)).value ?? restaurant;
       final maxNumber = currentRestaurantForNum.menu
           .map((m) => m.itemNumber ?? 0)
           .fold(0, (a, b) => a > b ? a : b);

@@ -189,6 +189,10 @@ class _JoinSessionPageState extends ConsumerState<JoinSessionPage> {
         final remote = Restaurant.fromJson(restaurantData);
         final local = await restaurantRepo.getRestaurantById(remote.id);
         await restaurantRepo.saveRestaurant(_mergeRestaurant(remote, local));
+        if (mounted) {
+          ref.invalidate(restaurantsProvider);
+          ref.invalidate(restaurantDetailProvider(remote.id));
+        }
       }
 
       if (mounted) context.go('/sessions/${remoteSession.id}');

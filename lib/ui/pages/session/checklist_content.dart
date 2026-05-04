@@ -85,7 +85,7 @@ class ChecklistContent extends ConsumerWidget {
         // Watch personal sub order for reactive checklist data
         final personalOrderAsync =
             ref.watch(personalOrderProvider('$sessionId:${user.id}'));
-        final personalOrder = personalOrderAsync.valueOrNull;
+        final personalOrder = personalOrderAsync.value;
 
         // arrivedCounts keyed by "${orderLabel}:${menuItemId}"
         final arrivedCounts = <String, int>{
@@ -95,7 +95,7 @@ class ChecklistContent extends ConsumerWidget {
 
         final isEditable = session.status != SessionStatus.closed;
         final restaurant =
-            ref.watch(restaurantDetailProvider(session.restaurantId)).valueOrNull;
+            ref.watch(restaurantDetailProvider(session.restaurantId)).value;
 
         final anyItems = allOrders.any((o) => o.order.items.isNotEmpty);
         final allArrived = anyItems &&
