@@ -376,14 +376,18 @@ class _SessionShellPageState extends ConsumerState<SessionShellPage> {
     _guestMsgSub =
         participantSvc.messages.listen((msg) => _handleGuestMessage(msg, session));
 
-    _sessionClosedSub = participantSvc.sessionClosed.listen((_) {
+    _sessionClosedSub = participantSvc.sessionClosed.listen((_) async {
       if (!mounted) return;
       participantSvc.markSessionClosed();
       final sessionRepo = ref.read(sessionRepositoryProvider);
-      sessionRepo.saveSession(session.copyWith(status: SessionStatus.closed));
-      ref.invalidate(sessionDetailProvider(session.id));
-      ref.invalidate(sessionsProvider);
-      if (mounted) setState(() => _guestSubscribed = false);
+      final latest = await sessionRepo.getSessionById(session.id);
+      await sessionRepo.saveSession(
+          (latest ?? session).copyWith(status: SessionStatus.closed));
+      if (mounted) {
+        ref.invalidate(sessionDetailProvider(session.id));
+        ref.invalidate(sessionsProvider);
+        setState(() => _guestSubscribed = false);
+      }
     });
 
     // Request fresh state from the host so any changes made while the guest was
@@ -482,8 +486,11 @@ class _SessionShellPageState extends ConsumerState<SessionShellPage> {
       case SyncMessageType.sessionClosed:
         final participantSvc = ref.read(participantBleServiceProvider);
         participantSvc.markSessionClosed();
+        final latestSession =
+            await sessionRepo.getSessionById(currentSession.id);
         await sessionRepo.saveSession(
-            currentSession.copyWith(status: SessionStatus.closed));
+            (latestSession ?? currentSession).copyWith(
+                status: SessionStatus.closed));
         if (mounted) {
           ref.invalidate(sessionDetailProvider(currentSession.id));
           ref.invalidate(sessionsProvider);
@@ -523,7 +530,7 @@ class _SessionShellPageState extends ConsumerState<SessionShellPage> {
       coverImagePath: local.coverImagePath,
       menu: remote.menu
           .map((item) =>
-              item.copyWith(isYummie: localYummies[item.id] ?? item.isYummie))
+              item.copyWith(isYummie: localYummies[item.id] ?? false))
           .toList(),
     );
   }
