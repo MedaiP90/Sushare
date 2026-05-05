@@ -20,7 +20,7 @@ Available on:
 - **Local Identity** — Users create local profiles with username, first name, last name, and an optional avatar icon.
 - **Real-time Order Merging** — Each participant builds their own sub-order; the host sees a real-time merged view ready to hand to the waiter.
 - **QR Code & Short Code Sharing** — Host shares the session via QR code or an 8-character short code. Guests join by scanning or typing it.
-- **Menu AI Extraction** — Scan restaurant menus using the camera; Claude AI extracts items and prices automatically.
+- **Menu AI Extraction** — Scan restaurant menus using the camera; Gemini AI extracts items and prices automatically.
 - **Arrival Checklist** — Each participant tracks which of their ordered dishes have arrived at the table, with a progress indicator per item.
 - **Saved Orders** — Frequently visit the same spot? Save your usual order and load it in one tap next time.
 - **Yummies** — Mark favourite menu items with a personal flag, preserved locally and never synced to other devices.
@@ -138,7 +138,7 @@ flutter devices
 
 ### AI Menu Extraction
 
-The app uses the Anthropic Claude API to extract menu items from photos. To enable it, store your API key via the in-app settings screen. The key is saved securely using `flutter_secure_storage` and never leaves the device except in API calls to Anthropic.
+The app uses the Google Gemini API to extract menu items from photos. To enable it, store your API key via the in-app settings screen. The key is saved securely using `flutter_secure_storage` and never leaves the device except in API calls to Google.
 
 ### Permissions
 
@@ -245,7 +245,7 @@ flutter build ios --release
    - Try stopping and restarting the host session
 
 4. **AI menu extraction not working**
-   - Verify the Anthropic API key is saved in the app settings
+   - Verify the Gemini API key is saved in the app settings
    - The device needs an active internet connection for this feature only
 
 5. **iOS build fails with pod errors**
@@ -269,7 +269,7 @@ Built with Flutter and powered by:
 - **Local database** — `sqflite`, `path_provider`
 - **Bluetooth P2P** — `bluetooth_low_energy`
 - **QR code** — `qr_flutter`, `mobile_scanner`
-- **AI menu extraction** — `anthropic_sdk_dart`
+- **AI menu extraction** — Google Gemini API (via `http`)
 - **Camera & images** — `image_picker`, `flutter_image_compress`
 - **Secure storage** — `flutter_secure_storage`
 - **Theming** — `flex_color_scheme`, `dynamic_color`, `google_fonts`
