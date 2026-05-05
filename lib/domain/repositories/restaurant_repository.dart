@@ -30,6 +30,7 @@ class RestaurantRepository {
       id: row['id'] as String,
       name: row['name'] as String,
       address: row['address'] as String?,
+      phoneNumber: row['phone_number'] as String?,
       coverImagePath: row['cover_image_path'] as String?,
       menu: menu,
       createdAt: DateTime.parse(row['created_at'] as String),
@@ -44,6 +45,7 @@ class RestaurantRepository {
         'id': restaurant.id,
         'name': restaurant.name,
         'address': restaurant.address,
+        'phone_number': restaurant.phoneNumber,
         'cover_image_path': restaurant.coverImagePath,
         'menu_json': jsonEncode(restaurant.menu.map((e) => e.toJson()).toList()),
         'created_at': restaurant.createdAt.toIso8601String(),
@@ -59,6 +61,7 @@ class RestaurantRepository {
       {
         'name': restaurant.name,
         'address': restaurant.address,
+        'phone_number': restaurant.phoneNumber,
         'cover_image_path': restaurant.coverImagePath,
         'menu_json': jsonEncode(restaurant.menu.map((e) => e.toJson()).toList()),
       },

@@ -108,7 +108,7 @@ class _SessionShellPageState extends ConsumerState<SessionShellPage> {
             title: Text(session.name),
             centerTitle: true,
             leading: IconButton(
-              icon: const Icon(Icons.arrow_back),
+              icon: Icon(Theme.of(context).platform == TargetPlatform.iOS ? Icons.arrow_back_ios : Icons.arrow_back),
               onPressed: () => context.go('/home/sessions'),
             ),
             actions: [
@@ -187,7 +187,7 @@ class _SessionShellPageState extends ConsumerState<SessionShellPage> {
                   color: Theme.of(context).colorScheme.errorContainer,
                   onColor: Theme.of(context).colorScheme.onErrorContainer,
                   trailing: TextButton(
-                    onPressed: () => context.go('/sessions/join'),
+                    onPressed: () => context.push('/sessions/join'),
                     child: Text(AppLocalizations.of(context)!.sessionReconnect),
                   ),
                 ),

@@ -256,7 +256,7 @@ class _PersonalOrderContentState extends ConsumerState<PersonalOrderContent> {
                           child: const Icon(Icons.restaurant_menu),
                         ),
                         const SizedBox(width: 12),
-                        FloatingActionButton.extended(
+                        FloatingActionButton(
                           heroTag: 'fab_custom_dish',
                           onPressed: canAddDishes
                               ? () => _showAddCustomDishSheet(
@@ -264,8 +264,7 @@ class _PersonalOrderContentState extends ConsumerState<PersonalOrderContent> {
                                   userFullName, userAvatarIconName)
                               : null,
                           tooltip: l10n.personalOrderCustomDish,
-                          icon: const Icon(Icons.add),
-                          label: Text(l10n.personalOrderCustomDish),
+                          child: const Icon(Icons.add),
                         ),
                       ],
                     )

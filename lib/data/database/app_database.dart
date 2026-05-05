@@ -16,7 +16,7 @@ class AppDatabase {
 
     return openDatabase(
       path,
-      version: 7,
+      version: 8,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -35,6 +35,9 @@ class AppDatabase {
     }
     if (oldVersion < 5) {
       await db.execute('ALTER TABLE sessions ADD COLUMN host_address TEXT');
+    }
+    if (oldVersion < 8) {
+      await db.execute('ALTER TABLE restaurants ADD COLUMN phone_number TEXT');
     }
     if (oldVersion < 7) {
       // These avatar columns may be missing if added to _onCreate without a
@@ -71,6 +74,7 @@ class AppDatabase {
         id TEXT PRIMARY KEY,
         name TEXT NOT NULL,
         address TEXT,
+        phone_number TEXT,
         cover_image_path TEXT,
         menu_json TEXT NOT NULL,
         created_at TEXT NOT NULL
