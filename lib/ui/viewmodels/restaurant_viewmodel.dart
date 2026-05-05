@@ -19,6 +19,7 @@ class RestaurantsNotifier extends AsyncNotifier<List<Restaurant>> {
   Future<String> addRestaurant({
     required String name,
     String? address,
+    String? phoneNumber,
     String? coverImagePath,
     required List<MenuItem> menu,
   }) async {
@@ -27,6 +28,7 @@ class RestaurantsNotifier extends AsyncNotifier<List<Restaurant>> {
       id: const Uuid().v4(),
       name: name,
       address: address,
+      phoneNumber: phoneNumber,
       coverImagePath: coverImagePath,
       menu: menu,
       createdAt: DateTime.now(),

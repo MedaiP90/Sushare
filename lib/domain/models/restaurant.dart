@@ -2,6 +2,7 @@ class Restaurant {
   final String id;
   final String name;
   final String? address;
+  final String? phoneNumber;
   final String? coverImagePath;
   final List<MenuItem> menu;
   final DateTime createdAt;
@@ -10,6 +11,7 @@ class Restaurant {
     required this.id,
     required this.name,
     this.address,
+    this.phoneNumber,
     this.coverImagePath,
     required this.menu,
     required this.createdAt,
@@ -20,6 +22,7 @@ class Restaurant {
       id: json['id'] as String,
       name: json['name'] as String,
       address: json['address'] as String?,
+      phoneNumber: json['phoneNumber'] as String?,
       coverImagePath: json['coverImagePath'] as String?,
       menu: (json['menu'] as List<dynamic>)
           .map((e) => MenuItem.fromJson(e as Map<String, dynamic>))
@@ -33,6 +36,7 @@ class Restaurant {
       'id': id,
       'name': name,
       'address': address,
+      'phoneNumber': phoneNumber,
       'coverImagePath': coverImagePath,
       'menu': menu.map((e) => e.toJson()).toList(),
       'createdAt': createdAt.toIso8601String(),
@@ -43,6 +47,7 @@ class Restaurant {
     String? id,
     String? name,
     String? address,
+    String? phoneNumber,
     String? coverImagePath,
     List<MenuItem>? menu,
     DateTime? createdAt,
@@ -51,6 +56,7 @@ class Restaurant {
       id: id ?? this.id,
       name: name ?? this.name,
       address: address ?? this.address,
+      phoneNumber: phoneNumber ?? this.phoneNumber,
       coverImagePath: coverImagePath ?? this.coverImagePath,
       menu: menu ?? this.menu,
       createdAt: createdAt ?? this.createdAt,

@@ -456,6 +456,9 @@ class AppLocalizationsFr extends AppLocalizations {
   String get restaurantAddressLabel => 'Adresse (optionnel)';
 
   @override
+  String get restaurantPhoneLabel => 'Numéro de téléphone (optionnel)';
+
+  @override
   String get restaurantEditTitle => 'Modifier le restaurant';
 
   @override

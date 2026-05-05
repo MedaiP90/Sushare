@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:uuid/uuid.dart';
 import '../../../domain/models/restaurant.dart';
 import '../../../domain/models/saved_order.dart';
@@ -156,18 +157,48 @@ class _RestaurantDetailPageState extends ConsumerState<RestaurantDetailPage> {
               ),
               if (restaurant.address != null)
                 SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Row(
-                      children: [
-                        Icon(Icons.location_on_outlined,
-                            color: Theme.of(context).colorScheme.outline),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(restaurant.address!,
-                              style: Theme.of(context).textTheme.bodyLarge),
-                        ),
-                      ],
+                  child: InkWell(
+                    onTap: () => launchUrl(
+                      Uri(scheme: 'geo', path: '0,0', queryParameters: {'q': restaurant.address!}),
+                      mode: LaunchMode.externalApplication,
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Row(
+                        children: [
+                          Icon(Icons.location_on_outlined,
+                              color: Theme.of(context).colorScheme.outline),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(restaurant.address!,
+                                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                                      color: Theme.of(context).colorScheme.primary,
+                                    )),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              if (restaurant.phoneNumber != null)
+                SliverToBoxAdapter(
+                  child: InkWell(
+                    onTap: () => launchUrl(
+                      Uri(scheme: 'tel', path: restaurant.phoneNumber),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                      child: Row(
+                        children: [
+                          Icon(Icons.phone_outlined,
+                              color: Theme.of(context).colorScheme.outline),
+                          const SizedBox(width: 8),
+                          Text(restaurant.phoneNumber!,
+                              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                                    color: Theme.of(context).colorScheme.primary,
+                                  )),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -491,10 +522,11 @@ class _RestaurantDetailPageState extends ConsumerState<RestaurantDetailPage> {
       useSafeArea: true,
       builder: (context) => EditRestaurantSheet(
         restaurant: restaurant,
-        onSave: (name, address, coverImagePath) async {
+        onSave: (name, address, phoneNumber, coverImagePath) async {
           final updated = restaurant.copyWith(
             name: name,
             address: address,
+            phoneNumber: phoneNumber,
             coverImagePath: coverImagePath,
           );
           await ref.read(restaurantsProvider.notifier).updateRestaurant(updated);
@@ -771,7 +803,7 @@ class _AddTemplateSheetState extends State<_AddTemplateSheet> {
 class EditRestaurantSheet extends StatefulWidget {
   final Restaurant restaurant;
   final Future<void> Function(
-      String name, String? address, String? coverImagePath) onSave;
+      String name, String? address, String? phoneNumber, String? coverImagePath) onSave;
 
   const EditRestaurantSheet(
       {super.key, required this.restaurant, required this.onSave});
@@ -783,6 +815,7 @@ class EditRestaurantSheet extends StatefulWidget {
 class _EditRestaurantSheetState extends State<EditRestaurantSheet> {
   late final TextEditingController _nameController;
   late final TextEditingController _addressController;
+  late final TextEditingController _phoneController;
   String? _coverImagePath;
 
   @override
@@ -791,6 +824,8 @@ class _EditRestaurantSheetState extends State<EditRestaurantSheet> {
     _nameController = TextEditingController(text: widget.restaurant.name);
     _addressController =
         TextEditingController(text: widget.restaurant.address ?? '');
+    _phoneController =
+        TextEditingController(text: widget.restaurant.phoneNumber ?? '');
     _coverImagePath = widget.restaurant.coverImagePath;
   }
 
@@ -798,6 +833,7 @@ class _EditRestaurantSheetState extends State<EditRestaurantSheet> {
   void dispose() {
     _nameController.dispose();
     _addressController.dispose();
+    _phoneController.dispose();
     super.dispose();
   }
 
@@ -884,6 +920,15 @@ class _EditRestaurantSheetState extends State<EditRestaurantSheet> {
                 border: const OutlineInputBorder(),
               ),
             ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _phoneController,
+              keyboardType: TextInputType.phone,
+              decoration: InputDecoration(
+                labelText: l10n.restaurantPhoneLabel,
+                border: const OutlineInputBorder(),
+              ),
+            ),
             const SizedBox(height: 24),
             Row(
               children: [
@@ -901,6 +946,9 @@ class _EditRestaurantSheetState extends State<EditRestaurantSheet> {
                       _addressController.text.trim().isEmpty
                           ? null
                           : _addressController.text.trim(),
+                      _phoneController.text.trim().isEmpty
+                          ? null
+                          : _phoneController.text.trim(),
                       _coverImagePath,
                     ),
                     child: Text(l10n.save),

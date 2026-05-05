@@ -920,6 +920,12 @@ abstract class AppLocalizations {
   /// **'Address (optional)'**
   String get restaurantAddressLabel;
 
+  /// No description provided for @restaurantPhoneLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Phone number (optional)'**
+  String get restaurantPhoneLabel;
+
   /// No description provided for @restaurantEditTitle.
   ///
   /// In en, this message translates to:

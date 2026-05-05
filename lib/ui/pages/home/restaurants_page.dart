@@ -206,10 +206,11 @@ class RestaurantsPage extends ConsumerWidget {
                   useSafeArea: true,
                   builder: (editContext) => EditRestaurantSheet(
                     restaurant: restaurant,
-                    onSave: (name, address, coverImagePath) async {
+                    onSave: (name, address, phoneNumber, coverImagePath) async {
                       final updated = restaurant.copyWith(
                         name: name,
                         address: address,
+                        phoneNumber: phoneNumber,
                         coverImagePath: coverImagePath,
                       );
                       await ref.read(restaurantsProvider.notifier).updateRestaurant(updated);
@@ -263,6 +264,7 @@ class RestaurantsPage extends ConsumerWidget {
   void _showAddRestaurantSheet(BuildContext context, WidgetRef ref, AppLocalizations l10n) {
     final nameController = TextEditingController();
     final addressController = TextEditingController();
+    final phoneController = TextEditingController();
 
     showModalBottomSheet(
       context: context,
@@ -271,6 +273,7 @@ class RestaurantsPage extends ConsumerWidget {
       builder: (context) => _AddRestaurantSheet(
         nameController: nameController,
         addressController: addressController,
+        phoneController: phoneController,
         onAdd: (coverImagePath) async {
           if (nameController.text.trim().isEmpty) return;
           await ref.read(restaurantsProvider.notifier).addRestaurant(
@@ -278,6 +281,9 @@ class RestaurantsPage extends ConsumerWidget {
                 address: addressController.text.trim().isEmpty
                     ? null
                     : addressController.text.trim(),
+                phoneNumber: phoneController.text.trim().isEmpty
+                    ? null
+                    : phoneController.text.trim(),
                 coverImagePath: coverImagePath,
                 menu: [],
               );
@@ -291,11 +297,13 @@ class RestaurantsPage extends ConsumerWidget {
 class _AddRestaurantSheet extends StatefulWidget {
   final TextEditingController nameController;
   final TextEditingController addressController;
+  final TextEditingController phoneController;
   final Future<void> Function(String? coverImagePath) onAdd;
 
   const _AddRestaurantSheet({
     required this.nameController,
     required this.addressController,
+    required this.phoneController,
     required this.onAdd,
   });
 
@@ -380,6 +388,15 @@ class _AddRestaurantSheetState extends State<_AddRestaurantSheet> {
               controller: widget.addressController,
               decoration: InputDecoration(
                 labelText: l10n.restaurantAddressLabel,
+                border: const OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: widget.phoneController,
+              keyboardType: TextInputType.phone,
+              decoration: InputDecoration(
+                labelText: l10n.restaurantPhoneLabel,
                 border: const OutlineInputBorder(),
               ),
             ),
